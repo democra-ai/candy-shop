@@ -55,7 +55,7 @@ export function DebugLoopMonitor({ config, onStart, onPause, onResume, onStop }:
           {
             id: `log-${Date.now()}`,
             timestamp: new Date(),
-            level: 'info',
+            level: 'info' as const,
             message: 'Monitoring deployment for errors...',
           },
         ].slice(-50));
