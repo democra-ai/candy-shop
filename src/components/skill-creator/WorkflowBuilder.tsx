@@ -309,11 +309,11 @@ export function WorkflowBuilder({
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (e.target !== e.currentTarget) return;
 
-      const rect = canvasRef.current?.getBoundingClientRect();
-      if (!rect) return;
+      const _rect = canvasRef.current?.getBoundingClientRect();
+      if (!_rect) return;
 
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      const _x = e.clientX - _rect.left;
+      const _y = e.clientY - _rect.top;
 
       if (showNodePalette) {
         // Show palette at click position
@@ -345,7 +345,7 @@ export function WorkflowBuilder({
   // Handle mouse up
   const handleMouseUp = useCallback(() => {
     if (isConnecting && connectionStart) {
-      const hoveredElement = document.elementFromPoint(
+      const _hoveredElement = document.elementFromPoint(
         dragStartPos.current?.x || 0,
         dragStartPos.current?.y || 0
       );
