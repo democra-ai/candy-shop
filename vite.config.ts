@@ -4,8 +4,8 @@ import react from '@vitejs/plugin-react';
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  // On Vercel, we want '/', on GitHub Pages we want '/candy-shop/'
-  base: process.env.VERCEL ? '/' : '/candy-shop/',
+  // On Vercel or Hugging Face Spaces, we want '/', on GitHub Pages we want '/candy-shop/'
+  base: process.env.VERCEL || process.env.SPACE_ID ? '/' : '/candy-shop/',
   build: {
     rollupOptions: {
       output: {
