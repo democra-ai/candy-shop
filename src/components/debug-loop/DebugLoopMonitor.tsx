@@ -10,10 +10,6 @@ import {
   Bug,
   Clock,
   FileText,
-  GitBranch,
-  ExternalLink,
-  ChevronDown,
-  ChevronRight,
   Zap,
   Activity,
 } from 'lucide-react';
@@ -22,7 +18,6 @@ import type {
   DebugLoopState,
   DebugLoopIteration,
   DebugLoopStats,
-  RemoteError,
   IterationLog,
 } from '../../types/auto-debug';
 
