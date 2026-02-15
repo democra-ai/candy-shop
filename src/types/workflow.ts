@@ -188,8 +188,8 @@ export interface WorkflowSettings {
 }
 
 export interface WorkflowMetadata {
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
   lastExecutedAt?: Date;
   executionCount: number;
   tags: string[];
