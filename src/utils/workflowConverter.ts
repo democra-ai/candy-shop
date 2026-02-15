@@ -58,46 +58,64 @@ function generateSystemPrompt(workflow: Workflow): string {
 
 function describeNode(node: WorkflowNode): string {
   switch (node.type) {
-    case 'llm':
-      return `Processes input using LLM model ${node.config.modelId || 'gpt-4'}${
-        node.config.systemPrompt ? ` with custom system prompt` : ''
+    case 'llm': {
+      const config = node.config as import('../types/workflow').LLMNodeConfig;
+      return `Processes input using LLM model ${config.modelId || 'gpt-4'}${config.systemPrompt ? ` with custom system prompt` : ''
       }`;
+    }
 
-    case 'web-search':
-      return `Searches the web using ${node.config.searchEngine || 'google'}${
-        node.config.query ? ` for: "${node.config.query}"` : ''
+    case 'web-search': {
+      const config = node.config as import('../types/workflow').WebSearchNodeConfig;
+      return `Searches the web using ${config.searchEngine || 'google'}${config.query ? ` for: "${config.query}"` : ''
       }`;
+    }
 
-    case 'api-call':
-      return `Makes ${node.config.method || 'GET'} request to ${node.config.url || 'API endpoint'}`;
+    case 'api-call': {
+      const config = node.config as import('../types/workflow').APICallNodeConfig;
+      return `Makes ${config.method || 'GET'} request to ${config.url || 'API endpoint'}`;
+    }
 
-    case 'code':
-      return `Executes ${node.config.language || 'javascript'} code`;
+    case 'code': {
+      const config = node.config as import('../types/workflow').CodeNodeConfig;
+      return `Executes ${config.language || 'javascript'} code`;
+    }
 
-    case 'output':
-      return `Returns output in ${node.config.outputFormat || 'json'} format`;
+    case 'output': {
+      const config = node.config as import('../types/workflow').OutputNodeConfig;
+      return `Returns output in ${config.outputFormat || 'json'} format`;
+    }
 
-    case 'condition':
-      return `Branches based on conditions: ${node.config.conditions?.map((c: any) => c.expression).join(' OR ') || 'true'}`;
+    case 'condition': {
+      const config = node.config as import('../types/workflow').ConditionNodeConfig;
+      return `Branches based on conditions: ${config.conditions?.map((c) => c.expression).join(' OR ') || 'true'}`;
+    }
 
-    case 'loop':
-      return `Loops over ${node.config.iterateOver || 'array'} as "${node.config.loopVariable || 'item'}"${
-        node.config.maxIterations ? ` (max ${node.config.maxIterations} iterations)` : ''
+    case 'loop': {
+      const config = node.config as import('../types/workflow').LoopNodeConfig;
+      return `Loops over ${config.iterateOver || 'array'} as "${config.loopVariable || 'item'}"${config.maxIterations ? ` (max ${config.maxIterations} iterations)` : ''
       }`;
+    }
 
-    case 'transform':
-      return `Transforms data using ${node.config.transformation || 'map'} operation`;
+    case 'transform': {
+      const config = node.config as import('../types/workflow').TransformNodeConfig;
+      return `Transforms data using ${config.transformation || 'map'} operation`;
+    }
 
-    case 'tool':
-      return `Executes tool: ${node.config.toolName || node.config.toolId || 'custom tool'}`;
+    case 'tool': {
+      const config = node.config as import('../types/workflow').ToolNodeConfig;
+      return `Executes tool: ${config.toolName || config.toolId || 'custom tool'}`;
+    }
 
-    case 'input':
-      return `Collects ${node.config.inputType || 'text'} input from user${
-        node.config.prompt ? `: "${node.config.prompt}"` : ''
+    case 'input': {
+      const config = node.config as import('../types/workflow').InputNodeConfig;
+      return `Collects ${config.inputType || 'text'} input from user${config.prompt ? `: "${config.prompt}"` : ''
       }`;
+    }
 
-    case 'trigger':
-      return `Triggers workflow on ${node.config.triggerType || 'manual'}`;
+    case 'trigger': {
+      const config = node.config as import('../types/workflow').TriggerNodeConfig;
+      return `Triggers workflow on ${config.triggerType || 'manual'}`;
+    }
 
     default:
       return '';
@@ -134,9 +152,11 @@ function generateCapabilities(workflow: Workflow): string[] {
       case 'transform':
         capabilities.push('Data Transformation', 'Mapping');
         break;
-      case 'tool':
-        capabilities.push(`Tool: ${node.config.toolName || 'Custom'}`);
+      case 'tool': {
+        const config = node.config as import('../types/workflow').ToolNodeConfig;
+        capabilities.push(`Tool: ${config.toolName || 'Custom'}`);
         break;
+      }
       case 'input':
         capabilities.push('User Input Collection', 'Interactive');
         break;
@@ -158,7 +178,7 @@ export function workflowToSkill(workflow: Workflow): Omit<Skill, 'userId'> {
 
   return {
     id: workflow.id,
-    userId: '', // Will be set by the caller
+    // userId: '', // Will be set by the caller
     name: workflow.name,
     description: workflow.description || `A workflow with ${workflow.nodes.length} nodes`,
     category,
@@ -171,7 +191,7 @@ export function workflowToSkill(workflow: Workflow): Omit<Skill, 'userId'> {
         workflowId: workflow.id,
         workflowVersion: workflow.version,
       },
-      tools: workflow.nodes.filter((n) => n.type === 'tool').map((n) => n.config.toolId || ''),
+      tools: workflow.nodes.filter((n) => n.type === 'tool').map((n) => (n.config as import('../types/workflow').ToolNodeConfig).toolId || ''),
     },
     sourceFiles: [],
     analysisContext: {
@@ -189,7 +209,7 @@ export function workflowToSkill(workflow: Workflow): Omit<Skill, 'userId'> {
     },
     installCommand: `skill install ${workflow.name.toLowerCase().replace(/\s+/g, '-')}`,
     popularity: 0,
-    metadata: workflow.metadata,
+    // metadata: workflow.metadata,
     createdAt: workflow.metadata.createdAt,
     updatedAt: workflow.metadata.updatedAt,
     lastUsedAt: workflow.metadata.lastExecutedAt,

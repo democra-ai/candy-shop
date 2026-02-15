@@ -115,7 +115,7 @@ export async function executeWorkflow(
       executedAt: new Date(),
     };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    // const errorMessage = error instanceof Error ? error.message : String(error);
 
     return {
       executionId: execution.id,
@@ -170,11 +170,12 @@ function getExecutionOrder(workflow: Workflow, startNodeId: string): string[] {
 
 // Prepare input for a node based on previous outputs
 function prepareNodeInput(
-  node: WorkflowNode,
+  _node: WorkflowNode,
   nodeOutputs: Record<string, unknown>
 ): unknown {
-  // Get incoming connections to this node
+  // Using node and nodeOutputs significantly to avoid unused errors
   // For now, we'll use a simple approach - all outputs from previous nodes
+  // console.log('Preparing input for node', node.id, nodeOutputs);
   return nodeOutputs;
 }
 
@@ -230,7 +231,7 @@ async function executeLLMNode(
   node: WorkflowNode,
   input: unknown,
   opencode: OpenCodeClient,
-  sessionId: string
+  _sessionId: string
 ): Promise<unknown> {
   const config = node.config as any;
 
@@ -257,9 +258,9 @@ async function executeLLMNode(
           clearTimeout(timeout);
           resolve({ success: true, message: 'LLM processing complete' });
         },
-        onError: (error) => {
+        onError: (error: any) => {
           clearTimeout(timeout);
-          reject(new Error(error));
+          reject(new Error(String(error)));
         },
       })
       .catch(reject);
@@ -269,7 +270,7 @@ async function executeLLMNode(
 // Execute Web Search node
 async function executeWebSearchNode(
   node: WorkflowNode,
-  input: unknown
+  _input: unknown
 ): Promise<unknown> {
   const config = node.config as any;
 
@@ -286,7 +287,7 @@ async function executeWebSearchNode(
 // Execute API Call node
 async function executeAPICallNode(
   node: WorkflowNode,
-  input: unknown
+  _input: unknown
 ): Promise<unknown> {
   const config = node.config as any;
 
@@ -308,7 +309,7 @@ async function executeAPICallNode(
 }
 
 // Execute Code node
-async function executeCodeNode(node: WorkflowNode, input: unknown): Promise<unknown> {
+async function executeCodeNode(node: WorkflowNode, _input: unknown): Promise<unknown> {
   const config = node.config as any;
 
   // In a real implementation, this would execute code in a sandboxed environment
@@ -323,7 +324,7 @@ async function executeCodeNode(node: WorkflowNode, input: unknown): Promise<unkn
 async function executeOutputNode(
   node: WorkflowNode,
   input: unknown,
-  context: Record<string, unknown>
+  _context: Record<string, unknown>
 ): Promise<unknown> {
   const config = node.config as any;
 
@@ -349,7 +350,7 @@ async function executeOutputNode(
 // Execute Condition node
 async function executeConditionNode(
   node: WorkflowNode,
-  input: unknown
+  _input: unknown
 ): Promise<unknown> {
   const config = node.config as any;
 
@@ -375,7 +376,8 @@ async function executeConditionNode(
 async function executeLoopNode(node: WorkflowNode, input: unknown): Promise<unknown> {
   const config = node.config as any;
 
-  const arrayToIterate = input[config.iterateOver] || input;
+  const safeInput = input as any;
+  const arrayToIterate = safeInput[config.iterateOver] || safeInput;
   if (!Array.isArray(arrayToIterate)) {
     return { error: 'Loop input is not an array' };
   }
@@ -444,7 +446,8 @@ async function executeToolNode(node: WorkflowNode, input: unknown): Promise<unkn
 // Execute Input node
 async function executeInputNode(node: WorkflowNode, input: unknown): Promise<unknown> {
   // In a real implementation, this would prompt the user for input
-  return { prompt: node.config.prompt || 'Please provide input', input };
+  const config = node.config as import('../types/workflow').InputNodeConfig;
+  return { prompt: config.prompt || 'Please provide input', input };
 }
 
 // Execute Trigger node
