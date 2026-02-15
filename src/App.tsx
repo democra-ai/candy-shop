@@ -244,6 +244,7 @@ function AppContent() {
           category: storeSkill.category as SkillCategory,
           icon: storeSkill.icon,
           color: storeSkill.color,
+          tags: storeSkill.tags || [storeSkill.category],
           config: {
             capabilities: [],
             systemPrompt: '',

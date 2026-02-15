@@ -66,6 +66,7 @@ export function MySkillsLibrary({ onCreateNew, onUseSkill, onBack }: MySkillsLib
           category: skill.category as SkillCategory,
           icon: skill.icon,
           color: skill.color,
+          tags: [skill.category],
           config: {
             capabilities: [],
             systemPrompt: '',
