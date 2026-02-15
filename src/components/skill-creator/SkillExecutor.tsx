@@ -30,6 +30,8 @@ import {
   Paperclip,
   Image,
   File,
+  ExternalLink,
+  Github,
 } from 'lucide-react';
 import type { Skill } from '../../types/skill-creator';
 import { SKILLS_DATA } from '../../data/skillsData';
@@ -1130,9 +1132,31 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB per file
+    const validFiles: File[] = [];
+    const rejectedFiles: string[] = [];
+
+    Array.from(files).forEach((file) => {
+      if (file.size > MAX_FILE_SIZE) {
+        rejectedFiles.push(`${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)`);
+      } else {
+        validFiles.push(file);
+      }
+    });
+
+    if (rejectedFiles.length > 0) {
+      console.warn('[SkillExec] Rejected oversized files:', rejectedFiles);
+      setConnectionError(`Files too large (max 10MB): ${rejectedFiles.join(', ')}`);
+      setTimeout(() => setConnectionError(null), 5000);
+    }
+
+    if (validFiles.length === 0) {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     const newFiles = await Promise.all(
-      Array.from(files).map(async (file) => {
-        // Convert file to data URL
+      validFiles.map(async (file) => {
         const reader = new FileReader();
         return new Promise<{
           id: string;
@@ -1140,22 +1164,30 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
           dataUrl: string;
           mimeType: string;
           fileName: string;
-        }>((resolve) => {
+        }>((resolve, reject) => {
           reader.onload = () => {
             resolve({
               id: `file-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
               file,
               dataUrl: reader.result as string,
-              mimeType: file.type,
+              mimeType: file.type || 'application/octet-stream',
               fileName: file.name,
             });
           };
+          reader.onerror = () => reject(new Error(`Failed to read ${file.name}`));
           reader.readAsDataURL(file);
         });
       })
-    );
+    ).catch((err) => {
+      console.error('[SkillExec] Error reading files:', err);
+      setConnectionError(`Failed to read file: ${(err as Error).message}`);
+      setTimeout(() => setConnectionError(null), 5000);
+      return [];
+    });
 
-    setAttachedFiles((prev) => [...prev, ...newFiles]);
+    if (newFiles.length > 0) {
+      setAttachedFiles((prev) => [...prev, ...newFiles]);
+    }
 
     // Reset input
     if (fileInputRef.current) {
@@ -1609,11 +1641,11 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
   // Connection screen
   if (connecting) {
     return (
-      <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm">
-        <div className="bg-zinc-900 rounded-2xl p-8 max-w-sm w-full mx-4 text-center border border-zinc-700/50">
+      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[110] backdrop-blur-md">
+        <div className="bg-[#0d1117] rounded-2xl p-8 max-w-sm w-full mx-4 text-center border border-white/[0.06] shadow-2xl shadow-black/50">
           <Loader2 className="w-8 h-8 text-blue-400 animate-spin mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-zinc-100 mb-2">Connecting to OpenCode</h3>
-          <p className="text-sm text-zinc-400">Establishing connection to server...</p>
+          <p className="text-sm text-zinc-500">Establishing connection to server...</p>
         </div>
       </div>
     );
@@ -1621,12 +1653,12 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
 
   if (connectionError && !connected) {
     return (
-      <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm">
-        <div className="bg-zinc-900 rounded-2xl p-8 max-w-md w-full mx-4 text-center border border-zinc-700/50 shadow-2xl">
+      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[110] backdrop-blur-md">
+        <div className="bg-[#0d1117] rounded-2xl p-8 max-w-md w-full mx-4 text-center border border-white/[0.06] shadow-2xl shadow-black/50">
           <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-zinc-100 mb-2">Connection Failed</h3>
-          <p className="text-sm text-red-300 mb-1">{connectionError}</p>
-          <p className="text-xs text-zinc-500 mb-6 mt-2">
+          <p className="text-sm text-red-400/80 mb-1">{connectionError}</p>
+          <p className="text-xs text-zinc-600 mb-6 mt-2">
             Check your network connection and ensure the OpenCode server is running.
           </p>
           <div className="flex gap-3 justify-center">
@@ -1643,14 +1675,14 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                   .finally(() => setConnecting(false));
               }}
               disabled={connecting}
-              className="px-5 py-2.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-500 transition-colors duration-200 cursor-pointer min-h-[40px] disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 text-white text-sm rounded-lg hover:from-blue-500 hover:to-blue-400 transition-all duration-200 cursor-pointer min-h-[40px] disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-lg shadow-blue-500/20"
               aria-label="Retry connection"
             >
               {connecting ? 'Connecting...' : 'Retry'}
             </button>
             <button
               onClick={onClose}
-              className="px-5 py-2.5 bg-zinc-700 text-zinc-200 text-sm rounded-lg hover:bg-zinc-600 transition-colors duration-200 cursor-pointer min-h-[40px] focus:outline-none focus:ring-2 focus:ring-zinc-500/50"
+              className="px-5 py-2.5 bg-white/[0.06] text-zinc-300 text-sm rounded-lg hover:bg-white/[0.1] transition-all duration-200 cursor-pointer min-h-[40px] focus:outline-none focus:ring-2 focus:ring-zinc-500/50 border border-white/[0.06]"
               aria-label="Close"
             >
               Close
@@ -1661,24 +1693,49 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
     );
   }
 
+  // Build GitHub URL from skill.repo if available
+  const githubUrl = skill.repo
+    ? `https://github.com/${skill.repo}`
+    : skill.skillMdUrl
+      ? (() => {
+        const m = skill.skillMdUrl!.match(/github(?:usercontent)?\.com\/([^/]+\/[^/]+)/);
+        return m ? `https://github.com/${m[1]}` : null;
+      })()
+      : null;
+
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm">
-      <div className="bg-zinc-900 rounded-2xl w-full max-w-7xl h-[90vh] mx-4 overflow-hidden flex flex-col border border-zinc-700/50 shadow-2xl">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[110] backdrop-blur-md">
+      <div className="bg-[#0d1117] rounded-2xl w-full max-w-7xl h-[92vh] mx-4 overflow-hidden flex flex-col border border-white/[0.06] shadow-2xl shadow-black/50">
         {/* ── Header ─────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-700/50 bg-zinc-800/50 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center text-xl shadow-sm">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/[0.06] bg-gradient-to-r from-[#161b22] to-[#0d1117] shrink-0">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-blue-600 flex items-center justify-center text-xl shadow-lg shadow-violet-500/20 ring-1 ring-white/10">
               {skill.icon}
             </div>
             <div>
-              <h2 className="text-base font-semibold text-zinc-100">{skill.name}</h2>
-              <div className="flex items-center gap-2 text-xs">
-                <span className="flex items-center gap-1 text-emerald-400">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-semibold text-white">{skill.name}</h2>
+                {githubUrl && (
+                  <a
+                    href={githubUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.06] hover:bg-white/[0.12] text-zinc-400 hover:text-white transition-all duration-200 text-[11px] font-medium"
+                    title="View on GitHub"
+                  >
+                    <Github className="w-3 h-3" />
+                    <span className="hidden sm:inline">Source</span>
+                    <ExternalLink className="w-2.5 h-2.5 opacity-50" />
+                  </a>
+                )}
+              </div>
+              <div className="flex items-center gap-2.5 text-xs mt-0.5">
+                <span className="flex items-center gap-1.5 text-emerald-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   Connected
                 </span>
                 {serverVersion && (
-                  <span className="text-zinc-500">v{serverVersion}</span>
+                  <span className="text-zinc-600">v{serverVersion}</span>
                 )}
                 {sessionStatus && sessionStatus !== 'idle' && (
                   <span className="text-blue-400 flex items-center gap-1">
@@ -1694,7 +1751,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
             {/* Sessions toggle (mobile) */}
             <button
               onClick={() => setShowSessions(!showSessions)}
-              className="md:hidden p-2 rounded-lg hover:bg-zinc-700/50 text-zinc-400 hover:text-zinc-200 transition-colors"
+              className="md:hidden p-2.5 rounded-lg hover:bg-white/[0.06] text-zinc-500 hover:text-zinc-200 transition-colors"
               title="Toggle sessions"
             >
               <MessageSquare className="w-4 h-4" />
@@ -1704,7 +1761,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
             <div className="relative model-picker">
               <button
                 onClick={() => setShowModelPicker(!showModelPicker)}
-                className="flex items-center gap-2 px-3 py-2 text-xs border border-zinc-600 rounded-lg hover:bg-zinc-700/50 text-zinc-300 transition-colors duration-200 cursor-pointer min-h-[36px] focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                className="flex items-center gap-2 px-3 py-2 text-xs border border-white/[0.08] rounded-lg hover:bg-white/[0.06] text-zinc-400 hover:text-zinc-200 transition-all duration-200 cursor-pointer min-h-[36px] focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                 aria-label="Select model"
                 aria-expanded={showModelPicker}
               >
@@ -1721,8 +1778,8 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                 <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${showModelPicker ? 'rotate-180' : ''}`} />
               </button>
               {showModelPicker && (
-                <div className="absolute right-0 mt-2 w-72 bg-zinc-800 border border-zinc-600 rounded-lg shadow-xl z-50 overflow-hidden">
-                  <div className="p-2 border-b border-zinc-700 bg-zinc-700/30">
+                <div className="absolute right-0 mt-2 w-72 bg-[#161b22] border border-white/[0.08] rounded-xl shadow-2xl z-50 overflow-hidden">
+                  <div className="p-2.5 border-b border-white/[0.06] bg-white/[0.02]">
                     <p className="text-xs font-medium text-zinc-400">Select Model</p>
                   </div>
                   <div className="max-h-80 overflow-y-auto">
@@ -1735,7 +1792,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                     {Array.from(new Set(models.map((m) => m.providerID))).map(
                       (pid) => (
                         <div key={pid}>
-                          <div className="px-3 py-1.5 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider bg-zinc-900/40">
+                          <div className="px-3 py-1.5 text-[10px] font-semibold text-zinc-600 uppercase tracking-wider bg-[#0d1117]/40">
                             {models.find((m) => m.providerID === pid)
                               ?.providerName ?? pid}
                           </div>
@@ -1756,9 +1813,9 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                                     });
                                     setShowModelPicker(false);
                                   }}
-                                  className={`w-full text-left px-3 py-2.5 text-xs hover:bg-zinc-700/50 transition-colors duration-150 flex items-center gap-2 cursor-pointer min-h-[36px] focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${
+                                  className={`w-full text-left px-3 py-2.5 text-xs hover:bg-white/[0.06] transition-colors duration-150 flex items-center gap-2 cursor-pointer min-h-[36px] focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${
                                     isSelected
-                                      ? 'bg-blue-600/20 text-blue-300 font-medium'
+                                    ? 'bg-blue-600/15 text-blue-300 font-medium'
                                       : 'text-zinc-300'
                                   }`}
                                   aria-pressed={isSelected}
@@ -1785,7 +1842,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
             {/* Close */}
             <button
               onClick={onClose}
-              className="p-2.5 rounded-lg hover:bg-zinc-700/50 text-zinc-400 hover:text-zinc-200 transition-colors duration-200 cursor-pointer min-w-[40px] min-h-[40px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-zinc-500/30"
+              className="p-2.5 rounded-lg hover:bg-white/[0.06] text-zinc-500 hover:text-zinc-200 transition-all duration-200 cursor-pointer min-w-[40px] min-h-[40px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-zinc-500/30"
               aria-label="Close skill executor"
             >
               <X className="w-5 h-5" />
@@ -1814,20 +1871,20 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
 
             {/* Session status bar — shows when AI is working */}
             {isRunning && (
-              <div className="shrink-0 px-4 py-2.5 bg-gradient-to-r from-blue-950/40 via-blue-950/20 to-transparent border-b border-blue-500/10">
+              <div className="shrink-0 px-5 py-3 bg-gradient-to-r from-blue-950/30 via-blue-950/10 to-transparent border-b border-blue-500/10">
                 <div className="flex items-center gap-3">
                   <div className="relative flex items-center justify-center w-5 h-5">
                     <Loader2 className="w-5 h-5 text-blue-400 animate-spin" />
                   </div>
-                  <span className="text-sm text-blue-300 font-medium">
+                  <span className="text-sm text-blue-300/90 font-medium">
                     {sessionStatus === 'busy' ? 'Agent is working...' : sessionStatus || 'Processing...'}
                   </span>
-                  <div className="flex-1 h-0.5 bg-zinc-800 rounded-full overflow-hidden">
+                  <div className="flex-1 h-0.5 bg-zinc-800/50 rounded-full overflow-hidden">
                     <div className="h-full bg-gradient-to-r from-blue-500 to-violet-500 rounded-full animate-pulse" style={{ width: '60%' }} />
                   </div>
                   <button
                     onClick={handleAbort}
-                    className="px-3 py-1.5 text-xs rounded-lg bg-red-600/20 hover:bg-red-600/30 text-red-300 hover:text-red-200 transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500/30"
+                    className="px-3 py-1.5 text-xs rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/10 transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500/30"
                     aria-label="Stop agent"
                   >
                     Stop
@@ -1961,28 +2018,42 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
 
               {entries.length === 0 && (
                 <div className="flex flex-col items-center justify-center h-full text-center">
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-violet-500/20 to-blue-500/20 flex items-center justify-center mb-6 animate-pulse">
-                    <Sparkles className="w-10 h-10 text-violet-400" />
+                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500/15 to-blue-500/15 flex items-center justify-center mb-6 ring-1 ring-white/[0.06]">
+                    <Sparkles className="w-10 h-10 text-violet-400/80" />
                   </div>
-                  <h3 className="text-xl font-semibold text-zinc-200 mb-2">
+                  <h3 className="text-xl font-semibold text-zinc-100 mb-2">
                     Ready to run {skill.name}
                   </h3>
-                  <p className="text-sm text-zinc-400 max-w-md mb-6">
+                  <p className="text-sm text-zinc-500 max-w-md mb-6 leading-relaxed">
                     {skillLoadStatus === 'loaded'
                       ? 'Skill instructions loaded successfully. Type a message below to start working with this skill.'
                       : skillLoadStatus === 'loading'
                         ? 'Loading skill instructions...'
                         : 'Type a message to start the agent. It will use OpenCode on the server to execute tasks with full tool access.'}
                   </p>
-                  {skillLoadStatus === 'loaded' && (
-                    <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      Skill loaded
-                    </div>
-                  )}
+                  <div className="flex items-center gap-3">
+                    {skillLoadStatus === 'loaded' && (
+                      <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/15 text-emerald-400 text-xs font-medium">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        Skill loaded
+                      </div>
+                    )}
+                    {githubUrl && (
+                      <a
+                        href={githubUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/[0.04] border border-white/[0.06] text-zinc-400 hover:text-zinc-200 text-xs font-medium transition-all duration-200 hover:bg-white/[0.08]"
+                      >
+                        <Github className="w-3.5 h-3.5" />
+                        View Source
+                        <ExternalLink className="w-3 h-3 opacity-50" />
+                      </a>
+                    )}
+                  </div>
                   <button
                     onClick={() => inputRef.current?.focus()}
-                    className="mt-4 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors duration-200 cursor-pointer text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                    className="mt-6 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl hover:from-blue-500 hover:to-blue-400 transition-all duration-300 cursor-pointer text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-lg shadow-blue-500/20"
                     aria-label="Start a conversation"
                   >
                     Start a conversation
@@ -2180,7 +2251,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
             )}
 
             {/* ── Input area ─────────────────────────────────────────── */}
-            <div className="px-4 py-3 border-t border-zinc-700/50 bg-zinc-800/30 shrink-0">
+            <div className="px-5 py-4 border-t border-white/[0.06] bg-[#161b22]/50 shrink-0">
               <div className="relative max-w-4xl mx-auto">
                 {/* Hidden file input */}
                 <input
@@ -2195,13 +2266,13 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
 
                 {/* File attachments preview */}
                 {attachedFiles.length > 0 && (
-                  <div className="mb-2 flex flex-wrap gap-2">
+                  <div className="mb-2.5 flex flex-wrap gap-2">
                     {attachedFiles.map((file) => {
                       const FileIcon = getFileIcon(file.mimeType);
                       return (
                         <div
                           key={file.id}
-                          className="group relative flex items-center gap-2 px-3 py-2 bg-zinc-800 border border-zinc-600 rounded-lg"
+                          className="group relative flex items-center gap-2 px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg hover:bg-white/[0.06] transition-colors"
                         >
                           {isImageFile(file.mimeType) ? (
                             <img
@@ -2217,7 +2288,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                           </span>
                           <button
                             onClick={() => removeFile(file.id)}
-                            className="ml-1 p-1 rounded hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer min-w-[20px] min-h-[20px] flex items-center justify-center"
+                            className="ml-1 p-1 rounded hover:bg-white/[0.1] text-zinc-500 hover:text-zinc-200 transition-colors cursor-pointer min-w-[20px] min-h-[20px] flex items-center justify-center"
                             aria-label={`Remove ${file.fileName}`}
                           >
                             <X className="w-3 h-3" />
@@ -2236,21 +2307,21 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                   placeholder={activeQuestion ? "Type your answer here..." : "What should the agent do?"}
                   rows={2}
                   disabled={isRunning || !connected}
-                  className="w-full pl-4 pr-28 py-3 bg-zinc-800 border border-zinc-600 rounded-xl
-                    text-sm text-zinc-100 placeholder-zinc-500
-                    focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50
+                  className="w-full pl-4 pr-28 py-3.5 bg-white/[0.04] border border-white/[0.08] rounded-xl
+                    text-sm text-zinc-100 placeholder-zinc-600
+                    focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/30
                     resize-none disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200
-                    hover:border-zinc-500"
+                    hover:border-white/[0.12] hover:bg-white/[0.05]"
                   aria-label="Message input"
                 />
-                <div className="absolute right-2 bottom-2 flex items-center gap-1">
+                <div className="absolute right-2.5 bottom-2.5 flex items-center gap-1.5">
                   {/* File attachment button */}
                   {!isRunning && (
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       disabled={!connected}
-                      className="p-2.5 bg-zinc-700 text-zinc-300 rounded-lg hover:bg-zinc-600
-                        disabled:opacity-40 disabled:hover:bg-zinc-700 disabled:cursor-not-allowed transition-colors duration-200 cursor-pointer min-w-[40px] min-h-[40px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-zinc-500/50"
+                      className="p-2.5 bg-white/[0.04] text-zinc-400 rounded-lg hover:bg-white/[0.08] hover:text-zinc-200
+                        disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer min-w-[38px] min-h-[38px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-zinc-500/30"
                       title="Attach files"
                       aria-label="Attach files"
                     >
@@ -2260,7 +2331,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                   {isRunning ? (
                     <button
                       onClick={handleAbort}
-                      className="p-2.5 bg-red-600 text-white rounded-lg hover:bg-red-500 transition-colors duration-200 cursor-pointer min-w-[40px] min-h-[40px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-red-500/50"
+                      className="p-2.5 bg-red-500/15 text-red-400 rounded-lg hover:bg-red-500/25 hover:text-red-300 border border-red-500/10 transition-all duration-200 cursor-pointer min-w-[38px] min-h-[38px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-red-500/50"
                       title="Stop agent"
                       aria-label="Stop agent"
                     >
@@ -2270,8 +2341,8 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                     <button
                       onClick={handleSend}
                       disabled={(!input.trim() && attachedFiles.length === 0) || !connected}
-                      className="p-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-500
-                        disabled:opacity-40 disabled:hover:bg-blue-600 disabled:cursor-not-allowed transition-colors duration-200 cursor-pointer min-w-[40px] min-h-[40px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:focus:ring-0"
+                        className="p-2.5 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-lg hover:from-blue-500 hover:to-blue-400
+                        disabled:opacity-30 disabled:from-blue-800 disabled:to-blue-700 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer min-w-[38px] min-h-[38px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-lg shadow-blue-500/10 disabled:shadow-none"
                       title="Send (Enter)"
                       aria-label="Send message"
                     >
@@ -2280,12 +2351,12 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                   )}
                 </div>
               </div>
-              <div className="flex justify-between items-center mt-2 px-1 max-w-4xl mx-auto">
-                <span className="text-xs text-zinc-500">
+              <div className="flex justify-between items-center mt-2.5 px-1 max-w-4xl mx-auto">
+                <span className="text-[11px] text-zinc-600">
                   Enter to send · Shift+Enter for new line
                 </span>
                 {isRunning && (
-                  <span className="text-xs text-blue-400 flex items-center gap-1.5">
+                  <span className="text-[11px] text-blue-400/80 flex items-center gap-1.5">
                     <Loader2 className="w-3 h-3 animate-spin" />
                     Agent is working...
                   </span>
