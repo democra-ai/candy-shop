@@ -151,7 +151,7 @@ export class RemoteMonitor {
   /**
    * Monitor via Sentry API
    */
-  private async enableSentryMonitoring(deploymentUrl: string): Promise<void> {
+  private async enableSentryMonitoring(_deploymentUrl: string): Promise<void> {
     // In production, would:
     // 1. Connect to Sentry API
     // 2. Fetch recent errors
@@ -174,7 +174,7 @@ export class RemoteMonitor {
   /**
    * Monitor via LogRocket
    */
-  private async enableLogrocketMonitoring(deploymentUrl: string): Promise<void> {
+  private async enableLogrocketMonitoring(_deploymentUrl: string): Promise<void> {
     // Similar to Sentry, would connect to LogRocket API
     try {
       const response = await fetch('/api/monitor/logrocket/errors');
@@ -206,7 +206,7 @@ export class RemoteMonitor {
   /**
    * Monitor GitHub Actions for build/deployment errors
    */
-  private async enableGitHubActionsMonitoring(deploymentUrl: string): Promise<void> {
+  private async enableGitHubActionsMonitoring(_deploymentUrl: string): Promise<void> {
     try {
       const response = await fetch('/api/monitor/github-actions/status');
       if (response.ok) {
@@ -246,7 +246,7 @@ export class RemoteMonitor {
   /**
    * Monitor server logs
    */
-  private async enableServerLogsMonitoring(deploymentUrl: string): Promise<void> {
+  private async enableServerLogsMonitoring(_deploymentUrl: string): Promise<void> {
     try {
       const response = await fetch('/api/monitor/server-logs/errors');
       if (response.ok) {

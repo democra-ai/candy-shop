@@ -10,7 +10,7 @@ import type {
   RemoteError,
   IterationLog,
 } from '../types/auto-debug';
-import { AutoDeployer, type DeploymentResult } from './autoDeployer';
+import { AutoDeployer } from './autoDeployer';
 import { RemoteMonitor, type MonitoringResult } from './remoteMonitor';
 import { AIFixGenerator, type FixGenerationResult } from './aiFixGenerator';
 
@@ -356,7 +356,7 @@ export class DebugLoopOrchestrator {
    * Monitor deployment for errors
    */
   private async monitorForErrors(deploymentUrl: string): Promise<MonitoringResult> {
-    const monitoringSession = await this.monitor.startMonitoring(deploymentUrl);
+    const _monitoringSession = await this.monitor.startMonitoring(deploymentUrl);
 
     // Wait for errors to accumulate
     const waitTime = 30000; // 30 seconds monitoring window

@@ -26,14 +26,14 @@ export interface FixGenerationResult {
 }
 
 export class AIFixGenerator {
-  private apiKey?: string;
-  private provider: 'openai' | 'anthropic' | 'local';
-  private model?: string;
+  private _apiKey?: string;
+  private _provider: 'openai' | 'anthropic' | 'local';
+  private _model?: string;
 
   constructor(config: { apiKey?: string; provider?: 'openai' | 'anthropic' | 'local'; model?: string }) {
-    this.apiKey = config.apiKey;
-    this.provider = config.provider || 'openai';
-    this.model = config.model;
+    this._apiKey = config.apiKey;
+    this._provider = config.provider || 'openai';
+    this._model = config.model;
   }
 
   /**
@@ -197,7 +197,7 @@ export class AIFixGenerator {
    */
   private async generateUndefinedFix(
     error: RemoteError,
-    context?: ProjectContext
+    _context?: ProjectContext
   ): Promise<FixSuggestion> {
     const match = error.message.match(/'(.+?)' is undefined/);
     const variableName = match?.[1] || 'unknown';
@@ -225,7 +225,7 @@ export class AIFixGenerator {
    */
   private async generateNullReferenceFix(
     error: RemoteError,
-    context?: ProjectContext
+    _context?: ProjectContext
   ): Promise<FixSuggestion> {
     const match = error.message.match(/Cannot read properties of (.+?) \(reading '(.+?)'\)/);
     const propertyChain = match?.[1] || '';
@@ -254,7 +254,7 @@ export class AIFixGenerator {
    */
   private async generateTypeFix(
     error: RemoteError,
-    context?: ProjectContext
+    _context?: ProjectContext
   ): Promise<FixSuggestion> {
     return {
       id: `fix-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -279,7 +279,7 @@ export class AIFixGenerator {
    */
   private async generateAsyncFix(
     error: RemoteError,
-    context?: ProjectContext
+    _context?: ProjectContext
   ): Promise<FixSuggestion> {
     return {
       id: `fix-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -304,7 +304,7 @@ export class AIFixGenerator {
    */
   private async generateImportFix(
     error: RemoteError,
-    context?: ProjectContext
+    _context?: ProjectContext
   ): Promise<FixSuggestion> {
     const match = error.message.match(/Module '(.+?)' not found/);
     const moduleName = match?.[1] || 'unknown';
@@ -330,7 +330,7 @@ export class AIFixGenerator {
    */
   private async generateAPIFix(
     error: RemoteError,
-    context?: ProjectContext
+    _context?: ProjectContext
   ): Promise<FixSuggestion> {
     return {
       id: `fix-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -355,7 +355,7 @@ export class AIFixGenerator {
    */
   private async generateNetworkFix(
     error: RemoteError,
-    context?: ProjectContext
+    _context?: ProjectContext
   ): Promise<FixSuggestion> {
     return {
       id: `fix-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -380,7 +380,7 @@ export class AIFixGenerator {
    */
   private async generateGenericFix(
     error: RemoteError,
-    context?: ProjectContext
+    _context?: ProjectContext
   ): Promise<FixSuggestion> {
     return {
       id: `fix-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,

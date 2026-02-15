@@ -1,7 +1,7 @@
 // Automated Deployment System
 // Handles pushing code to remote and triggering deployments
 
-import type { DeploymentConfig, DebugLoopIteration } from '../types/auto-debug';
+import type { DeploymentConfig } from '../types/auto-debug';
 
 export interface DeploymentResult {
   success: boolean;
@@ -18,6 +18,7 @@ export interface DeploymentStatus {
   logs?: string[];
   startedAt: Date;
   completedAt?: Date;
+  error?: string;
 }
 
 export class AutoDeployer {
@@ -32,7 +33,7 @@ export class AutoDeployer {
    * This would typically be called from a backend service
    * Frontend can trigger it via API
    */
-  async deploy(options?: {
+  async deploy(_options?: {
     commitMessage?: string;
     createBranch?: boolean;
     branchName?: string;

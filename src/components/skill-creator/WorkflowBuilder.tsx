@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useMemo } from 'react';
 import {
   Play,
   Save,
@@ -921,7 +921,7 @@ export function WorkflowBuilder({
                   value={workflow.settings?.errorHandling || 'stop'}
                   onChange={(e) => setWorkflow((prev) => ({
                     ...prev,
-                    settings: { ...prev.settings, errorHandling: e.target.value }
+                    settings: { ...prev.settings, errorHandling: e.target.value as 'stop' | 'continue' | 'retry' }
                   }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 >
@@ -937,7 +937,13 @@ export function WorkflowBuilder({
                   value={workflow.metadata?.tags?.join(', ') || ''}
                   onChange={(e) => setWorkflow((prev) => ({
                     ...prev,
-                    metadata: { ...prev.metadata, tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) }
+                    metadata: {
+                      createdAt: new Date(),
+                      updatedAt: new Date(),
+                      executionCount: 0,
+                      ...prev.metadata,
+                      tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean)
+                    }
                   }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="tag1, tag2, tag3"

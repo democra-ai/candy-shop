@@ -12,14 +12,14 @@ interface SkillCreationPageProps {
   onCancel: () => void;
 }
 
-type CreationMethod = 'select' | 'upload' | 'manual' | 'github' | 'preview' | 'complete';
+type CreationMethod = 'select' | 'upload' | 'manual' | 'github' | 'workflow' | 'preview' | 'complete';
 
 export function SkillCreationPage({ onComplete, onCancel }: SkillCreationPageProps) {
   const [method, setMethod] = useState<CreationMethod>('select');
   const [skillToPreview, setSkillToPreview] = useState<Partial<Skill> | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const handleMethodSelect = (selectedMethod: 'upload' | 'manual' | 'github') => {
+  const handleMethodSelect = (selectedMethod: 'upload' | 'manual' | 'github' | 'workflow') => {
     setMethod(selectedMethod);
     setFeedback(null);
   };
@@ -105,6 +105,15 @@ export function SkillCreationPage({ onComplete, onCancel }: SkillCreationPagePro
           onImport={handleSkillCreated}
           onCancel={handleBack}
         />
+      )}
+
+      {/* Workflow Builder */}
+      {method === 'workflow' && (
+        <div className="h-[calc(100vh-12rem)] bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="flex items-center justify-center h-full text-gray-500">
+            Workflow Builder Coming Soon
+          </div>
+        </div>
       )}
 
       {/* Preview */}

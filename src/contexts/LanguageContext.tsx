@@ -6,7 +6,6 @@ interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
   t: (key: string, params?: Record<string, string | number>) => string;
-  context: typeof createContext<LanguageContextType>;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
