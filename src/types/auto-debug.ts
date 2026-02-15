@@ -3,6 +3,7 @@
 
 export type DebugLoopState =
   | 'idle'           // Not started
+  | 'running'        // Active general state
   | 'deploying'       // Pushing to remote
   | 'monitoring'      // Watching remote for errors
   | 'analyzing'       // AI analyzing errors

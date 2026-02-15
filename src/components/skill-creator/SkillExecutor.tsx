@@ -25,7 +25,6 @@ import {
   Trash2,
   Plus,
   MessageSquare,
-  ExternalLink,
   Save,
   Edit2,
   Paperclip,

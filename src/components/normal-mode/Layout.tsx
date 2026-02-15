@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Menu, X, Github, ShoppingBag, Moon, Sun } from 'lucide-react';
+import { Menu, X, Github, ShoppingBag } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useVersionMode } from '../../contexts/VersionModeContext';
 
