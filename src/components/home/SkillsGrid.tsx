@@ -375,39 +375,57 @@ export function SkillsGrid({
                       {skill.description}
                     </p>
 
+                    {/* Tags */}
+                    {skill.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mb-4">
+                        {skill.tags.map(tag => (
+                          <span
+                            key={tag}
+                            className="text-[10px] font-medium bg-secondary/50 text-foreground-tertiary px-2 py-0.5 rounded-full border border-border/50"
+                          >
+                            #{tag.toLowerCase()}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
                     {/* Action buttons */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 mt-auto">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           onRunSkill(skill);
                         }}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary-hover transition-all duration-200"
+                        className="flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary-hover shadow-sm hover:shadow-md transition-all duration-200"
                       >
-                        <Play className="w-3.5 h-3.5" />
-                        Try Now
+                        <Play className="w-4 h-4 fill-current" />
+                        Run
                       </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleLike(skill.id);
                         }}
-                        className={`p-2 rounded-lg transition-all duration-200 ${likedSkills.has(skill.id)
-                          ? 'bg-pink-500/10 text-pink-500'
-                          : 'bg-secondary text-muted-foreground hover:bg-pink-500/10 hover:text-pink-500'
-                          }`}
+                        className={cn(
+                          "p-2.5 rounded-xl transition-all duration-200 border",
+                          likedSkills.has(skill.id)
+                            ? "bg-pink-500/10 text-pink-500 border-pink-500/20"
+                            : "bg-background text-foreground-tertiary border-border hover:bg-secondary hover:text-foreground"
+                        )}
                       >
-                        <Heart className={`w-4 h-4 ${likedSkills.has(skill.id) ? 'fill-current' : ''}`} />
+                        <Heart className={cn("w-4 h-4", likedSkills.has(skill.id) ? "fill-current" : "")} />
                       </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           onToggleCart(skill.id);
                         }}
-                        className={`p-2 rounded-lg transition-all duration-200 ${cart.has(skill.id)
-                          ? 'bg-green-500/10 text-green-500'
-                          : 'bg-secondary text-muted-foreground hover:bg-green-500/10 hover:text-green-500'
-                          }`}
+                        className={cn(
+                          "p-2.5 rounded-xl transition-all duration-200 border",
+                          cart.has(skill.id)
+                            ? "bg-green-500/10 text-green-500 border-green-500/20"
+                            : "bg-background text-foreground-tertiary border-border hover:bg-secondary hover:text-foreground"
+                        )}
                       >
                         {cart.has(skill.id) ? (
                           <Check className="w-4 h-4" />

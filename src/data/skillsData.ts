@@ -54,7 +54,7 @@ export const SKILLS_DATA: Skill[] = [
     popularity: 113090,
     repo: 'vercel-labs/agent-skills',
     skillMdUrl: mdUrl('vercel-labs', 'agent-skills', 'vercel-react-best-practices'),
-    config: {}, tags: [],
+    config: {}, tags: ['React', 'Next.js', 'Frontend'],
   },
   {
     id: 'remotion-best-practices',
@@ -67,7 +67,7 @@ export const SKILLS_DATA: Skill[] = [
     popularity: 78653,
     repo: 'remotion-dev/skills',
     skillMdUrl: mdUrl('remotion-dev', 'skills', 'remotion-best-practices'),
-    config: {}, tags: [],
+    config: {}, tags: ['Video', 'React', 'Motion'],
   },
   {
     id: 'vercel-composition-patterns',
@@ -80,7 +80,7 @@ export const SKILLS_DATA: Skill[] = [
     popularity: 31224,
     repo: 'vercel-labs/agent-skills',
     skillMdUrl: mdUrl('vercel-labs', 'agent-skills', 'vercel-composition-patterns'),
-    config: {}, tags: [],
+    config: {}, tags: ['React', 'Architecture', 'Patterns'],
   },
   {
     id: 'better-auth-best-practices',
@@ -93,7 +93,7 @@ export const SKILLS_DATA: Skill[] = [
     popularity: 9400,
     repo: 'better-auth/skills',
     skillMdUrl: mdUrl('better-auth', 'skills', 'better-auth-best-practices'),
-    config: {}, tags: [],
+    config: {}, tags: ['Auth', 'Security', 'Web'],
   },
   {
     id: 'next-best-practices',
@@ -106,7 +106,7 @@ export const SKILLS_DATA: Skill[] = [
     popularity: 8800,
     repo: 'vercel-labs/next-skills',
     skillMdUrl: mdUrl('vercel-labs', 'next-skills', 'next-best-practices'),
-    config: {}, tags: [],
+    config: {}, tags: ['Next.js', 'Vercel', 'Performance'],
   },
   {
     id: 'webapp-testing',
