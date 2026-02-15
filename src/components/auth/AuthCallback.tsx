@@ -34,7 +34,7 @@ export function AuthCallback() {
           navigate('/', { replace: true });
         } else {
           // No session found, wait for auth state change
-          const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session: any) => {
+          const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
             if (event === 'SIGNED_IN' && session) {
               window.history.replaceState(null, '', window.location.pathname);
               navigate('/', { replace: true });
