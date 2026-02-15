@@ -26,14 +26,10 @@ export interface FixGenerationResult {
 }
 
 export class AIFixGenerator {
-  private _apiKey?: string;
-  private _provider: 'openai' | 'anthropic' | 'local';
-  private _model?: string;
 
-  constructor(config: { apiKey?: string; provider?: 'openai' | 'anthropic' | 'local'; model?: string }) {
-    this._apiKey = config.apiKey;
-    this._provider = config.provider || 'openai';
-    this._model = config.model;
+
+  constructor(_config: { apiKey?: string; provider?: 'openai' | 'anthropic' | 'local'; model?: string }) {
+  // Config stored for future use
   }
 
   /**

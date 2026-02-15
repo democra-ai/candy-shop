@@ -47,7 +47,7 @@ export class DebugLoopOrchestrator {
   private onIterationUpdate?: (iteration: DebugLoopIteration) => void;
   private onStateChange?: (state: DebugLoopState) => void;
   private onLog?: (log: IterationLog) => void;
-  private onComplete?: (result: DebugLoopResult) => void;
+
 
   constructor(options: OrchestratorOptions) {
     this.config = options.config;
@@ -70,7 +70,7 @@ export class DebugLoopOrchestrator {
     this.onIterationUpdate = options.onIterationUpdate;
     this.onStateChange = options.onStateChange;
     this.onLog = options.onLog;
-    this.onComplete = options.onComplete;
+
   }
 
   /**
