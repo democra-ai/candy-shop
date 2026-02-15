@@ -72,6 +72,7 @@ export function ManualSkillForm({ onSave, onCancel }: ManualSkillFormProps) {
       category,
       icon,
       color: 'bg-primary/10 border-primary/20 text-primary',
+      tags: [category],
       config: {
         capabilities,
         systemPrompt,

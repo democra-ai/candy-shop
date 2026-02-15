@@ -184,6 +184,7 @@ export function workflowToSkill(workflow: Workflow): Omit<Skill, 'userId'> {
     category,
     icon: getIconForCategory(category),
     color: getColorForCategory(category),
+    tags: workflow.metadata.tags || [category],
     config: {
       capabilities,
       systemPrompt,

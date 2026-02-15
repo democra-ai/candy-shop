@@ -23,6 +23,7 @@ export const storageUtils = {
         category: skill.category || 'Custom',
         icon: skill.icon || '✨',
         color: skill.color || 'bg-indigo-100',
+        tags: skill.tags || [skill.category || 'Custom'],
         config: skill.config || { capabilities: [], systemPrompt: '', parameters: {} },
         sourceFiles: skill.sourceFiles || [],
         analysisContext: skill.analysisContext || {
