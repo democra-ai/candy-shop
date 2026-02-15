@@ -198,7 +198,7 @@ export function workflowToSkill(workflow: Workflow): Omit<Skill, 'userId'> {
       workDomain: [category],
       technicalSkills: capabilities.slice(0, 5),
       experiencePatterns: [],
-      keyTopics: workflow.metadata.tags,
+      keyTopics: workflow.metadata.tags || [],
       suggestedName: workflow.name,
       suggestedDescription: workflow.description || `Workflow-based skill`,
       suggestedCategory: category,
