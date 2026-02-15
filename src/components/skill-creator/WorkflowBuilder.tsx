@@ -17,7 +17,7 @@ import {
   ArrowRightLeft,
   Wrench,
   MessageSquare,
-  ChevronDown,
+
   X,
 } from 'lucide-react';
 import type {
@@ -187,7 +187,7 @@ export function WorkflowBuilder({
   const [showNodePalette, setShowNodePalette] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
-  const dragStartPos = useRef<{ x: number; y: number } | null>(null);
+  // const dragStartPos = useRef<{ x: number; y: number } | null>(null);
 
   // Get selected node
   const selectedNode = useMemo(
