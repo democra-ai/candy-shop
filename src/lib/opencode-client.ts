@@ -9,12 +9,9 @@ const OPENCODE_SERVER_URL =
   import.meta.env.VITE_API_BASE_URL ||
   'https://tao-shen-opencode.hf.space';
 
-const OPENCODE_USERNAME = import.meta.env.VITE_OPENCODE_USERNAME as
-  | string
-  | undefined;
-const OPENCODE_PASSWORD = import.meta.env.VITE_OPENCODE_PASSWORD as
-  | string
-  | undefined;
+// User provided credentials: username 'opencode', password '6' for demo purposes
+const OPENCODE_USERNAME = (import.meta.env.VITE_OPENCODE_USERNAME as string | undefined) || 'opencode';
+const OPENCODE_PASSWORD = (import.meta.env.VITE_OPENCODE_PASSWORD as string | undefined) || '6';
 
 function getBasicAuthHeader(): string | undefined {
   // Do NOT hardcode credentials in the repo. Pass via env vars.
