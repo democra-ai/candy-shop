@@ -1,10 +1,9 @@
-import { useState } from 'react';
-import {
-  Save,
   GitBranch,
   Globe,
   Settings,
   Shield,
+    Bell,
+    ChevronRight,
   CheckCircle,
 } from 'lucide-react';
 import type { DebugLoopConfig } from '../../types/auto-debug';
