@@ -239,6 +239,7 @@ export class DebugLoopOrchestrator {
       fixesRejected: [],
       outcome: 'running',
       logs: [],
+      deploymentStatus: 'pending',
     };
 
     try {
@@ -356,7 +357,7 @@ export class DebugLoopOrchestrator {
    * Monitor deployment for errors
    */
   private async monitorForErrors(deploymentUrl: string): Promise<MonitoringResult> {
-    const _monitoringSession = await this.monitor.startMonitoring(deploymentUrl);
+    await this.monitor.startMonitoring(deploymentUrl);
 
     // Wait for errors to accumulate
     const waitTime = 30000; // 30 seconds monitoring window
