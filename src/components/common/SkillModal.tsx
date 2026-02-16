@@ -1,4 +1,4 @@
-import { X, Copy, Check, Terminal, Play } from 'lucide-react';
+import { X, Copy, Check, Terminal, Play, Github, ExternalLink, FileText } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import type { Skill } from '../../data/skillsData';
 import { toast } from 'sonner';
@@ -89,22 +89,19 @@ export function SkillModal({ skill, onClose, onRun }: SkillModalProps) {
             {skill.description}
           </p>
 
-          {/* Greeting Message */}
-          {skill.greeting && (
-            <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
-              <div className="flex items-start gap-3">
-                <div className="text-2xl" aria-hidden="true">👋</div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
-                    Hi there! I'm {skill.name}
-                  </p>
-                  <p className="text-foreground-secondary text-sm leading-relaxed">
-                    {skill.greeting}
-                  </p>
-                </div>
+          {/* Detailed Description */}
+          <div className="mb-6 p-4 bg-muted/30 rounded-lg border border-border">
+            <h3 className="text-sm font-bold text-foreground mb-2">About This Skill</h3>
+            <p className="text-foreground-secondary text-sm leading-relaxed">
+              {skill.description}
+            </p>
+            {skill.greeting && (
+              <div className="mt-3 pt-3 border-t border-border/50">
+                <p className="text-xs text-muted-foreground mb-1">Greeting:</p>
+                <p className="text-foreground-secondary text-sm italic">"{skill.greeting}"</p>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Install Command */}
           <div className="mb-8">
@@ -125,6 +122,42 @@ export function SkillModal({ skill, onClose, onRun }: SkillModalProps) {
                   <Copy className="w-4 h-4 opacity-60 group-hover:opacity-100 transition-opacity" />
                 )}
               </button>
+            </div>
+          </div>
+
+          {/* Source Links */}
+          <div className="mb-6 p-4 bg-muted/30 rounded-lg border border-border">
+            <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              Source & Documentation
+            </h3>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <a
+                href={`https://github.com/${skill.repo}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-3 py-2 bg-card border border-border rounded-lg hover:bg-accent hover:border-primary/30 transition-all duration-200 cursor-pointer group"
+              >
+                <Github className="w-4 h-4 text-foreground-secondary group-hover:text-foreground" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs text-muted-foreground">GitHub Repository</div>
+                  <div className="text-sm font-medium text-foreground truncate">{skill.repo}</div>
+                </div>
+                <ExternalLink className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground shrink-0" />
+              </a>
+              <a
+                href={skill.skillMdUrl.replace('raw.githubusercontent.com', 'github.com').replace('/main/', '/blob/main/')}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-3 py-2 bg-card border border-border rounded-lg hover:bg-accent hover:border-primary/30 transition-all duration-200 cursor-pointer group"
+              >
+                <FileText className="w-4 h-4 text-foreground-secondary group-hover:text-foreground" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs text-muted-foreground">Documentation</div>
+                  <div className="text-sm font-medium text-foreground">SKILL.md</div>
+                </div>
+                <ExternalLink className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground shrink-0" />
+              </a>
             </div>
           </div>
 

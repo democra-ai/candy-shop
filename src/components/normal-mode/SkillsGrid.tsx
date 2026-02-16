@@ -1,4 +1,4 @@
-import { Search, Heart, ShoppingBag, Check, Play, Star } from 'lucide-react';
+import { Search, Heart, ShoppingBag, Check, Play, Star, Github } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { SKILLS_DATA, type Skill } from '../../data/skillsData';
 import { SkillModal } from '../common/SkillModal';
@@ -238,9 +238,22 @@ export function NormalSkillsGrid({
                     </div>
 
                     {/* Description */}
-                    <p className="text-sm text-muted-foreground mb-4 line-clamp-2 leading-relaxed">
+                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2 leading-relaxed">
                       {skill.description}
                     </p>
+
+                    {/* Source Link */}
+                    <a
+                      href={`https://github.com/${skill.repo}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors mb-4 group/link"
+                    >
+                      <Github className="w-3.5 h-3.5" />
+                      <span>{skill.repo}</span>
+                      <span className="opacity-0 group-hover/link:opacity-100 transition-opacity">→</span>
+                    </a>
 
                     {/* Action buttons */}
                     <div className="flex items-center gap-2">
