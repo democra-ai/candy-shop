@@ -1,5 +1,5 @@
 import { Search, FileText, Code2, TrendingUp, Candy, Package } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { SKILLS_DATA, SKILL_CATEGORIES } from '../../data/skillsData';
 
@@ -14,6 +14,18 @@ export function Hero({ onOpenDocs }: HeroProps) {
   const { t, language } = useLanguage();
   const [displayText, setDisplayText] = useState('');
   const fullText = t('hero.tagline');
+
+  const chartData = useMemo(() => {
+    const counts = SKILL_CATEGORIES.map(cat => ({
+      name: cat.name,
+      count: SKILLS_DATA.filter(s => s.category === cat.name).length,
+    }));
+    const maxCount = Math.max(...counts.map(c => c.count));
+    return counts.map(c => ({
+      name: c.name,
+      pct: maxCount > 0 ? Math.max(10, (c.count / maxCount) * 100) : 10,
+    }));
+  }, []);
 
   useEffect(() => {
     let index = 0;
@@ -38,10 +50,10 @@ export function Hero({ onOpenDocs }: HeroProps) {
       {/* Floating candy decorations */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
         <span className="absolute top-20 left-[10%] text-3xl opacity-[0.15] animate-candy-float" style={{ animationDelay: '0s' }}>🍭</span>
-        <span className="absolute top-40 right-[15%] text-2xl opacity-[0.12] animate-candy-float" style={{ animationDelay: '1.5s' }}>🍬</span>
-        <span className="absolute bottom-20 left-[20%] text-2xl opacity-[0.12] animate-candy-float" style={{ animationDelay: '3s' }}>🧁</span>
-        <span className="absolute top-10 right-[30%] text-xl opacity-[0.08] animate-candy-float" style={{ animationDelay: '2s' }}>🍫</span>
-        <span className="absolute bottom-32 right-[10%] text-2xl opacity-[0.08] animate-float-slow">🍰</span>
+        <span className="absolute top-40 right-[15%] text-2xl opacity-[0.12] animate-candy-float" style={{ animationDelay: '1.5s' }}>🍭</span>
+        <span className="absolute bottom-20 left-[20%] text-2xl opacity-[0.12] animate-candy-float" style={{ animationDelay: '3s' }}>🍭</span>
+        <span className="absolute top-10 right-[30%] text-xl opacity-[0.08] animate-candy-float" style={{ animationDelay: '2s' }}>🍭</span>
+        <span className="absolute bottom-32 right-[10%] text-2xl opacity-[0.08] animate-candy-float" style={{ animationDelay: '4s' }}>🍭</span>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-12 lg:gap-8 items-center relative">
@@ -131,19 +143,14 @@ export function Hero({ onOpenDocs }: HeroProps) {
 
               {/* Category breakdown chart */}
               <div className="h-32 flex items-end gap-2 justify-between px-2">
-                {SKILL_CATEGORIES.map((cat) => {
-                  const count = SKILLS_DATA.filter(s => s.category === cat.name).length;
-                  const maxCount = Math.max(...SKILL_CATEGORIES.map(c => SKILLS_DATA.filter(s => s.category === c.name).length));
-                  const pct = maxCount > 0 ? Math.max(10, (count / maxCount) * 100) : 10;
-                  return (
-                    <div key={cat.name} className="w-full bg-secondary/50 rounded-t-sm relative group" title={`${cat.name}: ${count}`}>
-                      <div
-                        className="absolute bottom-0 w-full bg-gradient-to-t from-primary to-primary/60 rounded-t-sm transition-all duration-500 group-hover:from-primary/90 group-hover:to-primary/50"
-                        style={{ height: `${pct}%` }}
-                      ></div>
-                    </div>
-                  );
-                })}
+                {chartData.map(({ name, pct }) => (
+                  <div key={name} className="w-full bg-secondary/50 rounded-t-sm relative group" title={`${name}: ${pct.toFixed(0)}%`}>
+                    <div
+                      className="absolute bottom-0 w-full bg-gradient-to-t from-primary to-primary/60 rounded-t-sm transition-all duration-300 group-hover:from-primary/90 group-hover:to-primary/50"
+                      style={{ height: `${pct}%` }}
+                    ></div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>

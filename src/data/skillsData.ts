@@ -31,14 +31,14 @@ const mdUrl = (owner: string, repo: string, skill?: string) =>
     : `https://raw.githubusercontent.com/${owner}/${repo}/main/SKILL.md`;
 
 export const SKILL_CATEGORIES: { name: SkillCategory; icon: string; color: string }[] = [
-  { name: 'Development', icon: '🔧', color: 'from-blue-500 to-indigo-600' },
-  { name: 'Design', icon: '🎨', color: 'from-pink-500 to-rose-600' },
-  { name: 'Marketing', icon: '📢', color: 'from-orange-500 to-amber-600' },
-  { name: 'Productivity', icon: '📋', color: 'from-emerald-500 to-teal-600' },
-  { name: 'Tools', icon: '🛠', color: 'from-violet-500 to-purple-600' },
-  { name: 'Research', icon: '🔍', color: 'from-cyan-500 to-sky-600' },
-  { name: 'Mobile', icon: '📱', color: 'from-lime-500 to-green-600' },
-  { name: 'Writing', icon: '✏️', color: 'from-yellow-500 to-orange-600' },
+  { name: 'Development', icon: '🍭', color: 'from-blue-500 to-indigo-600' },
+  { name: 'Design', icon: '🍬', color: 'from-pink-500 to-rose-600' },
+  { name: 'Marketing', icon: '🧁', color: 'from-orange-500 to-amber-600' },
+  { name: 'Productivity', icon: '🍫', color: 'from-emerald-500 to-teal-600' },
+  { name: 'Tools', icon: '🍰', color: 'from-violet-500 to-purple-600' },
+  { name: 'Research', icon: '🍭', color: 'from-cyan-500 to-sky-600' },
+  { name: 'Mobile', icon: '🍬', color: 'from-lime-500 to-green-600' },
+  { name: 'Writing', icon: '🧁', color: 'from-yellow-500 to-orange-600' },
 ];
 
 export const SKILLS_DATA: Skill[] = [

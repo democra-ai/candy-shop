@@ -1,6 +1,6 @@
-import { Search, ShoppingBag, Check, X, Calendar, Heart, Play, Star, Github, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, ShoppingBag, Check, X, Heart, Play, Star, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { SKILLS_DATA, SKILL_CATEGORIES, type Skill } from '../../data/skillsData';
+import { SKILLS_DATA, type Skill } from '../../data/skillsData';
 import { SkillModal } from '../common/SkillModal';
 import { storageUtils } from '../../utils/storage';
 import { cn } from '../../utils/cn';
@@ -20,18 +20,20 @@ interface SkillsGridProps {
 }
 
 const getCategoryColor = (category: string) => {
-  const colors: Record<string, { bg: string; text: string; border: string; solid: string; illustration: string }> = {
-    Development: { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/20', solid: 'bg-blue-500', illustration: '/illustrations/development.png' },
-    Design: { bg: 'bg-pink-500/10', text: 'text-pink-400', border: 'border-pink-500/20', solid: 'bg-pink-500', illustration: '/illustrations/design.png' },
-    Marketing: { bg: 'bg-orange-500/10', text: 'text-orange-400', border: 'border-orange-500/20', solid: 'bg-orange-500', illustration: '/illustrations/marketing.png' },
-    Productivity: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20', solid: 'bg-emerald-500', illustration: '/illustrations/productivity.png' },
-    Tools: { bg: 'bg-violet-500/10', text: 'text-violet-400', border: 'border-violet-500/20', solid: 'bg-violet-500', illustration: '/illustrations/tools.png' },
-    Research: { bg: 'bg-cyan-500/10', text: 'text-cyan-400', border: 'border-cyan-500/20', solid: 'bg-cyan-500', illustration: '/illustrations/research.png' },
-    Mobile: { bg: 'bg-lime-500/10', text: 'text-lime-400', border: 'border-lime-500/20', solid: 'bg-lime-500', illustration: '/illustrations/mobile.png' },
-    Writing: { bg: 'bg-yellow-500/10', text: 'text-yellow-400', border: 'border-yellow-500/20', solid: 'bg-yellow-500', illustration: '/illustrations/writing.png' },
+  const colors: Record<string, { bg: string; text: string; border: string; solid: string }> = {
+    Development: { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/20', solid: 'bg-blue-500' },
+    Design: { bg: 'bg-pink-500/10', text: 'text-pink-400', border: 'border-pink-500/20', solid: 'bg-pink-500' },
+    Marketing: { bg: 'bg-orange-500/10', text: 'text-orange-400', border: 'border-orange-500/20', solid: 'bg-orange-500' },
+    Productivity: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20', solid: 'bg-emerald-500' },
+    Tools: { bg: 'bg-violet-500/10', text: 'text-violet-400', border: 'border-violet-500/20', solid: 'bg-violet-500' },
+    Research: { bg: 'bg-cyan-500/10', text: 'text-cyan-400', border: 'border-cyan-500/20', solid: 'bg-cyan-500' },
+    Mobile: { bg: 'bg-lime-500/10', text: 'text-lime-400', border: 'border-lime-500/20', solid: 'bg-lime-500' },
+    Writing: { bg: 'bg-yellow-500/10', text: 'text-yellow-400', border: 'border-yellow-500/20', solid: 'bg-yellow-500' },
   };
-  return colors[category] || { bg: 'bg-gray-500/10', text: 'text-gray-400', border: 'border-gray-500/20', solid: 'bg-gray-500', illustration: '/illustrations/development.png' };
+  return colors[category] || { bg: 'bg-gray-500/10', text: 'text-gray-400', border: 'border-gray-500/20', solid: 'bg-gray-500' };
 };
+
+const CANDY_EMOJIS = ['🍭', '🍬', '🧁', '🍫', '🍰'];
 
 const POPULAR_TAGS = (() => {
   const tagCounts: Record<string, number> = {};
@@ -266,7 +268,7 @@ export function SkillsGrid({
           {/* Grid */}
           {!isDebouncing && (
           <div ref={gridRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 stagger-reveal">
-            {pageSkills.map((skill) => (
+            {pageSkills.map((skill, skillIndex) => (
               <div
                 key={skill.id}
                 role="button"
@@ -290,237 +292,169 @@ export function SkillsGrid({
                 {/* === Dev Mode: Code-style card === */}
                 {mode === 'dev' && (
                   <>
-                    {/* Top Bar */}
-                    <div
-                      className={cn(
-                        'h-10 px-4 border-b border-border/50 flex items-center bg-secondary/30 relative',
-                        'group-hover:bg-secondary/50 transition-colors'
-                      )}
-                    >
-                      <div className="flex items-center gap-1.5 absolute left-4">
-                        <div className="w-2.5 h-2.5 rounded-full bg-red-400"></div>
-                        <div className="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
-                        <div className="w-2.5 h-2.5 rounded-full bg-green-400"></div>
+                    {/* Window Chrome */}
+                    <div className="h-9 px-4 border-b border-border/50 flex items-center bg-secondary/20 group-hover:bg-secondary/40 transition-colors">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full bg-red-400/80"></div>
+                        <div className="w-2.5 h-2.5 rounded-full bg-yellow-400/80"></div>
+                        <div className="w-2.5 h-2.5 rounded-full bg-green-400/80"></div>
                       </div>
-                      <div className="mx-auto text-xs font-mono text-foreground-tertiary font-medium">
-                        {skill.id}.ts
+                      <span className="ml-3 text-[11px] font-mono text-foreground-tertiary truncate">{skill.id}.ts</span>
+                      <div className="ml-auto flex items-center gap-1.5">
+                        <span className="animate-candy-float inline-block text-sm" style={{ animationDelay: `${(skillIndex % 5) * 0.4}s` }}>
+                          {CANDY_EMOJIS[skillIndex % CANDY_EMOJIS.length]}
+                        </span>
                       </div>
                     </div>
 
-                    {/* Code Content */}
-                    <div className="p-5 flex-1 font-mono text-sm leading-relaxed">
-                      <div className="pl-4 border-l-2 border-primary/20 group-hover:border-primary/40 transition-colors">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-syntax-keyword font-bold">export</span>
-                          <span className="text-syntax-variable font-bold">
-                            {skill.name.replace(/\s+/g, '')}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className="text-syntax-keyword">from</span>
-                          <span className="text-syntax-string text-xs truncate">
-                            "{skill.installCommand.split(' ').pop()}"
-                          </span>
-                        </div>
-
-                        <p className="text-syntax-comment text-xs mb-3 line-clamp-2 leading-relaxed">
-                          // {skill.description}
-                        </p>
-
-                        <div className="flex flex-wrap gap-2 mb-3 border-l-2 border-border/50 pl-3">
-                          <span className="text-primary/70 text-[10px] uppercase font-bold tracking-tight bg-primary/5 px-2 rounded">// {skill.category}</span>
-                          {skill.tags.map(tag => (
-                            <span key={tag} className="text-foreground-secondary text-[10px] uppercase font-bold tracking-tight bg-secondary/30 px-2 rounded">{tag}</span>
-                          ))}
-                        </div>
+                    {/* Code Body */}
+                    <div className="p-4 flex-1 font-mono text-[13px] leading-[1.7] space-y-1">
+                      <div>
+                        <span className="text-syntax-keyword">import</span>{' '}
+                        <span className="text-syntax-variable">{skill.name.replace(/\s+/g, '')}</span>{' '}
+                        <span className="text-syntax-keyword">from</span>{' '}
+                        <span className="text-syntax-string truncate text-xs">"{skill.installCommand.split(' ').pop()}"</span>
+                      </div>
+                      <div className="h-2" />
+                      <p className="text-syntax-comment text-xs line-clamp-2 leading-relaxed">
+                        // {skill.description}
+                      </p>
+                      <div className="h-1" />
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        <span className="text-[10px] font-semibold bg-primary/8 text-primary px-1.5 py-0.5 rounded">{skill.category}</span>
+                        {skill.tags.slice(0, 3).map(tag => (
+                          <span key={tag} className="text-[10px] bg-secondary/40 text-foreground-tertiary px-1.5 py-0.5 rounded">{tag}</span>
+                        ))}
                       </div>
                     </div>
 
-                    {/* Footer Status Bar */}
-                    <div
-                      className={cn(
-                        'h-10 px-4 border-t border-border/50 bg-secondary/10 flex items-center justify-between text-xs font-mono text-foreground-tertiary',
-                        'group-hover:bg-secondary/20 transition-colors'
-                      )}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-3 h-3" />
-                        <span>{t('skills.updatedToday')}</span>
+                    {/* Status Bar */}
+                    <div className="px-4 py-2 border-t border-border/50 bg-secondary/10 flex items-center justify-between group-hover:bg-secondary/20 transition-colors">
+                      <div className="flex items-center gap-1 text-[11px] font-mono text-foreground-tertiary">
+                        <Star className="w-3 h-3 fill-caramel text-caramel" />
+                        <span>{skill.popularity || 0}</span>
                       </div>
-
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1">
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onRunSkill(skill);
-                          }}
-                          className="p-2 rounded-lg hover:text-green-600 hover:bg-green-500/10 transition-all duration-200 cursor-pointer btn-press min-w-[32px] min-h-[32px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-green-500/30"
+                          onClick={(e) => { e.stopPropagation(); onRunSkill(skill); }}
+                          className="p-1.5 rounded-md hover:text-green-500 hover:bg-green-500/10 transition-colors cursor-pointer focus:outline-none"
                           title={t('skills.runSkill')}
                           aria-label={`Run ${skill.name}`}
                         >
                           <Play className="w-3.5 h-3.5" />
                         </button>
-
                         <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleLike(skill.id);
-                          }}
-                          className="p-2 rounded-lg hover:text-pink-500 hover:bg-pink-500/10 transition-all duration-200 cursor-pointer btn-press min-w-[32px] min-h-[32px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-pink-500/30"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleLike(skill.id); }}
+                          className="p-1.5 rounded-md hover:text-pink-500 hover:bg-pink-500/10 transition-colors cursor-pointer focus:outline-none"
                           type="button"
-                          aria-label={likedSkills.has(skill.id) ? 'Unlike skill' : 'Like skill'}
+                          aria-label={likedSkills.has(skill.id) ? 'Unlike' : 'Like'}
                         >
-                          <Heart
-                            className={cn(
-                              'w-3.5 h-3.5 transition-colors pointer-events-none',
-                              likedSkills.has(skill.id) ? 'fill-pink-500 text-pink-500' : ''
-                            )}
-                          />
+                          <Heart className={cn('w-3.5 h-3.5', likedSkills.has(skill.id) ? 'fill-pink-500 text-pink-500' : '')} />
                         </button>
-
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onToggleCart(skill.id);
-                          }}
+                          onClick={(e) => { e.stopPropagation(); onToggleCart(skill.id); }}
                           className={cn(
-                            'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] uppercase font-bold tracking-wide transition-all duration-200 border cursor-pointer btn-press min-h-[28px] focus:outline-none focus:ring-2 focus:ring-primary/30',
-                            cart.has(skill.id)
-                              ? 'bg-green-500/10 border-green-500/20 text-green-600 hover:bg-green-500/20'
-                              : 'glass border-border/50 text-foreground-tertiary hover:border-primary/30 hover:text-primary'
+                            'p-1.5 rounded-md transition-colors cursor-pointer focus:outline-none',
+                            cart.has(skill.id) ? 'text-green-500' : 'hover:text-primary hover:bg-primary/10'
                           )}
                           aria-label={cart.has(skill.id) ? t('skills.removeFromBag', { name: skill.name }) : t('skills.addToBag', { name: skill.name })}
                         >
-                          {cart.has(skill.id) ? (
-                            <>
-                              <Check className="w-3 h-3" />
-                              <span>{t('skills.inBag')}</span>
-                            </>
-                          ) : (
-                            <>
-                              <ShoppingBag className="w-3 h-3" />
-                              <span>{t('skills.add')}</span>
-                            </>
-                          )}
+                          {cart.has(skill.id) ? <Check className="w-3.5 h-3.5" /> : <ShoppingBag className="w-3.5 h-3.5" />}
                         </button>
                       </div>
                     </div>
                   </>
                 )}
 
-                {/* === User Mode: Image+Text card === */}
+                {/* === User Mode: Clean card === */}
                 {mode === 'user' && (
                   <>
-                    <div className={`relative h-36 overflow-hidden ${getCategoryColor(skill.category).bg} rounded-t-xl`}>
-                      <img
-                        src={getCategoryColor(skill.category).illustration}
-                        alt={skill.category}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                        }}
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-card via-card/40 to-transparent" />
-                      <div className="absolute bottom-3 left-4 flex items-center gap-3">
-                        <div className={`w-11 h-11 rounded-xl glass backdrop-blur-sm border ${getCategoryColor(skill.category).border} flex items-center justify-center text-xl shadow-warm-lg`}>
-                          {skill.icon}
+                    {/* Card Header */}
+                    <div className="p-5 pb-0">
+                      <div className="flex items-start gap-3.5">
+                        <div className={cn(
+                          'w-12 h-12 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0',
+                          'bg-gradient-to-br shadow-sm',
+                          getCategoryColor(skill.category).bg,
+                          'border', getCategoryColor(skill.category).border
+                        )}>
+                          <span className="animate-candy-float inline-block" style={{ animationDelay: `${(skillIndex % 5) * 0.3}s` }}>
+                            {CANDY_EMOJIS[skillIndex % CANDY_EMOJIS.length]}
+                          </span>
                         </div>
-                        <div>
-                          <h3 className="font-bold text-foreground text-base leading-tight drop-shadow-sm font-candy">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-bold text-foreground text-[15px] leading-snug font-candy truncate">
                             {skill.name}
                           </h3>
-                          <span className={`text-xs font-medium ${getCategoryColor(skill.category).text}`}>
-                            {skill.category}
-                          </span>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className={cn('text-[11px] font-medium', getCategoryColor(skill.category).text)}>
+                              {skill.category}
+                            </span>
+                            <span className="text-border">·</span>
+                            <div className="flex items-center gap-0.5 text-[11px] text-foreground-tertiary">
+                              <Star className="w-3 h-3 fill-caramel text-caramel" />
+                              <span>{skill.popularity ? (skill.popularity >= 1000 ? `${(skill.popularity / 1000).toFixed(skill.popularity >= 10000 ? 0 : 1)}k` : skill.popularity) : 0}</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
 
-                    <div className="p-4 pt-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-1 text-xs text-foreground-secondary">
-                          <Star className="w-3.5 h-3.5 fill-caramel text-caramel" />
-                          <span className="font-medium text-caramel">{skill.popularity || 0}</span>
-                        </div>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium ${getCategoryColor(skill.category).bg} ${getCategoryColor(skill.category).text}`}>
-                          {skill.category}
-                        </span>
-                      </div>
-
-                      <p className="text-sm text-foreground-secondary mb-4 line-clamp-2 leading-relaxed font-body">
+                    {/* Description & Tags */}
+                    <div className="px-5 pt-3 pb-4 flex-1">
+                      <p className="text-[13px] text-foreground-secondary line-clamp-2 leading-relaxed font-body">
                         {skill.description}
                       </p>
-
                       {skill.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mb-4">
-                          {skill.tags.map(tag => (
+                        <div className="flex flex-wrap gap-1.5 mt-3">
+                          {skill.tags.slice(0, 3).map(tag => (
                             <span
                               key={tag}
-                              className="text-[10px] font-medium bg-secondary/50 text-foreground-secondary px-2 py-0.5 rounded-full border border-border/30"
+                              className="text-[10px] font-medium bg-secondary/50 text-foreground-tertiary px-2 py-0.5 rounded-full"
                             >
                               #{tag.toLowerCase()}
                             </span>
                           ))}
+                          {skill.tags.length > 3 && (
+                            <span className="text-[10px] text-foreground-tertiary px-1 py-0.5">
+                              +{skill.tags.length - 3}
+                            </span>
+                          )}
                         </div>
                       )}
+                    </div>
 
-                      <a
-                        href={`https://github.com/${skill.repo}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1.5 text-xs text-foreground-tertiary hover:text-primary transition-colors mb-4 group/link"
+                    {/* Actions */}
+                    <div className="px-5 pb-4 flex items-center gap-2 mt-auto">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onRunSkill(skill); }}
+                        className="flex-1 flex items-center justify-center gap-2 h-9 rounded-lg bg-primary/10 text-primary text-sm font-body font-medium hover:bg-primary hover:text-primary-foreground transition-all duration-200 btn-press"
                       >
-                        <Github className="w-3.5 h-3.5" />
-                        <span>{skill.repo}</span>
-                        <span className="opacity-0 group-hover/link:opacity-100 transition-opacity">→</span>
-                      </a>
-
-                      <div className="flex items-center gap-2 mt-auto">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onRunSkill(skill);
-                          }}
-                          className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-primary to-primary-hover text-primary-foreground text-sm font-body font-semibold shadow-candy hover:shadow-candy-lg transition-all duration-300 btn-press"
-                        >
-                          <Play className="w-4 h-4 fill-current" />
-                          {t('skills.runSkill')}
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleLike(skill.id);
-                          }}
-                          className={cn(
-                            "p-2.5 rounded-xl transition-all duration-200 border btn-press",
-                            likedSkills.has(skill.id)
-                              ? "bg-pink-500/10 text-pink-500 border-pink-500/20"
-                              : "glass text-foreground-tertiary border-border/50 hover:text-foreground"
-                          )}
-                        >
-                          <Heart className={cn("w-4 h-4", likedSkills.has(skill.id) ? "fill-current" : "")} />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onToggleCart(skill.id);
-                          }}
-                          className={cn(
-                            "p-2.5 rounded-xl transition-all duration-200 border btn-press",
-                            cart.has(skill.id)
-                              ? "bg-green-500/10 text-green-500 border-green-500/20"
-                              : "glass text-foreground-tertiary border-border/50 hover:text-foreground"
-                          )}
-                        >
-                          {cart.has(skill.id) ? (
-                            <Check className="w-4 h-4" />
-                          ) : (
-                            <ShoppingBag className="w-4 h-4" />
-                          )}
-                        </button>
-                      </div>
+                        <Play className="w-3.5 h-3.5 fill-current" />
+                        {t('skills.runSkill')}
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleLike(skill.id); }}
+                        className={cn(
+                          'h-9 w-9 rounded-lg flex items-center justify-center transition-all duration-200 btn-press',
+                          likedSkills.has(skill.id)
+                            ? 'bg-pink-500/10 text-pink-500'
+                            : 'bg-secondary/50 text-foreground-tertiary hover:text-pink-500 hover:bg-pink-500/10'
+                        )}
+                      >
+                        <Heart className={cn('w-3.5 h-3.5', likedSkills.has(skill.id) ? 'fill-current' : '')} />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onToggleCart(skill.id); }}
+                        className={cn(
+                          'h-9 w-9 rounded-lg flex items-center justify-center transition-all duration-200 btn-press',
+                          cart.has(skill.id)
+                            ? 'bg-green-500/10 text-green-500'
+                            : 'bg-secondary/50 text-foreground-tertiary hover:text-primary hover:bg-primary/10'
+                        )}
+                      >
+                        {cart.has(skill.id) ? <Check className="w-3.5 h-3.5" /> : <ShoppingBag className="w-3.5 h-3.5" />}
+                      </button>
                     </div>
                   </>
                 )}

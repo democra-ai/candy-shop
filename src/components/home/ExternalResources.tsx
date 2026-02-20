@@ -29,7 +29,7 @@ export function ExternalResources() {
   const { t } = useLanguage();
 
   return (
-    <section className="py-20 bg-secondary/30 border-t border-border">
+    <section className="py-20 bg-secondary/30 border-t border-border below-fold">
       <div className="container max-w-7xl mx-auto px-4">
         <h2 className="text-2xl font-bold mb-8 font-candy flex items-center gap-3 text-foreground">
           <ExternalLink className="w-6 h-6 text-primary" />

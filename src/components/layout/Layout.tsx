@@ -180,7 +180,7 @@ export function Layout({
           <div className="container max-w-7xl mx-auto px-4">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-3 text-sm text-foreground-secondary font-body">
-                <span className="text-lg">🍬</span>
+                <span className="text-lg animate-candy-float">🍭</span>
                 <p>{t('footer.tagline')}</p>
               </div>
               <div className="flex items-center gap-6 text-xs text-foreground-tertiary font-mono">

@@ -9,7 +9,7 @@ export function SocialProof() {
   ];
 
   return (
-    <section className="py-14 relative overflow-hidden">
+    <section className="py-14 relative overflow-hidden below-fold">
       {/* Frosted glass background band */}
       <div className="absolute inset-0 glass" aria-hidden="true" />
       <div className="absolute inset-0 sprinkle-pattern" aria-hidden="true" />

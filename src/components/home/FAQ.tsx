@@ -15,7 +15,7 @@ export function FAQ() {
   ];
 
   return (
-    <section className="py-20 bg-background">
+    <section className="py-20 bg-background below-fold">
       <div className="container max-w-4xl mx-auto px-4">
         <div className="bg-card rounded-xl border border-primary/20 shadow-lg overflow-hidden">
           <div className="h-10 bg-primary/10 border-b border-primary/20 flex items-center px-4 gap-2">

@@ -284,13 +284,13 @@ function mapSessionMessagesToEntries(messages: Record<string, unknown>[], sessio
 function ToolStateIcon({ state }: { state: string }) {
   switch (state) {
     case 'completed':
-      return <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />;
+      return <CheckCircle2 className="w-3.5 h-3.5 text-success" />;
     case 'running':
-      return <Loader2 className="w-3.5 h-3.5 text-blue-400 animate-spin" />;
+      return <Loader2 className="w-3.5 h-3.5 text-primary animate-spin" />;
     case 'error':
-      return <AlertCircle className="w-3.5 h-3.5 text-red-400" />;
+      return <AlertCircle className="w-3.5 h-3.5 text-error" />;
     default:
-      return <Clock className="w-3.5 h-3.5 text-zinc-400" />;
+      return <Clock className="w-3.5 h-3.5 text-foreground-tertiary" />;
   }
 }
 
@@ -305,48 +305,48 @@ function ToolPartView({ part }: { part: ToolPart }) {
   const error = meta.error != null ? safeString(meta.error) : '';
 
   return (
-    <div className="my-2 rounded-lg border border-zinc-700/60 bg-zinc-800/40 overflow-hidden">
+    <div className="my-2 rounded-lg border border-border/60 bg-secondary/40 overflow-hidden">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-zinc-700/30 transition-colors"
+        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-secondary/60 transition-colors"
       >
         <ToolStateIcon state={stateStr} />
-        <Wrench className="w-3.5 h-3.5 text-zinc-400" />
-        <span className="text-sm font-medium text-zinc-200 truncate">
+        <Wrench className="w-3.5 h-3.5 text-foreground-tertiary" />
+        <span className="text-sm font-medium text-foreground truncate">
           {safeString(part.tool)}
         </span>
         {title && (
-          <span className="text-xs text-zinc-400 truncate ml-1">{title}</span>
+          <span className="text-xs text-foreground-tertiary truncate ml-1">{title}</span>
         )}
-        <span className="ml-auto text-xs text-zinc-500 capitalize">{stateStr}</span>
+        <span className="ml-auto text-xs text-foreground-tertiary capitalize">{stateStr}</span>
         {expanded ? (
-          <ChevronDown className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+          <ChevronDown className="w-3.5 h-3.5 text-foreground-tertiary shrink-0" />
         ) : (
-          <ChevronRight className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+          <ChevronRight className="w-3.5 h-3.5 text-foreground-tertiary shrink-0" />
         )}
       </button>
       {expanded && (
-        <div className="px-3 pb-3 space-y-2 border-t border-zinc-700/40">
+        <div className="px-3 pb-3 space-y-2 border-t border-border/40">
           {input && (
             <div className="mt-2">
-              <p className="text-xs text-zinc-500 mb-1">Input</p>
-              <pre className="text-xs text-zinc-300 bg-zinc-900/60 rounded p-2 overflow-x-auto max-h-48 overflow-y-auto">
+              <p className="text-xs text-foreground-tertiary mb-1">Input</p>
+              <pre className="text-xs text-foreground-secondary bg-background-secondary/60 rounded p-2 overflow-x-auto max-h-48 overflow-y-auto font-mono">
                 {input}
               </pre>
             </div>
           )}
           {output && (
             <div>
-              <p className="text-xs text-zinc-500 mb-1">Output</p>
-              <pre className="text-xs text-zinc-300 bg-zinc-900/60 rounded p-2 overflow-x-auto max-h-48 overflow-y-auto">
+              <p className="text-xs text-foreground-tertiary mb-1">Output</p>
+              <pre className="text-xs text-foreground-secondary bg-background-secondary/60 rounded p-2 overflow-x-auto max-h-48 overflow-y-auto font-mono">
                 {output}
               </pre>
             </div>
           )}
           {error && (
             <div>
-              <p className="text-xs text-red-400 mb-1">Error</p>
-              <pre className="text-xs text-red-300 bg-red-900/20 rounded p-2 overflow-x-auto">
+              <p className="text-xs text-error mb-1">Error</p>
+              <pre className="text-xs text-error/80 bg-error/10 rounded p-2 overflow-x-auto font-mono">
                 {error}
               </pre>
             </div>
@@ -361,25 +361,25 @@ function ReasoningPartView({ part }: { part: ReasoningPart }) {
   const [expanded, setExpanded] = useState(false);
   if (!part.text) return null;
   return (
-    <div className="my-2 rounded-lg border border-purple-800/40 bg-purple-900/10 overflow-hidden">
+    <div className="my-2 rounded-lg border border-primary/20 bg-primary/5 overflow-hidden">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-purple-800/10 transition-colors"
+        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-primary/10 transition-colors"
       >
-        <Brain className="w-3.5 h-3.5 text-purple-400" />
-        <span className="text-sm text-purple-300">Thinking...</span>
-        <span className="ml-auto text-xs text-purple-500">
+        <Brain className="w-3.5 h-3.5 text-primary" />
+        <span className="text-sm text-primary">Thinking...</span>
+        <span className="ml-auto text-xs text-primary/60">
           {part.text.length} chars
         </span>
         {expanded ? (
-          <ChevronDown className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+          <ChevronDown className="w-3.5 h-3.5 text-primary/60 shrink-0" />
         ) : (
-          <ChevronRight className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+          <ChevronRight className="w-3.5 h-3.5 text-primary/60 shrink-0" />
         )}
       </button>
       {expanded && (
-        <div className="px-3 pb-3 border-t border-purple-800/30">
-          <pre className="mt-2 text-xs text-purple-200/80 whitespace-pre-wrap max-h-64 overflow-y-auto">
+        <div className="px-3 pb-3 border-t border-primary/15">
+          <pre className="mt-2 text-xs text-foreground-secondary whitespace-pre-wrap max-h-64 overflow-y-auto font-mono">
             {part.text}
           </pre>
         </div>
@@ -391,10 +391,11 @@ function ReasoningPartView({ part }: { part: ReasoningPart }) {
 function TextPartView({ part }: { part: TextPart }) {
   if (!part.text) return null;
   return (
-    <div className="prose prose-invert prose-sm max-w-none
-      prose-pre:bg-zinc-900/80 prose-pre:border prose-pre:border-zinc-700/50
-      prose-code:text-emerald-300 prose-code:bg-zinc-800/60 prose-code:px-1 prose-code:py-0.5 prose-code:rounded
-      prose-a:text-blue-400 prose-headings:text-zinc-100"
+    <div className="prose dark:prose-invert prose-sm max-w-none
+      prose-p:text-foreground prose-li:text-foreground prose-strong:text-foreground
+      prose-pre:bg-background-secondary/80 prose-pre:border prose-pre:border-border/50
+      prose-code:text-mint prose-code:bg-secondary/60 prose-code:px-1 prose-code:py-0.5 prose-code:rounded
+      prose-a:text-primary prose-headings:text-foreground"
     >
       <ReactMarkdown remarkPlugins={[remarkGfm]}>{part.text}</ReactMarkdown>
     </div>
@@ -403,21 +404,21 @@ function TextPartView({ part }: { part: TextPart }) {
 
 function FilePartView({ part }: { part: FilePart }) {
   return (
-    <div className="my-2 flex items-center gap-2 px-3 py-2 rounded-lg border border-zinc-700/60 bg-zinc-800/40 text-sm">
-      <FileText className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-      <span className="text-zinc-200">{part.filename ?? 'File'}</span>
-      <span className="text-xs text-zinc-500">{part.mime}</span>
+    <div className="my-2 flex items-center gap-2 px-3 py-2 rounded-lg border border-border/60 bg-secondary/40 text-sm">
+      <FileText className="w-3.5 h-3.5 text-primary shrink-0" />
+      <span className="text-foreground">{part.filename ?? 'File'}</span>
+      <span className="text-xs text-foreground-tertiary">{part.mime}</span>
     </div>
   );
 }
 
 function PatchPartView({ part }: { part: PatchPart }) {
   return (
-    <div className="my-2 flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-800/40 bg-amber-900/10 text-sm">
-      <GitBranch className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-      <span className="text-amber-200">Patch applied</span>
+    <div className="my-2 flex items-center gap-2 px-3 py-2 rounded-lg border border-caramel/30 bg-caramel/5 text-sm">
+      <GitBranch className="w-3.5 h-3.5 text-caramel shrink-0" />
+      <span className="text-caramel">Patch applied</span>
       {part.files?.length > 0 && (
-        <span className="text-xs text-amber-400/70">
+        <span className="text-xs text-caramel/70">
           {part.files.join(', ')}
         </span>
       )}
@@ -427,8 +428,8 @@ function PatchPartView({ part }: { part: PatchPart }) {
 
 function StepFinishView({ part }: { part: StepFinishPart }) {
   return (
-    <div className="my-1 flex items-center gap-3 px-3 py-1 text-xs text-zinc-500">
-      <div className="h-px flex-1 bg-zinc-700/50" />
+    <div className="my-1 flex items-center gap-3 px-3 py-1 text-xs text-foreground-tertiary">
+      <div className="h-px flex-1 bg-border/50" />
       <span>
         Step done
         {part.tokens && (
@@ -438,14 +439,14 @@ function StepFinishView({ part }: { part: StepFinishPart }) {
           <> · ${part.cost.toFixed(4)}</>
         )}
       </span>
-      <div className="h-px flex-1 bg-zinc-700/50" />
+      <div className="h-px flex-1 bg-border/50" />
     </div>
   );
 }
 
 function SnapshotView() {
   return (
-    <div className="my-1 flex items-center gap-2 px-3 py-1 text-xs text-zinc-500">
+    <div className="my-1 flex items-center gap-2 px-3 py-1 text-xs text-foreground-tertiary">
       <Camera className="w-3 h-3" />
       <span>Snapshot created</span>
     </div>
@@ -488,20 +489,20 @@ function AssistantMessageView({ entry }: { entry: AssistantEntry }) {
     <div className="flex justify-start">
       <div className="max-w-[95%] w-full">
         <div className="flex items-center gap-2 mb-1.5">
-          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center shadow-lg shadow-violet-500/20">
-            <Sparkles className="w-3.5 h-3.5 text-white" />
+          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-caramel flex items-center justify-center shadow-lg shadow-primary/20">
+            <Sparkles className="w-3.5 h-3.5 text-primary-foreground" />
           </div>
-          <span className="text-xs font-semibold text-zinc-300">Agent</span>
+          <span className="text-xs font-semibold text-foreground-secondary font-body">Agent</span>
           {!entry.isComplete && (
             <div className="flex items-center gap-1.5 ml-1">
-              <Loader2 className="w-3 h-3 text-blue-400 animate-spin" />
-              <span className="text-[10px] text-blue-400/80 font-medium">
+              <Loader2 className="w-3 h-3 text-primary animate-spin" />
+              <span className="text-[10px] text-primary/80 font-medium">
                 {isThinking ? 'Thinking...' : isTooling ? `Running ${toolName}` : 'Working...'}
               </span>
             </div>
           )}
           {entry.isComplete && entry.tokens && (
-            <span className="text-[10px] text-zinc-500 ml-auto">
+            <span className="text-[10px] text-foreground-tertiary ml-auto font-mono">
               {entry.tokens.input + entry.tokens.output} tokens
               {typeof entry.cost === 'number' && entry.cost > 0 && ` · $${entry.cost.toFixed(4)}`}
             </span>
@@ -512,12 +513,12 @@ function AssistantMessageView({ entry }: { entry: AssistantEntry }) {
             <PartRenderer key={part.id || `part-${i}`} part={part} />
           ))}
           {!entry.isComplete && entry.parts.length === 0 && (
-            <div className="flex items-center gap-2.5 py-3 px-4 rounded-lg bg-zinc-800/30 border border-zinc-700/30">
+            <div className="flex items-center gap-2.5 py-3 px-4 rounded-lg bg-secondary/30 border border-border/30">
               <div className="relative">
-                <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
-                <div className="absolute inset-0 rounded-full bg-blue-400/10 animate-pulse" />
+                <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                <div className="absolute inset-0 rounded-full bg-primary/10 animate-pulse" />
               </div>
-              <span className="text-sm text-zinc-400">Thinking...</span>
+              <span className="text-sm text-foreground-secondary">Thinking...</span>
             </div>
           )}
         </div>
@@ -530,7 +531,7 @@ function AssistantMessageView({ entry }: { entry: AssistantEntry }) {
 function UserMessageView({ entry }: { entry: UserEntry }) {
   return (
     <div className="flex justify-end">
-      <div className="max-w-[80%] px-4 py-2.5 rounded-2xl rounded-br-md bg-blue-600 text-white text-sm whitespace-pre-wrap">
+      <div className="max-w-[80%] px-4 py-2.5 rounded-2xl rounded-br-md bg-gradient-to-r from-primary to-primary-hover text-primary-foreground text-sm whitespace-pre-wrap shadow-candy font-body">
         {entry.text}
       </div>
     </div>
@@ -541,22 +542,22 @@ function UserMessageView({ entry }: { entry: UserEntry }) {
 function TodosView({ todos }: { todos: TodoItem[] }) {
   if (!todos.length) return null;
   return (
-    <div className="px-3 py-2 border-b border-zinc-700/50">
+    <div className="px-3 py-2 border-b border-border/50">
       <div className="flex items-center gap-2 mb-2">
-        <ListTodo className="w-3.5 h-3.5 text-zinc-400" />
-        <span className="text-xs font-medium text-zinc-400 uppercase tracking-wide">Tasks</span>
+        <ListTodo className="w-3.5 h-3.5 text-foreground-tertiary" />
+        <span className="text-xs font-medium text-foreground-tertiary uppercase tracking-wide font-body">Tasks</span>
       </div>
       <div className="space-y-1">
         {todos.map((todo) => (
           <div key={todo.id} className="flex items-center gap-2 text-xs">
             {todo.status === 'completed' ? (
-              <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+              <CheckCircle2 className="w-3 h-3 text-success shrink-0" />
             ) : todo.status === 'in_progress' ? (
-              <Loader2 className="w-3 h-3 text-blue-400 animate-spin shrink-0" />
+              <Loader2 className="w-3 h-3 text-primary animate-spin shrink-0" />
             ) : (
-              <Circle className="w-3 h-3 text-zinc-500 shrink-0" />
+              <Circle className="w-3 h-3 text-foreground-tertiary shrink-0" />
             )}
-            <span className={todo.status === 'completed' ? 'text-zinc-500 line-through' : 'text-zinc-300'}>
+            <span className={todo.status === 'completed' ? 'text-foreground-tertiary line-through' : 'text-foreground-secondary'}>
               {todo.content}
             </span>
           </div>
@@ -621,21 +622,21 @@ function QuestionPanel({
   });
 
   return (
-    <div className="mx-4 mb-3 rounded-xl border border-blue-500/30 bg-gradient-to-b from-blue-950/30 to-zinc-900/50 overflow-hidden shadow-lg shadow-blue-500/5">
+    <div className="mx-4 mb-3 rounded-xl border border-primary/30 bg-gradient-to-b from-primary/10 to-background-secondary/50 overflow-hidden shadow-candy">
       {/* Header */}
-      <div className="px-4 py-3 bg-blue-500/10 border-b border-blue-500/20 flex items-center justify-between">
+      <div className="px-4 py-3 bg-primary/10 border-b border-primary/20 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center">
-            <MessageSquare className="w-3.5 h-3.5 text-blue-400" />
+          <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
+            <MessageSquare className="w-3.5 h-3.5 text-primary" />
           </div>
           <div>
-            <div className="text-xs font-semibold text-blue-200">Agent needs your input</div>
-            <div className="text-[10px] text-blue-400/60">Select an option or type a response</div>
+            <div className="text-xs font-semibold text-foreground font-body">Agent needs your input</div>
+            <div className="text-[10px] text-foreground-tertiary">Select an option or type a response</div>
           </div>
         </div>
         <button
           onClick={onReject}
-          className="text-xs text-zinc-500 hover:text-red-400 transition-colors duration-200 px-3 py-2 rounded-md hover:bg-red-500/10 cursor-pointer min-h-[36px] focus:outline-none focus:ring-2 focus:ring-red-500/30"
+          className="text-xs text-foreground-tertiary hover:text-error transition-colors duration-200 px-3 py-2 rounded-md hover:bg-error/10 cursor-pointer min-h-[36px] focus:outline-none focus:ring-2 focus:ring-error/30"
           title="Dismiss question"
           aria-label="Dismiss question"
         >
@@ -645,12 +646,12 @@ function QuestionPanel({
 
       {/* Question groups */}
       {question.questions.map((q, qIdx) => (
-        <div key={qIdx} className="px-4 py-4 border-b border-zinc-700/20 last:border-b-0">
+        <div key={qIdx} className="px-4 py-4 border-b border-border/20 last:border-b-0">
           {q.header && (
-            <div className="text-[11px] font-bold uppercase tracking-wider text-blue-400/70 mb-1">{q.header}</div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-primary/70 mb-1 font-body">{q.header}</div>
           )}
           {q.question && (
-            <div className="text-sm text-zinc-200 mb-3 leading-relaxed">{q.question}</div>
+            <div className="text-sm text-foreground mb-3 leading-relaxed font-body">{q.question}</div>
           )}
           <div className="grid gap-2" style={{ gridTemplateColumns: q.options.length > 4 ? 'repeat(auto-fill, minmax(140px, 1fr))' : `repeat(${Math.min(q.options.length, 3)}, 1fr)` }}>
             {q.options.map((opt, optIdx) => {
@@ -659,34 +660,34 @@ function QuestionPanel({
                 <button
                   key={optIdx}
                   onClick={() => handleOptionToggle(qIdx, opt.label, q.multiple)}
-                  className={`group relative text-left px-3 py-3 rounded-lg border transition-all duration-150 cursor-pointer min-h-[44px] focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
+                  className={`group relative text-left px-3 py-3 rounded-lg border transition-all duration-150 cursor-pointer min-h-[44px] focus:outline-none focus:ring-2 focus:ring-primary/40 ${
                     isSelected
-                      ? 'bg-blue-600/20 border-blue-500/60 ring-1 ring-blue-500/30'
-                      : 'bg-zinc-800/60 border-zinc-700/50 hover:border-blue-500/40 hover:bg-zinc-800'
+                      ? 'bg-primary/15 border-primary/60 ring-1 ring-primary/30'
+                      : 'bg-secondary/60 border-border/50 hover:border-primary/40 hover:bg-secondary'
                   }`}
                   aria-pressed={isSelected}
                 >
                   <div className="flex items-start gap-2">
                     {q.multiple && (
                       <div className={`mt-0.5 w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-colors ${
-                        isSelected ? 'bg-blue-500 border-blue-400' : 'border-zinc-500'
+                        isSelected ? 'bg-primary border-primary' : 'border-foreground-tertiary'
                       }`}>
-                        {isSelected && <CheckCircle2 className="w-2.5 h-2.5 text-white" />}
+                        {isSelected && <CheckCircle2 className="w-2.5 h-2.5 text-primary-foreground" />}
                       </div>
                     )}
                     {!q.multiple && (
                       <div className={`mt-0.5 w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
-                        isSelected ? 'border-blue-400' : 'border-zinc-500'
+                        isSelected ? 'border-primary' : 'border-foreground-tertiary'
                       }`}>
-                        {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />}
+                        {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-primary" />}
                       </div>
                     )}
                     <div className="min-w-0">
-                      <div className={`text-xs font-medium leading-snug ${isSelected ? 'text-blue-200' : 'text-zinc-200'}`}>
+                      <div className={`text-xs font-medium leading-snug ${isSelected ? 'text-primary' : 'text-foreground'}`}>
                         {opt.label}
                       </div>
                       {opt.description && (
-                        <div className="text-[10px] text-zinc-500 mt-0.5 leading-snug line-clamp-2">
+                        <div className="text-[10px] text-foreground-tertiary mt-0.5 leading-snug line-clamp-2">
                           {opt.description}
                         </div>
                       )}
@@ -699,10 +700,10 @@ function QuestionPanel({
           {q.custom !== false && (
             <button
               onClick={() => setShowCustom((prev) => ({ ...prev, [qIdx]: !prev[qIdx] }))}
-              className={`mt-2 px-3 py-2 text-xs rounded-lg border transition-all duration-200 cursor-pointer min-h-[36px] focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${
+              className={`mt-2 px-3 py-2 text-xs rounded-lg border transition-all duration-200 cursor-pointer min-h-[36px] focus:outline-none focus:ring-2 focus:ring-primary/30 ${
                 showCustom[qIdx]
-                  ? 'bg-zinc-700 border-zinc-500 text-zinc-200'
-                  : 'bg-zinc-800/40 border-zinc-700/40 text-zinc-500 hover:text-zinc-300 hover:border-zinc-600'
+                  ? 'bg-secondary border-border-hover text-foreground'
+                  : 'bg-secondary/40 border-border/40 text-foreground-tertiary hover:text-foreground-secondary hover:border-border-hover'
               }`}
             >
               <span className="mr-1">✎</span> Custom answer...
@@ -719,8 +720,8 @@ function QuestionPanel({
                 if (e.key === 'Enter' && hasSelection) handleSubmit();
               }}
               placeholder="Type your custom answer…"
-              className="mt-2 w-full px-3 py-2 text-sm bg-zinc-800/80 border border-zinc-600/50 rounded-lg
-                text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/50"
+              className="mt-2 w-full px-3 py-2 text-sm bg-secondary/80 border border-border-hover/50 rounded-lg
+                text-foreground placeholder-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 font-body"
               autoFocus
             />
           )}
@@ -728,14 +729,14 @@ function QuestionPanel({
       ))}
 
       {/* Actions */}
-      <div className="px-4 py-3 bg-zinc-900/30 flex items-center justify-between">
-        <span className="text-[10px] text-zinc-600">
+      <div className="px-4 py-3 bg-background-secondary/30 flex items-center justify-between">
+        <span className="text-[10px] text-foreground-muted font-mono">
           {Object.values(selections).flat().length} selected
         </span>
         <div className="flex gap-2">
           <button
             onClick={onReject}
-            className="px-4 py-2 text-xs rounded-lg bg-zinc-800 border border-zinc-700/50 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700 transition-colors duration-200 cursor-pointer min-h-[36px] focus:outline-none focus:ring-2 focus:ring-zinc-500/30"
+            className="px-4 py-2 text-xs rounded-lg bg-secondary border border-border/50 text-foreground-secondary hover:text-foreground hover:bg-secondary/80 transition-colors duration-200 cursor-pointer min-h-[36px] focus:outline-none focus:ring-2 focus:ring-border/30 btn-press"
             aria-label="Skip question"
           >
             Skip
@@ -743,10 +744,10 @@ function QuestionPanel({
           <button
             onClick={handleSubmit}
             disabled={!hasSelection}
-            className="px-5 py-2 text-xs font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-500
+            className="px-5 py-2 text-xs font-medium rounded-lg bg-gradient-to-r from-primary to-primary-hover text-primary-foreground hover:shadow-candy
               disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-150 cursor-pointer
-              shadow-md shadow-blue-500/20 hover:shadow-blue-500/30 min-h-[36px]
-              focus:outline-none focus:ring-2 focus:ring-blue-500/40 disabled:focus:ring-0"
+              shadow-candy min-h-[36px]
+              focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:focus:ring-0 btn-press font-body"
             aria-label="Submit answer"
           >
             Submit Answer →
@@ -777,12 +778,12 @@ function SessionSidebar({
   onDelete: (id: string) => void;
 }) {
   return (
-    <div className="w-56 border-r border-zinc-700/50 flex flex-col bg-zinc-900/60 shrink-0">
-      <div className="p-3 border-b border-zinc-700/50 flex items-center justify-between">
-        <span className="text-xs font-medium text-zinc-400 uppercase tracking-wide">Sessions</span>
+    <div className="w-56 border-r border-border/50 flex flex-col glass shrink-0">
+      <div className="p-3 border-b border-border/50 flex items-center justify-between">
+        <span className="text-xs font-medium text-foreground-secondary uppercase tracking-wide font-body">Sessions</span>
         <button
           onClick={onNew}
-          className="p-2 rounded hover:bg-zinc-700/50 text-zinc-400 hover:text-zinc-200 transition-colors duration-200 cursor-pointer min-w-[36px] min-h-[36px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+          className="p-2 rounded hover:bg-primary/10 text-foreground-secondary hover:text-primary transition-colors duration-200 cursor-pointer min-w-[36px] min-h-[36px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-primary/30"
           title="New session"
           aria-label="Create new session"
         >
@@ -791,7 +792,7 @@ function SessionSidebar({
       </div>
       <div className="flex-1 overflow-y-auto">
         {sessions.length === 0 && (
-          <p className="p-3 text-xs text-zinc-500">No sessions yet</p>
+          <p className="p-3 text-xs text-foreground-tertiary">No sessions yet</p>
         )}
         {sessions.map((s) => {
           const hasPendingQ = pendingQuestionSessionIds.has(s.id);
@@ -800,28 +801,28 @@ function SessionSidebar({
               key={s.id}
               className={`group flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors ${
                 s.id === currentSessionId
-                  ? 'bg-zinc-700/40 text-zinc-100'
+                  ? 'bg-primary/10 text-foreground'
                   : hasPendingQ
-                    ? 'text-blue-300 hover:bg-blue-900/20 hover:text-blue-200'
-                    : 'text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200'
+                    ? 'text-primary hover:bg-primary/5 hover:text-primary'
+                    : 'text-foreground-secondary hover:bg-secondary/60 hover:text-foreground'
               }`}
               onClick={() => onSelect(s.id)}
             >
-              <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${hasPendingQ ? 'text-blue-400' : ''}`} />
-              <span className="text-xs truncate flex-1">{s.title || 'Untitled'}</span>
+              <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${hasPendingQ ? 'text-primary' : ''}`} />
+              <span className="text-xs truncate flex-1 font-body">{s.title || 'Untitled'}</span>
               {hasPendingQ && (
-                <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse shrink-0" title="Awaiting your response" />
+                <span className="w-2 h-2 rounded-full bg-primary animate-pulse shrink-0" title="Awaiting your response" />
               )}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onDelete(s.id);
                 }}
-                className="opacity-60 group-hover:opacity-100 p-1.5 rounded hover:bg-zinc-600/50 transition-all duration-200 cursor-pointer min-w-[28px] min-h-[28px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-red-500/30"
+                className="opacity-60 group-hover:opacity-100 p-1.5 rounded hover:bg-error/10 transition-all duration-200 cursor-pointer min-w-[28px] min-h-[28px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-error/30"
                 title="Delete session"
                 aria-label={`Delete session ${s.title || 'Untitled'}`}
               >
-                <Trash2 className="w-3 h-3 text-zinc-500 hover:text-red-400" />
+                <Trash2 className="w-3 h-3 text-foreground-tertiary hover:text-error" />
               </button>
             </div>
           );
@@ -1642,10 +1643,10 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
   if (connecting) {
     return (
       <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[110] backdrop-blur-md">
-        <div className="bg-[#0d1117] rounded-2xl p-8 max-w-sm w-full mx-4 text-center border border-white/[0.06] shadow-2xl shadow-black/50">
-          <Loader2 className="w-8 h-8 text-blue-400 animate-spin mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-zinc-100 mb-2">Connecting to OpenCode</h3>
-          <p className="text-sm text-zinc-500">Establishing connection to server...</p>
+        <div className="glass-strong rounded-2xl p-8 max-w-sm w-full mx-4 text-center border border-border/50 shadow-candy-lg">
+          <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-foreground mb-2 font-candy">Connecting to OpenCode</h3>
+          <p className="text-sm text-foreground-tertiary font-body">Establishing connection to server...</p>
         </div>
       </div>
     );
@@ -1654,11 +1655,11 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
   if (connectionError && !connected) {
     return (
       <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[110] backdrop-blur-md">
-        <div className="bg-[#0d1117] rounded-2xl p-8 max-w-md w-full mx-4 text-center border border-white/[0.06] shadow-2xl shadow-black/50">
-          <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-zinc-100 mb-2">Connection Failed</h3>
-          <p className="text-sm text-red-400/80 mb-1">{connectionError}</p>
-          <p className="text-xs text-zinc-600 mb-6 mt-2">
+        <div className="glass-strong rounded-2xl p-8 max-w-md w-full mx-4 text-center border border-border/50 shadow-candy-lg">
+          <AlertCircle className="w-10 h-10 text-error mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-foreground mb-2 font-candy">Connection Failed</h3>
+          <p className="text-sm text-error/80 mb-1">{connectionError}</p>
+          <p className="text-xs text-foreground-tertiary mb-6 mt-2 font-body">
             Check your network connection and ensure the OpenCode server is running.
           </p>
           <div className="flex gap-3 justify-center">
@@ -1675,14 +1676,14 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                   .finally(() => setConnecting(false));
               }}
               disabled={connecting}
-              className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 text-white text-sm rounded-lg hover:from-blue-500 hover:to-blue-400 transition-all duration-200 cursor-pointer min-h-[40px] disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-lg shadow-blue-500/20"
+              className="px-5 py-2.5 bg-gradient-to-r from-primary to-primary-hover text-primary-foreground text-sm rounded-lg hover:shadow-candy-lg transition-all duration-200 cursor-pointer min-h-[40px] disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary/50 shadow-candy btn-press font-body"
               aria-label="Retry connection"
             >
               {connecting ? 'Connecting...' : 'Retry'}
             </button>
             <button
               onClick={onClose}
-              className="px-5 py-2.5 bg-white/[0.06] text-zinc-300 text-sm rounded-lg hover:bg-white/[0.1] transition-all duration-200 cursor-pointer min-h-[40px] focus:outline-none focus:ring-2 focus:ring-zinc-500/50 border border-white/[0.06]"
+              className="px-5 py-2.5 glass text-foreground-secondary text-sm rounded-lg hover:text-foreground transition-all duration-200 cursor-pointer min-h-[40px] focus:outline-none focus:ring-2 focus:ring-border/50 border border-border/50 btn-press font-body"
               aria-label="Close"
             >
               Close
@@ -1705,22 +1706,22 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[110] backdrop-blur-md">
-      <div className="bg-[#0d1117] rounded-2xl w-full max-w-7xl h-[92vh] mx-4 overflow-hidden flex flex-col border border-white/[0.06] shadow-2xl shadow-black/50">
+      <div className="bg-background rounded-2xl w-full max-w-7xl h-[92vh] mx-4 overflow-hidden flex flex-col border border-border/50 shadow-candy-lg">
         {/* ── Header ─────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/[0.06] bg-gradient-to-r from-[#161b22] to-[#0d1117] shrink-0">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/50 glass-strong shrink-0">
           <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-blue-600 flex items-center justify-center text-xl shadow-lg shadow-violet-500/20 ring-1 ring-white/10">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-caramel flex items-center justify-center text-xl shadow-candy ring-1 ring-primary/20">
               {skill.icon}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-semibold text-white">{skill.name}</h2>
+                <h2 className="text-base font-semibold text-foreground font-candy">{skill.name}</h2>
                 {githubUrl && (
                   <a
                     href={githubUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.06] hover:bg-white/[0.12] text-zinc-400 hover:text-white transition-all duration-200 text-[11px] font-medium"
+                    className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary/60 hover:bg-secondary text-foreground-tertiary hover:text-foreground transition-all duration-200 text-[11px] font-medium"
                     title="View on GitHub"
                   >
                     <Github className="w-3 h-3" />
@@ -1730,15 +1731,15 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                 )}
               </div>
               <div className="flex items-center gap-2.5 text-xs mt-0.5">
-                <span className="flex items-center gap-1.5 text-emerald-400">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="flex items-center gap-1.5 text-success">
+                  <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
                   Connected
                 </span>
                 {serverVersion && (
-                  <span className="text-zinc-600">v{serverVersion}</span>
+                  <span className="text-foreground-muted font-mono">v{serverVersion}</span>
                 )}
                 {sessionStatus && sessionStatus !== 'idle' && (
-                  <span className="text-blue-400 flex items-center gap-1">
+                  <span className="text-primary flex items-center gap-1">
                     <Loader2 className="w-3 h-3 animate-spin" />
                     {sessionStatus}
                   </span>
@@ -1751,7 +1752,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
             {/* Sessions toggle (mobile) */}
             <button
               onClick={() => setShowSessions(!showSessions)}
-              className="md:hidden p-2.5 rounded-lg hover:bg-white/[0.06] text-zinc-500 hover:text-zinc-200 transition-colors"
+              className="md:hidden p-2.5 rounded-lg hover:bg-secondary text-foreground-tertiary hover:text-foreground transition-colors"
               title="Toggle sessions"
             >
               <MessageSquare className="w-4 h-4" />
@@ -1761,7 +1762,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
             <div className="relative model-picker">
               <button
                 onClick={() => setShowModelPicker(!showModelPicker)}
-                className="flex items-center gap-2 px-3 py-2 text-xs border border-white/[0.08] rounded-lg hover:bg-white/[0.06] text-zinc-400 hover:text-zinc-200 transition-all duration-200 cursor-pointer min-h-[36px] focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                className="flex items-center gap-2 px-3 py-2 text-xs border border-border/50 rounded-lg hover:bg-secondary text-foreground-secondary hover:text-foreground transition-all duration-200 cursor-pointer min-h-[36px] focus:outline-none focus:ring-2 focus:ring-primary/30 font-mono"
                 aria-label="Select model"
                 aria-expanded={showModelPicker}
               >
@@ -1778,13 +1779,13 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                 <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${showModelPicker ? 'rotate-180' : ''}`} />
               </button>
               {showModelPicker && (
-                <div className="absolute right-0 mt-2 w-72 bg-[#161b22] border border-white/[0.08] rounded-xl shadow-2xl z-50 overflow-hidden">
-                  <div className="p-2.5 border-b border-white/[0.06] bg-white/[0.02]">
-                    <p className="text-xs font-medium text-zinc-400">Select Model</p>
+                <div className="absolute right-0 mt-2 w-72 glass-strong border border-border/50 rounded-xl shadow-candy-lg z-50 overflow-hidden">
+                  <div className="p-2.5 border-b border-border/50 bg-secondary/30">
+                    <p className="text-xs font-medium text-foreground-secondary font-body">Select Model</p>
                   </div>
                   <div className="max-h-80 overflow-y-auto">
                     {models.length === 0 && (
-                      <p className="px-3 py-2 text-xs text-zinc-500">
+                      <p className="px-3 py-2 text-xs text-foreground-tertiary">
                         No models available
                       </p>
                     )}
@@ -1792,7 +1793,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                     {Array.from(new Set(models.map((m) => m.providerID))).map(
                       (pid) => (
                         <div key={pid}>
-                          <div className="px-3 py-1.5 text-[10px] font-semibold text-zinc-600 uppercase tracking-wider bg-[#0d1117]/40">
+                          <div className="px-3 py-1.5 text-[10px] font-semibold text-foreground-muted uppercase tracking-wider bg-background-secondary/40 font-body">
                             {models.find((m) => m.providerID === pid)
                               ?.providerName ?? pid}
                           </div>
@@ -1813,10 +1814,10 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                                     });
                                     setShowModelPicker(false);
                                   }}
-                                  className={`w-full text-left px-3 py-2.5 text-xs hover:bg-white/[0.06] transition-colors duration-150 flex items-center gap-2 cursor-pointer min-h-[36px] focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${
+                                  className={`w-full text-left px-3 py-2.5 text-xs hover:bg-secondary/60 transition-colors duration-150 flex items-center gap-2 cursor-pointer min-h-[36px] focus:outline-none focus:ring-2 focus:ring-primary/30 font-mono ${
                                     isSelected
-                                    ? 'bg-blue-600/15 text-blue-300 font-medium'
-                                      : 'text-zinc-300'
+                                    ? 'bg-primary/15 text-primary font-medium'
+                                      : 'text-foreground-secondary'
                                   }`}
                                   aria-pressed={isSelected}
                                 >
@@ -1824,7 +1825,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                                     {model.name}
                                   </span>
                                   {model.reasoning && (
-                                    <span className="text-[9px] px-1 py-0.5 rounded bg-purple-800/40 text-purple-300">
+                                    <span className="text-[9px] px-1 py-0.5 rounded bg-primary/15 text-primary">
                                       reasoning
                                     </span>
                                   )}
@@ -1842,7 +1843,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
             {/* Close */}
             <button
               onClick={onClose}
-              className="p-2.5 rounded-lg hover:bg-white/[0.06] text-zinc-500 hover:text-zinc-200 transition-all duration-200 cursor-pointer min-w-[40px] min-h-[40px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-zinc-500/30"
+              className="p-2.5 rounded-lg hover:bg-secondary text-foreground-tertiary hover:text-foreground transition-all duration-200 cursor-pointer min-w-[40px] min-h-[40px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-border/30"
               aria-label="Close skill executor"
             >
               <X className="w-5 h-5" />
@@ -1871,20 +1872,20 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
 
             {/* Session status bar — shows when AI is working */}
             {isRunning && (
-              <div className="shrink-0 px-5 py-3 bg-gradient-to-r from-blue-950/30 via-blue-950/10 to-transparent border-b border-blue-500/10">
+              <div className="shrink-0 px-5 py-3 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-b border-primary/10">
                 <div className="flex items-center gap-3">
                   <div className="relative flex items-center justify-center w-5 h-5">
-                    <Loader2 className="w-5 h-5 text-blue-400 animate-spin" />
+                    <Loader2 className="w-5 h-5 text-primary animate-spin" />
                   </div>
-                  <span className="text-sm text-blue-300/90 font-medium">
+                  <span className="text-sm text-primary font-medium font-body">
                     {sessionStatus === 'busy' ? 'Agent is working...' : sessionStatus || 'Processing...'}
                   </span>
-                  <div className="flex-1 h-0.5 bg-zinc-800/50 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-blue-500 to-violet-500 rounded-full animate-pulse" style={{ width: '60%' }} />
+                  <div className="flex-1 h-0.5 bg-secondary/50 rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-primary to-caramel rounded-full animate-pulse" style={{ width: '60%' }} />
                   </div>
                   <button
                     onClick={handleAbort}
-                    className="px-3 py-1.5 text-xs rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/10 transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500/30"
+                    className="px-3 py-1.5 text-xs rounded-lg bg-error/10 hover:bg-error/20 text-error hover:text-error/80 border border-error/10 transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-error/30 btn-press"
                     aria-label="Stop agent"
                   >
                     Stop
@@ -1899,10 +1900,10 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
               {showSkillBanner && skillLoadStatus !== 'idle' && (
                 <div className={`rounded-lg border text-sm overflow-hidden ${
                   skillLoadStatus === 'loaded'
-                    ? 'bg-emerald-900/20 border-emerald-800/40 text-emerald-300'
+                    ? 'bg-success/10 border-success/30 text-success'
                     : skillLoadStatus === 'loading'
-                      ? 'bg-blue-900/20 border-blue-800/40 text-blue-300'
-                      : 'bg-amber-900/20 border-amber-800/40 text-amber-300'
+                      ? 'bg-primary/10 border-primary/30 text-primary'
+                      : 'bg-warning/10 border-warning/30 text-warning'
                 }`}>
                   <div className="flex items-start gap-3 px-4 py-3">
                     {skillLoadStatus === 'loading' ? (
@@ -1948,7 +1949,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                     {skillLoadStatus !== 'loading' && (
                       <button
                         onClick={() => setShowSkillBanner(false)}
-                        className="p-2 rounded hover:bg-white/10 shrink-0 cursor-pointer transition-all duration-200 min-w-[36px] min-h-[36px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-white/20"
+                        className="p-2 rounded hover:bg-secondary/50 shrink-0 cursor-pointer transition-all duration-200 min-w-[36px] min-h-[36px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-border/20"
                         aria-label="Dismiss skill intro"
                       >
                         <X className="w-3.5 h-3.5" />
@@ -1956,7 +1957,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                     )}
                   </div>
                   {showViewInstructions && (skillInstructions || skill.skillMdUrl) && (
-                    <div className="border-t border-white/10 overflow-hidden flex flex-col">
+                    <div className="border-t border-border/30 overflow-hidden flex flex-col">
                       {(() => {
                         const segments =
                           getSkillPathSegments(skill.skillMdUrl).length > 0
@@ -1967,8 +1968,8 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                         return (
                           <>
                             {segments.length > 0 && (
-                              <div className="px-4 py-3 bg-white/5 border-b border-white/10">
-                                <div className="text-xs font-medium opacity-80 mb-2">File structure</div>
+                              <div className="px-4 py-3 bg-secondary/30 border-b border-border/30">
+                                <div className="text-xs font-medium opacity-80 mb-2 font-body">File structure</div>
                                 <div className="font-mono text-xs space-y-0.5">
                                   {segments.map((name, i) => {
                                     const isFile = i === segments.length - 1;
@@ -1986,7 +1987,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                                         ) : (
                                           <Folder className="w-3.5 h-3.5 shrink-0 opacity-70" />
                                         )}
-                                        <span className={isFile ? 'text-amber-200/90' : 'opacity-90'}>{name}</span>
+                                        <span className={isFile ? 'text-caramel' : 'opacity-90'}>{name}</span>
                                       </div>
                                     );
                                   })}
@@ -2010,7 +2011,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
               )}
 
               {connectionError && connected && (
-                <div className="flex items-center gap-2 px-3 py-2 bg-red-900/20 border border-red-800/40 rounded-lg text-sm text-red-300">
+                <div className="flex items-center gap-2 px-3 py-2 bg-error/10 border border-error/30 rounded-lg text-sm text-error">
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   {connectionError}
                 </div>
@@ -2018,13 +2019,13 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
 
               {entries.length === 0 && (
                 <div className="flex flex-col items-center justify-center h-full text-center">
-                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500/15 to-blue-500/15 flex items-center justify-center mb-6 ring-1 ring-white/[0.06]">
-                    <Sparkles className="w-10 h-10 text-violet-400/80" />
+                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/15 to-caramel/15 flex items-center justify-center mb-6 ring-1 ring-primary/10 shadow-candy">
+                    <Sparkles className="w-10 h-10 text-primary/80" />
                   </div>
-                  <h3 className="text-xl font-semibold text-zinc-100 mb-2">
+                  <h3 className="text-xl font-semibold text-foreground mb-2 font-candy">
                     Ready to run {skill.name}
                   </h3>
-                  <p className="text-sm text-zinc-500 max-w-md mb-6 leading-relaxed">
+                  <p className="text-sm text-foreground-tertiary max-w-md mb-6 leading-relaxed font-body">
                     {skillLoadStatus === 'loaded'
                       ? 'Skill instructions loaded successfully. Type a message below to start working with this skill.'
                       : skillLoadStatus === 'loading'
@@ -2033,7 +2034,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                   </p>
                   <div className="flex items-center gap-3">
                     {skillLoadStatus === 'loaded' && (
-                      <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/15 text-emerald-400 text-xs font-medium">
+                      <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-success/10 border border-success/15 text-success text-xs font-medium">
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         Skill loaded
                       </div>
@@ -2043,7 +2044,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                         href={githubUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/[0.04] border border-white/[0.06] text-zinc-400 hover:text-zinc-200 text-xs font-medium transition-all duration-200 hover:bg-white/[0.08]"
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-full glass border border-border/50 text-foreground-secondary hover:text-foreground text-xs font-medium transition-all duration-200 hover:shadow-warm"
                       >
                         <Github className="w-3.5 h-3.5" />
                         View Source
@@ -2053,7 +2054,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                   </div>
                   <button
                     onClick={() => inputRef.current?.focus()}
-                    className="mt-6 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl hover:from-blue-500 hover:to-blue-400 transition-all duration-300 cursor-pointer text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-lg shadow-blue-500/20"
+                    className="mt-6 px-6 py-3 bg-gradient-to-r from-primary to-primary-hover text-primary-foreground rounded-xl hover:shadow-candy-lg transition-all duration-300 cursor-pointer text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 shadow-candy btn-press font-body"
                     aria-label="Start a conversation"
                   >
                     Start a conversation
@@ -2251,7 +2252,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
             )}
 
             {/* ── Input area ─────────────────────────────────────────── */}
-            <div className="px-5 py-4 border-t border-white/[0.06] bg-[#161b22]/50 shrink-0">
+            <div className="px-5 py-4 border-t border-border/50 glass shrink-0">
               <div className="relative max-w-4xl mx-auto">
                 {/* Hidden file input */}
                 <input
@@ -2272,7 +2273,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                       return (
                         <div
                           key={file.id}
-                          className="group relative flex items-center gap-2 px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg hover:bg-white/[0.06] transition-colors"
+                          className="group relative flex items-center gap-2 px-3 py-2 bg-secondary/40 border border-border/50 rounded-lg hover:bg-secondary/60 transition-colors"
                         >
                           {isImageFile(file.mimeType) ? (
                             <img
@@ -2281,14 +2282,14 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                               className="w-8 h-8 object-cover rounded"
                             />
                           ) : (
-                            <FileIcon className="w-4 h-4 text-zinc-400" />
+                            <FileIcon className="w-4 h-4 text-foreground-tertiary" />
                           )}
-                          <span className="text-xs text-zinc-300 max-w-[150px] truncate">
+                          <span className="text-xs text-foreground-secondary max-w-[150px] truncate font-body">
                             {file.fileName}
                           </span>
                           <button
                             onClick={() => removeFile(file.id)}
-                            className="ml-1 p-1 rounded hover:bg-white/[0.1] text-zinc-500 hover:text-zinc-200 transition-colors cursor-pointer min-w-[20px] min-h-[20px] flex items-center justify-center"
+                            className="ml-1 p-1 rounded hover:bg-error/10 text-foreground-tertiary hover:text-error transition-colors cursor-pointer min-w-[20px] min-h-[20px] flex items-center justify-center"
                             aria-label={`Remove ${file.fileName}`}
                           >
                             <X className="w-3 h-3" />
@@ -2307,11 +2308,11 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                   placeholder={activeQuestion ? "Type your answer here..." : "What should the agent do?"}
                   rows={2}
                   disabled={isRunning || !connected}
-                  className="w-full pl-4 pr-28 py-3.5 bg-white/[0.04] border border-white/[0.08] rounded-xl
-                    text-sm text-zinc-100 placeholder-zinc-600
-                    focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/30
+                  className="w-full pl-4 pr-28 py-3.5 bg-input border border-input-border rounded-xl
+                    text-sm text-foreground placeholder-foreground-tertiary font-body
+                    focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/30
                     resize-none disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200
-                    hover:border-white/[0.12] hover:bg-white/[0.05]"
+                    hover:border-border-hover hover:bg-secondary/30"
                   aria-label="Message input"
                 />
                 <div className="absolute right-2.5 bottom-2.5 flex items-center gap-1.5">
@@ -2320,8 +2321,8 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       disabled={!connected}
-                      className="p-2.5 bg-white/[0.04] text-zinc-400 rounded-lg hover:bg-white/[0.08] hover:text-zinc-200
-                        disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer min-w-[38px] min-h-[38px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-zinc-500/30"
+                      className="p-2.5 bg-secondary/40 text-foreground-tertiary rounded-lg hover:bg-secondary hover:text-foreground-secondary
+                        disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer min-w-[38px] min-h-[38px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-border/30"
                       title="Attach files"
                       aria-label="Attach files"
                     >
@@ -2331,7 +2332,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                   {isRunning ? (
                     <button
                       onClick={handleAbort}
-                      className="p-2.5 bg-red-500/15 text-red-400 rounded-lg hover:bg-red-500/25 hover:text-red-300 border border-red-500/10 transition-all duration-200 cursor-pointer min-w-[38px] min-h-[38px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-red-500/50"
+                      className="p-2.5 bg-error/15 text-error rounded-lg hover:bg-error/25 hover:text-error/80 border border-error/10 transition-all duration-200 cursor-pointer min-w-[38px] min-h-[38px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-error/50 btn-press"
                       title="Stop agent"
                       aria-label="Stop agent"
                     >
@@ -2341,8 +2342,8 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                     <button
                       onClick={handleSend}
                       disabled={(!input.trim() && attachedFiles.length === 0) || !connected}
-                        className="p-2.5 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-lg hover:from-blue-500 hover:to-blue-400
-                        disabled:opacity-30 disabled:from-blue-800 disabled:to-blue-700 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer min-w-[38px] min-h-[38px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-lg shadow-blue-500/10 disabled:shadow-none"
+                        className="p-2.5 bg-gradient-to-r from-primary to-primary-hover text-primary-foreground rounded-lg hover:shadow-candy
+                        disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer min-w-[38px] min-h-[38px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-primary/50 shadow-candy disabled:shadow-none btn-press"
                       title="Send (Enter)"
                       aria-label="Send message"
                     >
@@ -2352,11 +2353,11 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                 </div>
               </div>
               <div className="flex justify-between items-center mt-2.5 px-1 max-w-4xl mx-auto">
-                <span className="text-[11px] text-zinc-600">
+                <span className="text-[11px] text-foreground-muted font-body">
                   Enter to send · Shift+Enter for new line
                 </span>
                 {isRunning && (
-                  <span className="text-[11px] text-blue-400/80 flex items-center gap-1.5">
+                  <span className="text-[11px] text-primary/80 flex items-center gap-1.5">
                     <Loader2 className="w-3 h-3 animate-spin" />
                     Agent is working...
                   </span>
@@ -2370,49 +2371,49 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       {/* Edit & Save as My Skill Modal */}
       {showEditModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-xl p-6 max-w-lg w-full shadow-2xl max-h-[80vh] overflow-y-auto">
+          <div className="bg-card rounded-xl p-6 max-w-lg w-full shadow-candy-lg max-h-[80vh] overflow-y-auto border border-border/50">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Edit & Save as My Skill</h2>
+              <h2 className="text-xl font-bold text-card-foreground font-candy">Edit & Save as My Skill</h2>
               <button
                 onClick={() => setShowEditModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-secondary rounded-lg transition-colors"
               >
-                <X className="w-5 h-5 text-gray-600" />
+                <X className="w-5 h-5 text-foreground-secondary" />
               </button>
             </div>
 
             <div className="space-y-4">
               {/* Skill Name */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Skill Name</label>
+                <label className="block text-sm font-medium text-foreground-secondary mb-2 font-body">Skill Name</label>
                 <input
                   type="text"
                   value={editingSkill.name || ''}
                   onChange={(e) => setEditingSkill({ ...editingSkill, name: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground font-body"
                   placeholder="e.g., Data Analysis Expert"
                 />
               </div>
 
               {/* Description */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                <label className="block text-sm font-medium text-foreground-secondary mb-2 font-body">Description</label>
                 <textarea
                   value={editingSkill.description || ''}
                   onChange={(e) => setEditingSkill({ ...editingSkill, description: e.target.value })}
                   rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none bg-input text-foreground font-body"
                   placeholder="Describe what this skill can do..."
                 />
               </div>
 
               {/* Category */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                <label className="block text-sm font-medium text-foreground-secondary mb-2 font-body">Category</label>
                 <select
                   value={editingSkill.category || 'Custom'}
                   onChange={(e) => setEditingSkill({ ...editingSkill, category: e.target.value as any })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground font-body"
                 >
                   <option value="Knowledge">Knowledge</option>
                   <option value="Analysis">Analysis</option>
@@ -2428,7 +2429,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
 
               {/* System Prompt */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">System Prompt</label>
+                <label className="block text-sm font-medium text-foreground-secondary mb-2 font-body">System Prompt</label>
                 <textarea
                   value={editingSkill.config?.systemPrompt || ''}
                   onChange={(e) => setEditingSkill({
@@ -2436,36 +2437,36 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                     config: { ...editingSkill.config!, systemPrompt: e.target.value }
                   })}
                   rows={6}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-mono text-sm"
+                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none font-mono text-sm bg-input text-foreground"
                   placeholder="Enter the system prompt for this skill..."
                 />
               </div>
 
               {/* Status Messages */}
               {saveStatus === 'success' && (
-                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <p className="text-sm text-green-800">Skill saved successfully!</p>
+                <div className="p-3 bg-success/10 border border-success/30 rounded-lg">
+                  <p className="text-sm text-success font-body">Skill saved successfully!</p>
                 </div>
               )}
               {saveStatus === 'error' && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-sm text-red-800">Failed to save skill. Please try again.</p>
+                <div className="p-3 bg-error/10 border border-error/30 rounded-lg">
+                  <p className="text-sm text-error font-body">Failed to save skill. Please try again.</p>
                 </div>
               )}
 
               {/* Actions */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
                 <button
                   onClick={() => setShowEditModal(false)}
                   disabled={saveStatus === 'saving'}
-                  className="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  className="px-6 py-2 text-sm font-medium text-foreground-secondary bg-card border border-border rounded-lg hover:bg-secondary transition-colors disabled:opacity-50 btn-press font-body"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSaveAsMySkill}
                   disabled={saveStatus === 'saving' || !editingSkill.name?.trim()}
-                  className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-6 py-2 text-sm font-medium text-primary-foreground bg-gradient-to-r from-primary to-primary-hover rounded-lg hover:shadow-candy transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-candy btn-press font-body"
                 >
                   {saveStatus === 'saving' ? (
                     <>

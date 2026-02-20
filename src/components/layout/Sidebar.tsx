@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Search,
@@ -121,12 +121,12 @@ export function Sidebar({
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showThemeSelector, setShowThemeSelector] = useState(false);
-  const themeSelectorRef = useRef<HTMLDivElement>(null);
 
   // 点击外部关闭主题选择器
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (themeSelectorRef.current && !themeSelectorRef.current.contains(event.target as Node)) {
+      const target = event.target as HTMLElement;
+      if (!target.closest('[data-theme-panel]')) {
         setShowThemeSelector(false);
       }
     }
@@ -162,6 +162,7 @@ export function Sidebar({
   const handleThemeChange = (themeId: string) => {
     onChangeTheme(themeId);
     setShowThemeSelector(false);
+    setMobileOpen(false);
   };
 
   const NavButton = ({ item }: { item: (typeof navItems)[0] }) => {
@@ -189,8 +190,8 @@ export function Sidebar({
     );
   };
 
-  const ThemeSelector = () => (
-    <div ref={themeSelectorRef} className="relative">
+  const themeSelector = (
+    <div data-theme-panel className="relative">
       <button
         onClick={() => setShowThemeSelector(!showThemeSelector)}
         className={cn(
@@ -265,7 +266,7 @@ export function Sidebar({
     </div>
   );
 
-  const SidebarContent = () => (
+  const sidebarContent = (
     <>
       {/* Logo */}
       <div
@@ -280,11 +281,11 @@ export function Sidebar({
             className="flex items-center gap-2 hover:opacity-80 transition-opacity duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30 rounded-lg px-1"
             aria-label="Go to home page"
           >
-            <span className="text-2xl leading-none" aria-hidden="true">🍬</span>
+            <span className="text-2xl leading-none animate-candy-float" aria-hidden="true">🍭</span>
             <span className="font-bold text-lg font-candy candy-gradient-text">~/Skills</span>
           </button>
         )}
-        {collapsed && <span className="text-2xl leading-none">🍬</span>}
+        {collapsed && <span className="text-2xl leading-none animate-candy-float">🍭</span>}
       </div>
 
       {/* Navigation */}
@@ -317,7 +318,7 @@ export function Sidebar({
         )}
       >
         {/* Theme Selector */}
-        <ThemeSelector />
+        {themeSelector}
 
         {/* Light/Dark Mode Toggle */}
         <button
@@ -520,7 +521,7 @@ export function Sidebar({
           onClick={() => navigate('/')}
           className="flex items-center gap-2 hover:opacity-80 transition-opacity"
         >
-          <span className="text-xl leading-none">🍬</span>
+          <span className="text-xl leading-none animate-candy-float">🍭</span>
           <span className="font-bold text-base font-candy">Candy Shop</span>
         </button>
 
@@ -562,7 +563,7 @@ export function Sidebar({
           <X className="w-5 h-5" />
         </button>
         <div className="pt-12">
-          <SidebarContent />
+          {sidebarContent}
         </div>
       </aside>
 
@@ -574,7 +575,7 @@ export function Sidebar({
           collapsed ? 'w-16' : 'w-64'
         )}
       >
-        <SidebarContent />
+        {sidebarContent}
       </aside>
     </>
   );

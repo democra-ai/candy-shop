@@ -1,4 +1,5 @@
 import { ShoppingBag, User as UserIcon, LogOut, Plus, Library } from 'lucide-react';
+
 import { useNavigate } from 'react-router-dom';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabaseClient';
@@ -22,7 +23,7 @@ export function Header({ onOpenAuth, onOpenCart, user, cartCount, onNavFind, onN
         {/* Logo Area */}
         <div className="flex items-center gap-2 font-mono text-sm md:text-base">
           <button onClick={() => navigate('/')} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <span className="text-2xl leading-none">🍬</span>
+            <span className="text-2xl leading-none animate-candy-float">🍭</span>
             <span className="font-bold text-foreground font-candy text-lg">
               ~/ Candy-Shop
             </span>
