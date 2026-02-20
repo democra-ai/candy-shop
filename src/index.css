@@ -1,6 +1,7 @@
-@import '@fontsource/inter/400.css';
-@import '@fontsource/inter/600.css';
-@import '@fontsource/inter/700.css';
+@import '@fontsource/quicksand/400.css';
+@import '@fontsource/quicksand/500.css';
+@import '@fontsource/quicksand/600.css';
+@import '@fontsource/quicksand/700.css';
 @import '@fontsource/fira-code/400.css';
 @import '@fontsource/fira-code/500.css';
 @import '@fontsource/fira-code/600.css';
@@ -14,121 +15,133 @@
 
 @layer base {
   :root {
-    /* ==================== CandyShop Light ==================== */
+    /* ==================== Confiserie de Luxe — Light ==================== */
 
-    /* Background */
-    --color-background: #fffbfe;
-    --color-background-secondary: #fef7fb;
-    --color-background-tertiary: #fdf2f8;
+    /* Background — warm cream tones */
+    --color-background: #FFF8F0;
+    --color-background-secondary: #FFF3E8;
+    --color-background-tertiary: #FFEDE0;
 
-    /* Card */
-    --color-card: #ffffff;
-    --color-card-foreground: #1a1625;
+    /* Card — white with warm pink tint */
+    --color-card: #FFFBF8;
+    --color-card-foreground: #2D1B14;
 
-    /* Text */
-    --color-foreground: #1a1625;
-    --color-foreground-secondary: #6b5f7a;
-    --color-foreground-tertiary: #a097ad;
-    --color-foreground-muted: #d4cede;
+    /* Text — chocolate tones */
+    --color-foreground: #2D1B14;
+    --color-foreground-secondary: #7A6058;
+    --color-foreground-tertiary: #9A8A82;
+    --color-foreground-muted: #D4C4BC;
 
-    /* Primary — Candy Pink */
-    --color-primary: #e91e8c;
-    --color-primary-hover: #d41a7f;
-    --color-primary-active: #bf1672;
-    --color-primary-foreground: #ffffff;
+    /* Primary — Rich Raspberry */
+    --color-primary: #D4246A;
+    --color-primary-hover: #BF1F5F;
+    --color-primary-active: #A81A54;
+    --color-primary-foreground: #FFFFFF;
 
     /* Secondary */
-    --color-secondary: #f8f0f5;
-    --color-secondary-foreground: #1a1625;
+    --color-secondary: #F5EDE4;
+    --color-secondary-foreground: #2D1B14;
 
-    /* Accent — Candy Teal */
-    --color-accent: #2dd4bf;
-    --color-accent-foreground: #0f766e;
+    /* Accent — Sophisticated Mint */
+    --color-accent: #6EC6B8;
+    --color-accent-foreground: #1A5C52;
+
+    /* Candy tokens */
+    --color-caramel: #D4A574;
+    --color-mint: #6EC6B8;
+    --color-chocolate: #2D1B14;
+    --color-cream: #FFF8F0;
 
     /* Semantic */
-    --color-success: #10b981;
-    --color-success-foreground: #ffffff;
-    --color-warning: #f59e0b;
-    --color-warning-foreground: #ffffff;
-    --color-error: #ef4444;
-    --color-error-foreground: #ffffff;
-    --color-info: #6366f1;
-    --color-info-foreground: #ffffff;
+    --color-success: #4CAF82;
+    --color-success-foreground: #FFFFFF;
+    --color-warning: #E8A84C;
+    --color-warning-foreground: #FFFFFF;
+    --color-error: #D94848;
+    --color-error-foreground: #FFFFFF;
+    --color-info: #5B7FD6;
+    --color-info-foreground: #FFFFFF;
 
-    /* Border */
-    --color-border: #f0e4ec;
-    --color-border-hover: #e6d4e0;
+    /* Border — warm */
+    --color-border: #F0DDD0;
+    --color-border-hover: #E6C8B8;
 
     /* Input */
-    --color-input: #ffffff;
-    --color-input-border: #f0e4ec;
-    --color-ring: #e91e8c;
+    --color-input: #FFFBF8;
+    --color-input-border: #F0DDD0;
+    --color-ring: #D4246A;
 
-    /* Syntax */
-    --color-syntax-keyword: #9333ea;
-    --color-syntax-string: #059669;
-    --color-syntax-comment: #a097ad;
-    --color-syntax-variable: #e91e8c;
-    --color-syntax-function: #6366f1;
+    /* Syntax — candy-themed */
+    --color-syntax-keyword: #D4246A;
+    --color-syntax-string: #4CAF82;
+    --color-syntax-comment: #B8A090;
+    --color-syntax-variable: #D4A574;
+    --color-syntax-function: #6EC6B8;
   }
 
   .dark {
-    /* ==================== CandyShop Dark ==================== */
+    /* ==================== Confiserie de Luxe — Dark ==================== */
 
-    /* Background */
-    --color-background: #0f0b15;
-    --color-background-secondary: #1a1425;
-    --color-background-tertiary: #251e33;
+    /* Background — deep dark chocolate */
+    --color-background: #1A0E0A;
+    --color-background-secondary: #221510;
+    --color-background-tertiary: #2D1E18;
 
-    /* Card */
-    --color-card: #1a1425;
-    --color-card-foreground: #f5f0fa;
+    /* Card — dark truffle */
+    --color-card: #261A15;
+    --color-card-foreground: #F5EDE4;
 
-    /* Text */
-    --color-foreground: #f5f0fa;
-    --color-foreground-secondary: #a097ad;
-    --color-foreground-tertiary: #6b5f7a;
-    --color-foreground-muted: #3d3450;
+    /* Text — cream tones */
+    --color-foreground: #F5EDE4;
+    --color-foreground-secondary: #B8A898;
+    --color-foreground-tertiary: #8A7A70;
+    --color-foreground-muted: #3D2E28;
 
-    /* Primary — Candy Pink (brighter in dark) */
-    --color-primary: #f472b6;
-    --color-primary-hover: #f9a8d4;
-    --color-primary-active: #ec4899;
-    --color-primary-foreground: #0f0b15;
+    /* Primary — Soft Rose */
+    --color-primary: #F28BAE;
+    --color-primary-hover: #F5A0BF;
+    --color-primary-active: #E8759A;
+    --color-primary-foreground: #1A0E0A;
 
     /* Secondary */
-    --color-secondary: #251e33;
-    --color-secondary-foreground: #f5f0fa;
+    --color-secondary: #2D1E18;
+    --color-secondary-foreground: #F5EDE4;
 
-    /* Accent — Candy Teal */
-    --color-accent: #2dd4bf;
-    --color-accent-foreground: #115e59;
+    /* Accent */
+    --color-accent: #7ED6C8;
+    --color-accent-foreground: #1A4A42;
+
+    /* Candy tokens (dark) */
+    --color-caramel: #E8C49A;
+    --color-mint: #7ED6C8;
+    --color-chocolate: #F5EDE4;
+    --color-cream: #1A0E0A;
 
     /* Semantic */
-    --color-success: #34d399;
-    --color-success-foreground: #064e3b;
-    --color-warning: #fbbf24;
-    --color-warning-foreground: #78350f;
-    --color-error: #f87171;
-    --color-error-foreground: #7f1d1d;
-    --color-info: #818cf8;
-    --color-info-foreground: #1e1b4b;
+    --color-success: #6BCF9E;
+    --color-success-foreground: #0D3B26;
+    --color-warning: #F0C06A;
+    --color-warning-foreground: #5A3A00;
+    --color-error: #F07070;
+    --color-error-foreground: #5A0000;
+    --color-info: #8AA4F0;
+    --color-info-foreground: #1A2850;
 
     /* Border */
-    --color-border: #2d2540;
-    --color-border-hover: #3d3450;
+    --color-border: #3D2E28;
+    --color-border-hover: #4D3E38;
 
     /* Input */
-    --color-input: #1a1425;
-    --color-input-border: #2d2540;
-    --color-ring: #f472b6;
+    --color-input: #261A15;
+    --color-input-border: #3D2E28;
+    --color-ring: #F28BAE;
 
-    /* Syntax */
-    --color-syntax-keyword: #c084fc;
-    --color-syntax-string: #34d399;
-    --color-syntax-comment: #6b5f7a;
-    --color-syntax-variable: #f472b6;
-    --color-syntax-function: #818cf8;
+    /* Syntax (dark) */
+    --color-syntax-keyword: #F28BAE;
+    --color-syntax-string: #6BCF9E;
+    --color-syntax-comment: #6A5A50;
+    --color-syntax-variable: #E8C49A;
+    --color-syntax-function: #7ED6C8;
   }
 }
 
@@ -138,37 +151,31 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-background text-foreground font-body antialiased;
   }
 
-  /* Global selection styling */
   ::selection {
     background-color: var(--color-primary);
     color: var(--color-primary-foreground);
   }
 
-  /* Focus-visible for keyboard users — consistent ring across the app */
   :focus-visible {
     outline: 2px solid var(--color-ring);
     outline-offset: 2px;
-    border-radius: 4px;
+    border-radius: 6px;
   }
 
-  /* Reduced motion preference */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
     }
-
-    html {
-      scroll-behavior: auto;
-    }
+    html { scroll-behavior: auto; }
   }
 }
 
-/* Scrollbar */
+/* ==================== Scrollbar ==================== */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -186,23 +193,126 @@
   @apply bg-foreground-tertiary;
 }
 
-/* Candy gradient utility */
+/* ==================== Glass Morphism ==================== */
+.glass {
+  background: rgba(255, 251, 248, 0.65);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid rgba(240, 221, 208, 0.4);
+}
+
+.dark .glass {
+  background: rgba(38, 26, 21, 0.65);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid rgba(61, 46, 40, 0.4);
+}
+
+.glass-strong {
+  background: rgba(255, 251, 248, 0.85);
+  backdrop-filter: blur(20px) saturate(200%);
+  -webkit-backdrop-filter: blur(20px) saturate(200%);
+}
+
+.dark .glass-strong {
+  background: rgba(38, 26, 21, 0.85);
+  backdrop-filter: blur(20px) saturate(200%);
+  -webkit-backdrop-filter: blur(20px) saturate(200%);
+}
+
+/* ==================== Candy Gradients ==================== */
 .candy-gradient {
-  background: linear-gradient(135deg, #e91e8c 0%, #9333ea 50%, #6366f1 100%);
+  background: linear-gradient(135deg, #D4246A 0%, #D4A574 50%, #6EC6B8 100%);
 }
 
 .candy-gradient-soft {
-  background: linear-gradient(135deg, rgba(233, 30, 140, 0.08) 0%, rgba(147, 51, 234, 0.06) 50%, rgba(99, 102, 241, 0.04) 100%);
+  background: linear-gradient(135deg, rgba(212,36,106,0.08) 0%, rgba(212,165,116,0.06) 50%, rgba(110,198,184,0.04) 100%);
 }
 
 .candy-gradient-text {
-  background: linear-gradient(135deg, #e91e8c 0%, #9333ea 50%, #6366f1 100%);
+  background: linear-gradient(135deg, #D4246A 0%, #D4A574 60%, #6EC6B8 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* Animations */
+.candy-gradient-raspberry-gold {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-caramel) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ==================== Gradient Border ==================== */
+.gradient-border {
+  position: relative;
+  background-clip: padding-box;
+}
+
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, #D4246A, #D4A574, #6EC6B8);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.gradient-border:hover::before {
+  opacity: 1;
+}
+
+/* ==================== Sprinkle Pattern ==================== */
+.sprinkle-pattern {
+  background-image: radial-gradient(circle, var(--color-primary) 1px, transparent 1px),
+                    radial-gradient(circle, var(--color-caramel) 0.5px, transparent 0.5px);
+  background-size: 40px 40px, 30px 30px;
+  background-position: 0 0, 15px 15px;
+  opacity: 0.03;
+}
+
+/* ==================== Button Press Effect ==================== */
+.btn-press {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.btn-press:active {
+  transform: scale(0.96);
+}
+
+/* ==================== Card Hover Lift ==================== */
+.card-luxe {
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.card-luxe:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px -8px rgba(212, 36, 106, 0.1), 0 4px 12px rgba(45, 27, 20, 0.06);
+}
+
+/* ==================== Staggered Reveal ==================== */
+.stagger-reveal > * {
+  opacity: 0;
+  animation: slide-up 0.5s ease-out forwards;
+}
+.stagger-reveal > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-reveal > *:nth-child(2) { animation-delay: 60ms; }
+.stagger-reveal > *:nth-child(3) { animation-delay: 120ms; }
+.stagger-reveal > *:nth-child(4) { animation-delay: 180ms; }
+.stagger-reveal > *:nth-child(5) { animation-delay: 240ms; }
+.stagger-reveal > *:nth-child(6) { animation-delay: 300ms; }
+.stagger-reveal > *:nth-child(7) { animation-delay: 360ms; }
+.stagger-reveal > *:nth-child(8) { animation-delay: 420ms; }
+.stagger-reveal > *:nth-child(9) { animation-delay: 480ms; }
+.stagger-reveal > *:nth-child(10) { animation-delay: 540ms; }
+.stagger-reveal > *:nth-child(11) { animation-delay: 600ms; }
+.stagger-reveal > *:nth-child(12) { animation-delay: 660ms; }
+
+/* ==================== Animations ==================== */
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -233,32 +343,6 @@
   100% { background-position: 200% 0; }
 }
 
-.animate-fade-in {
-  animation: fade-in 0.2s ease-out;
-}
-
-.animate-fade-out {
-  animation: fade-out 0.2s ease-in;
-}
-
-.animate-zoom-in {
-  animation: zoom-in 0.2s ease-out;
-}
-
-.animate-zoom-out {
-  animation: zoom-out 0.2s ease-out;
-}
-
-.animate-float {
-  animation: float 3s ease-in-out infinite;
-}
-
-.animate-shimmer {
-  background-size: 200% 100%;
-  animation: shimmer 2s linear infinite;
-}
-
-/* Normal Mode Animations */
 @keyframes gradient-shift {
   0%, 100% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
@@ -291,24 +375,48 @@
   }
 }
 
+@keyframes jelly {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.12, 0.88); }
+  40% { transform: scale(0.88, 1.12); }
+  50% { transform: scale(1.05, 0.95); }
+  65% { transform: scale(0.98, 1.02); }
+  75% { transform: scale(1.02, 0.98); }
+  100% { transform: scale(1); }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 5px rgba(212, 36, 106, 0.1); }
+  50% { box-shadow: 0 0 20px rgba(212, 36, 106, 0.2), 0 0 40px rgba(212, 36, 106, 0.05); }
+}
+
+@keyframes candy-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-8px) rotate(5deg); }
+  75% { transform: translateY(-4px) rotate(-3deg); }
+}
+
+.animate-fade-in { animation: fade-in 0.2s ease-out; }
+.animate-fade-out { animation: fade-out 0.2s ease-in; }
+.animate-zoom-in { animation: zoom-in 0.2s ease-out; }
+.animate-zoom-out { animation: zoom-out 0.2s ease-out; }
+.animate-float { animation: float 3s ease-in-out infinite; }
+.animate-shimmer {
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+}
 .animate-gradient {
   background-size: 200% 200%;
   animation: gradient-shift 3s ease infinite;
 }
+.animate-pulse-soft { animation: pulse-soft 2s ease-in-out infinite; }
+.animate-slide-up { animation: slide-up 0.5s ease-out; }
+.animate-scale-in { animation: scale-in 0.3s ease-out; }
+.animate-jelly { animation: jelly 0.5s ease; }
+.animate-glow-pulse { animation: glow-pulse 2s ease-in-out infinite; }
+.animate-candy-float { animation: candy-float 4s ease-in-out infinite; }
 
-.animate-pulse-soft {
-  animation: pulse-soft 2s ease-in-out infinite;
-}
-
-.animate-slide-up {
-  animation: slide-up 0.5s ease-out;
-}
-
-.animate-scale-in {
-  animation: scale-in 0.3s ease-out;
-}
-
-/* Line clamp utility */
+/* ==================== Utility Classes ==================== */
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -323,13 +431,11 @@
   overflow: hidden;
 }
 
-/* User Mode Specific Styles */
 [data-version-mode="user"] {
-  --normal-primary: #f43f5e;
-  --normal-secondary: #f59e0b;
+  --normal-primary: #D4246A;
+  --normal-secondary: #D4A574;
 }
 
-/* Hide scrollbar but keep scroll functionality */
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -338,7 +444,6 @@
   display: none;
 }
 
-/* ==================== Card Mode Transition ==================== */
 .duration-400 {
   transition-duration: 400ms;
 }

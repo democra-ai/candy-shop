@@ -57,14 +57,14 @@ const THEME_COLORS: Record<
   },
   rose: {
     light: {
-      '--color-primary': '#F43F5E',
-      '--color-primary-hover': '#E11D48',
-      '--color-primary-active': '#BE123C',
+      '--color-primary': '#D4246A',
+      '--color-primary-hover': '#BF1F5F',
+      '--color-primary-active': '#A81A54',
     },
     dark: {
-      '--color-primary': '#FB7185',
-      '--color-primary-hover': '#FDA4AF',
-      '--color-primary-active': '#F43F5E',
+      '--color-primary': '#F28BAE',
+      '--color-primary-hover': '#F5A0BF',
+      '--color-primary-active': '#E8759A',
     },
   },
   violet: {
@@ -104,11 +104,11 @@ export function Layout({
 }: LayoutProps) {
   const { t } = useLanguage();
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [currentTheme, setCurrentTheme] = useState('indigo');
+  const [currentTheme, setCurrentTheme] = useState('rose');
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
-    const savedColorTheme = localStorage.getItem('colorTheme') || 'indigo';
+    const savedColorTheme = localStorage.getItem('colorTheme') || 'rose';
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
     setCurrentTheme(savedColorTheme);
@@ -122,7 +122,7 @@ export function Layout({
   }, []);
 
   const applyThemeColors = (themeName: string, isDark: boolean) => {
-    const themeColors = THEME_COLORS[themeName] || THEME_COLORS.indigo;
+    const themeColors = THEME_COLORS[themeName] || THEME_COLORS.rose;
     const colors = isDark ? themeColors.dark : themeColors.light;
 
     Object.entries(colors).forEach(([key, value]) => {
@@ -150,7 +150,12 @@ export function Layout({
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative">
+      {/* Subtle mesh gradient background */}
+      <div className="fixed inset-0 bg-candy-mesh pointer-events-none" aria-hidden="true" />
+      {/* Sprinkle dot pattern */}
+      <div className="fixed inset-0 sprinkle-pattern pointer-events-none" aria-hidden="true" />
+
       <Sidebar
         onOpenAuth={onOpenAuth}
         onOpenCart={onOpenCart}
@@ -164,20 +169,47 @@ export function Layout({
         currentTheme={currentTheme}
         onChangeTheme={changeTheme}
       />
-      <main className="lg:pl-64 min-h-screen">
+      <main className="lg:pl-64 pt-14 lg:pt-0 min-h-screen relative">
         <div className="container max-w-7xl mx-auto px-4 sm:px-8 py-8 md:py-12">{children}</div>
       </main>
 
-      <footer className="w-full border-t border-border py-6 mt-12 bg-card/50 relative">
-        <div className="container max-w-7xl mx-auto px-4 flex items-center justify-between text-xs text-foreground-secondary font-mono">
-          <p>{t('footer.tagline')}</p>
-          <button
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="hover:text-primary transition-colors duration-200 cursor-pointer px-3 py-2 rounded-md hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-primary/30"
-            aria-label="Scroll to top"
-          >
-            {t('footer.backToTop')}
-          </button>
+      <footer className="lg:pl-64 w-full relative mt-16">
+        {/* Gradient divider */}
+        <div className="h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+        <div className="py-10 glass-strong">
+          <div className="container max-w-7xl mx-auto px-4">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3 text-sm text-foreground-secondary font-body">
+                <span className="text-lg">🍬</span>
+                <p>{t('footer.tagline')}</p>
+              </div>
+              <div className="flex items-center gap-6 text-xs text-foreground-tertiary font-mono">
+                <a
+                  href="https://github.com/anthropics/claude-skills"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-primary transition-colors duration-200"
+                >
+                  GitHub
+                </a>
+                <a
+                  href="https://github.com/ClaudioHQ/awesome-claude-skills"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-primary transition-colors duration-200"
+                >
+                  Community
+                </a>
+                <button
+                  onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                  className="hover:text-primary transition-colors duration-200 cursor-pointer px-3 py-2 rounded-lg hover:bg-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  aria-label="Scroll to top"
+                >
+                  {t('footer.backToTop')} ↑
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </footer>
     </div>

@@ -1,6 +1,6 @@
 import { Search, ShoppingBag, Check, X, Calendar, Heart, Play, Star, Github, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { SKILLS_DATA, type Skill } from '../../data/skillsData';
+import { SKILLS_DATA, SKILL_CATEGORIES, type Skill } from '../../data/skillsData';
 import { SkillModal } from '../common/SkillModal';
 import { storageUtils } from '../../utils/storage';
 import { cn } from '../../utils/cn';
@@ -33,6 +33,15 @@ const getCategoryColor = (category: string) => {
   return colors[category] || { bg: 'bg-gray-500/10', text: 'text-gray-400', border: 'border-gray-500/20', solid: 'bg-gray-500', illustration: '/illustrations/development.png' };
 };
 
+const POPULAR_TAGS = (() => {
+  const tagCounts: Record<string, number> = {};
+  SKILLS_DATA.forEach(s => s.tags.forEach(t => { tagCounts[t] = (tagCounts[t] || 0) + 1; }));
+  return Object.entries(tagCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([tag]) => tag);
+})();
+
 export function SkillsGrid({
   searchQuery,
   setSearchQuery,
@@ -47,14 +56,12 @@ export function SkillsGrid({
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const isDebouncing = searchQuery !== debouncedSearchQuery;
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
-  // Use lazy initializer to load liked skills from storage
   const [likedSkills, setLikedSkills] = useState<Set<string>>(() => new Set(storageUtils.getLikes()));
   const searchInputRef = useRef<HTMLInputElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const ITEMS_PER_PAGE = 12;
   const [currentPage, setCurrentPage] = useState(0);
 
-  // Reset page when filters change
   const prevFiltersRef = useRef({ searchQuery: debouncedSearchQuery, tagFilter });
   useEffect(() => {
     const prev = prevFiltersRef.current;
@@ -64,7 +71,6 @@ export function SkillsGrid({
     }
   }, [debouncedSearchQuery, tagFilter]);
 
-  // Cmd+K / Ctrl+K keyboard shortcut to focus search
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -122,17 +128,14 @@ export function SkillsGrid({
     gridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  // Track last visible count for skeleton matching
   const lastVisibleCountRef = useRef(pageSkills.length || ITEMS_PER_PAGE);
   if (pageSkills.length > 0) lastVisibleCountRef.current = pageSkills.length;
 
-  // Use refs to avoid re-registering listeners on every page change
   const currentPageRef = useRef(currentPage);
   const totalPagesRef = useRef(totalPages);
   currentPageRef.current = currentPage;
   totalPagesRef.current = totalPages;
 
-  // Keyboard left/right arrow navigation + swipe support
   useEffect(() => {
     let touchStartX = 0;
     const SWIPE_THRESHOLD = 50;
@@ -168,6 +171,27 @@ export function SkillsGrid({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const paginationItems = useMemo(() => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i);
+    }
+    const pages: (number | 'ellipsis-start' | 'ellipsis-end')[] = [];
+    pages.push(0);
+    if (currentPage > 2) pages.push('ellipsis-start');
+    for (let i = Math.max(1, currentPage - 1); i <= Math.min(totalPages - 2, currentPage + 1); i++) {
+      pages.push(i);
+    }
+    if (currentPage < totalPages - 3) pages.push('ellipsis-end');
+    pages.push(totalPages - 1);
+    const seen = new Set<number | string>();
+    return pages.filter(v => {
+      const key = typeof v === 'number' ? v : v;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [totalPages, currentPage]);
+
   return (
     <>
       <section className="py-20 bg-background" id="skills-grid">
@@ -178,12 +202,12 @@ export function SkillsGrid({
               <h2 className="text-3xl font-candy font-bold mb-2 text-foreground">
                 {tagFilter ? t('skills.categoryModules', { category: tagFilter }) : t('skills.freshlyBaked')}
               </h2>
-              <div className="flex items-center gap-2 text-muted-foreground font-mono text-sm">
+              <div className="flex items-center gap-2 text-foreground-tertiary font-mono text-sm">
                 <span>$ ls ./inventory</span>
                 {tagFilter && (
                   <button
                     onClick={() => setTagFilter(null)}
-                    className="px-2 py-0.5 bg-secondary text-secondary-foreground rounded hover:bg-secondary/80 transition-colors flex items-center gap-1"
+                    className="px-2 py-0.5 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors flex items-center gap-1"
                   >
                     --filter="{tagFilter}" <X className="w-3 h-3" />
                   </button>
@@ -193,7 +217,7 @@ export function SkillsGrid({
 
             <div className="w-full md:w-96 relative group">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground-tertiary" />
                 <input
                   ref={searchInputRef}
                   id="search-input"
@@ -202,13 +226,13 @@ export function SkillsGrid({
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={t('skills.search')}
                   className={cn(
-                    'w-full h-10 pl-10 pr-16 bg-background border border-input rounded-lg text-sm font-mono',
-                    'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
-                    'transition-all placeholder:text-muted-foreground',
-                    'shadow-sm hover:shadow-md'
+                    'w-full h-11 pl-11 pr-16 glass border border-border/50 rounded-xl text-sm font-mono',
+                    'focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/30',
+                    'transition-all placeholder:text-foreground-tertiary',
+                    'shadow-warm hover:shadow-warm-lg'
                   )}
                 />
-                <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono font-medium text-muted-foreground bg-secondary border border-border rounded">
+                <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center gap-0.5 px-2 py-0.5 text-[10px] font-mono font-medium text-foreground-tertiary glass rounded-md border border-border/30">
                   <span className="text-xs">⌘</span>K
                 </kbd>
               </div>
@@ -221,19 +245,19 @@ export function SkillsGrid({
               {Array.from({ length: lastVisibleCountRef.current }).map((_, i) => (
                 <div
                   key={i}
-                  className="bg-card rounded-xl border border-border overflow-hidden"
+                  className="bg-card/80 rounded-xl border border-border/50 overflow-hidden"
                 >
-                  <div className="h-10 bg-secondary/50 animate-pulse" />
+                  <div className="h-10 bg-secondary/30 animate-pulse" />
                   <div className="p-5 space-y-3">
-                    <div className="h-4 bg-secondary/50 rounded animate-pulse w-3/4" />
-                    <div className="h-3 bg-secondary/50 rounded animate-pulse w-full" />
-                    <div className="h-3 bg-secondary/50 rounded animate-pulse w-2/3" />
+                    <div className="h-4 bg-secondary/30 rounded-lg animate-pulse w-3/4" />
+                    <div className="h-3 bg-secondary/30 rounded-lg animate-pulse w-full" />
+                    <div className="h-3 bg-secondary/30 rounded-lg animate-pulse w-2/3" />
                     <div className="flex gap-2 pt-2">
-                      <div className="h-5 w-16 bg-secondary/50 rounded-full animate-pulse" />
-                      <div className="h-5 w-12 bg-secondary/50 rounded-full animate-pulse" />
+                      <div className="h-5 w-16 bg-secondary/30 rounded-full animate-pulse" />
+                      <div className="h-5 w-12 bg-secondary/30 rounded-full animate-pulse" />
                     </div>
                   </div>
-                  <div className="h-10 bg-secondary/30 animate-pulse" />
+                  <div className="h-10 bg-secondary/20 animate-pulse" />
                 </div>
               ))}
             </div>
@@ -241,8 +265,8 @@ export function SkillsGrid({
 
           {/* Grid */}
           {!isDebouncing && (
-          <div ref={gridRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {pageSkills.map((skill, index) => (
+          <div ref={gridRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 stagger-reveal">
+            {pageSkills.map((skill) => (
               <div
                 key={skill.id}
                 role="button"
@@ -255,265 +279,251 @@ export function SkillsGrid({
                   }
                 }}
                 aria-label={`View details for ${skill.name}`}
-                style={{
-                  animationDelay: `${Math.min(index * 50, 600)}ms`,
-                  animationFillMode: 'forwards',
-                }}
                 className={cn(
-                  'group bg-card rounded-xl border border-border shadow-card',
-                  'hover:shadow-lg hover:shadow-primary/5 hover:border-primary/30 hover:-translate-y-1.5',
+                  'group bg-card/80 glass rounded-xl border border-border/50',
+                  'hover:shadow-card-hover hover:border-primary/20',
                   'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none',
                   'transition-all duration-300 flex flex-col h-full overflow-hidden cursor-pointer',
-                  'opacity-0 animate-slide-up'
+                  'card-luxe gradient-border'
                 )}
               >
                 {/* === Dev Mode: Code-style card === */}
-                <div className={cn(
-                  'transition-all duration-400',
-                  mode === 'dev' ? 'opacity-100 max-h-[500px]' : 'opacity-0 max-h-0 overflow-hidden'
-                )}>
-                  {/* Top Bar (Traffic Lights + Filename) */}
-                  <div
-                    className={cn(
-                      'h-10 px-4 border-b border-border flex items-center bg-muted/30 relative',
-                      'group-hover:bg-muted/50 transition-colors'
-                    )}
-                  >
-                    <div className="flex items-center gap-1.5 absolute left-4">
-                      <div className="w-2.5 h-2.5 rounded-full bg-red-400"></div>
-                      <div className="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
-                      <div className="w-2.5 h-2.5 rounded-full bg-green-400"></div>
-                    </div>
-                    <div className="mx-auto text-xs font-mono text-muted-foreground font-medium">
-                      {skill.id}.ts
-                    </div>
-                  </div>
-
-                  {/* Code Content */}
-                  <div className="p-5 flex-1 font-mono text-sm leading-relaxed">
-                    {/* Syntax Highlighted Text */}
-                    <div className="pl-4 border-l-2 border-border">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-syntax-keyword font-bold">export</span>
-                        <span className="text-syntax-variable font-bold">
-                          {skill.name.replace(/\s+/g, '')}
-                        </span>
+                {mode === 'dev' && (
+                  <>
+                    {/* Top Bar */}
+                    <div
+                      className={cn(
+                        'h-10 px-4 border-b border-border/50 flex items-center bg-secondary/30 relative',
+                        'group-hover:bg-secondary/50 transition-colors'
+                      )}
+                    >
+                      <div className="flex items-center gap-1.5 absolute left-4">
+                        <div className="w-2.5 h-2.5 rounded-full bg-red-400"></div>
+                        <div className="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
+                        <div className="w-2.5 h-2.5 rounded-full bg-green-400"></div>
                       </div>
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className="text-syntax-keyword">from</span>
-                        <span className="text-syntax-string text-xs truncate">
-                          "{skill.installCommand.split(' ').pop()}"
-                        </span>
-                      </div>
-
-                      {/* Tags */}
-                      <div className="flex flex-wrap gap-2 mb-3 border-l-2 border-border pl-3">
-                        <span className="text-primary/70 text-[10px] uppercase font-bold tracking-tight bg-primary/5 px-2 rounded">// {skill.category}</span>
-                        {skill.tags.map(tag => (
-                          <span key={tag} className="text-foreground-secondary text-[10px] uppercase font-bold tracking-tight bg-secondary/30 px-2 rounded">{tag}</span>
-                        ))}
+                      <div className="mx-auto text-xs font-mono text-foreground-tertiary font-medium">
+                        {skill.id}.ts
                       </div>
                     </div>
-                  </div>
 
-                  {/* Footer Status Bar */}
-                  <div
-                    className={cn(
-                      'h-10 px-4 border-t border-border bg-muted/20 flex items-center justify-between text-xs font-mono text-muted-foreground',
-                      'group-hover:bg-muted/30 transition-colors'
-                    )}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-3 h-3" />
-                      <span>{t('skills.updatedToday')}</span>
+                    {/* Code Content */}
+                    <div className="p-5 flex-1 font-mono text-sm leading-relaxed">
+                      <div className="pl-4 border-l-2 border-primary/20 group-hover:border-primary/40 transition-colors">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-syntax-keyword font-bold">export</span>
+                          <span className="text-syntax-variable font-bold">
+                            {skill.name.replace(/\s+/g, '')}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="text-syntax-keyword">from</span>
+                          <span className="text-syntax-string text-xs truncate">
+                            "{skill.installCommand.split(' ').pop()}"
+                          </span>
+                        </div>
+
+                        <p className="text-syntax-comment text-xs mb-3 line-clamp-2 leading-relaxed">
+                          // {skill.description}
+                        </p>
+
+                        <div className="flex flex-wrap gap-2 mb-3 border-l-2 border-border/50 pl-3">
+                          <span className="text-primary/70 text-[10px] uppercase font-bold tracking-tight bg-primary/5 px-2 rounded">// {skill.category}</span>
+                          {skill.tags.map(tag => (
+                            <span key={tag} className="text-foreground-secondary text-[10px] uppercase font-bold tracking-tight bg-secondary/30 px-2 rounded">{tag}</span>
+                          ))}
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      {/* Run Button */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onRunSkill(skill);
-                        }}
-                        className="p-2 rounded-md hover:text-green-600 hover:bg-green-500/10 transition-all duration-200 cursor-pointer min-w-[32px] min-h-[32px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-green-500/30"
-                        title="Run skill"
-                        aria-label={`Run ${skill.name}`}
-                      >
-                        <Play className="w-3.5 h-3.5" />
-                      </button>
+                    {/* Footer Status Bar */}
+                    <div
+                      className={cn(
+                        'h-10 px-4 border-t border-border/50 bg-secondary/10 flex items-center justify-between text-xs font-mono text-foreground-tertiary',
+                        'group-hover:bg-secondary/20 transition-colors'
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-3 h-3" />
+                        <span>{t('skills.updatedToday')}</span>
+                      </div>
 
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleLike(skill.id);
-                        }}
-                        className="p-2 rounded-md hover:text-destructive hover:bg-destructive/10 transition-all duration-200 cursor-pointer min-w-[32px] min-h-[32px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-destructive/30"
-                        type="button"
-                        aria-label={likedSkills.has(skill.id) ? 'Unlike skill' : 'Like skill'}
-                      >
-                        <Heart
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onRunSkill(skill);
+                          }}
+                          className="p-2 rounded-lg hover:text-green-600 hover:bg-green-500/10 transition-all duration-200 cursor-pointer btn-press min-w-[32px] min-h-[32px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-green-500/30"
+                          title={t('skills.runSkill')}
+                          aria-label={`Run ${skill.name}`}
+                        >
+                          <Play className="w-3.5 h-3.5" />
+                        </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleLike(skill.id);
+                          }}
+                          className="p-2 rounded-lg hover:text-pink-500 hover:bg-pink-500/10 transition-all duration-200 cursor-pointer btn-press min-w-[32px] min-h-[32px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-pink-500/30"
+                          type="button"
+                          aria-label={likedSkills.has(skill.id) ? 'Unlike skill' : 'Like skill'}
+                        >
+                          <Heart
+                            className={cn(
+                              'w-3.5 h-3.5 transition-colors pointer-events-none',
+                              likedSkills.has(skill.id) ? 'fill-pink-500 text-pink-500' : ''
+                            )}
+                          />
+                        </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleCart(skill.id);
+                          }}
                           className={cn(
-                            'w-3.5 h-3.5 transition-colors pointer-events-none',
-                            likedSkills.has(skill.id) ? 'fill-destructive text-destructive' : ''
+                            'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] uppercase font-bold tracking-wide transition-all duration-200 border cursor-pointer btn-press min-h-[28px] focus:outline-none focus:ring-2 focus:ring-primary/30',
+                            cart.has(skill.id)
+                              ? 'bg-green-500/10 border-green-500/20 text-green-600 hover:bg-green-500/20'
+                              : 'glass border-border/50 text-foreground-tertiary hover:border-primary/30 hover:text-primary'
                           )}
-                        />
-                      </button>
-
-                      {/* Add Button */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onToggleCart(skill.id);
-                        }}
-                        className={cn(
-                          'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] uppercase font-bold tracking-wide transition-all duration-200 border cursor-pointer min-h-[28px] focus:outline-none focus:ring-2 focus:ring-primary/30',
-                          cart.has(skill.id)
-                            ? 'bg-green-500/10 border-green-500/20 text-green-600 hover:bg-green-500/20'
-                            : 'bg-background border-border text-muted-foreground hover:border-primary/30 hover:text-primary'
-                        )}
-                        aria-label={cart.has(skill.id) ? t('skills.removeFromBag', { name: skill.name }) : t('skills.addToBag', { name: skill.name })}
-                      >
-                        {cart.has(skill.id) ? (
-                          <>
-                            <Check className="w-3 h-3" />
-                            <span>{t('skills.inBag')}</span>
-                          </>
-                        ) : (
-                          <>
-                            <ShoppingBag className="w-3 h-3" />
-                            <span>{t('skills.add')}</span>
-                          </>
-                        )}
-                      </button>
+                          aria-label={cart.has(skill.id) ? t('skills.removeFromBag', { name: skill.name }) : t('skills.addToBag', { name: skill.name })}
+                        >
+                          {cart.has(skill.id) ? (
+                            <>
+                              <Check className="w-3 h-3" />
+                              <span>{t('skills.inBag')}</span>
+                            </>
+                          ) : (
+                            <>
+                              <ShoppingBag className="w-3 h-3" />
+                              <span>{t('skills.add')}</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  </>
+                )}
 
                 {/* === User Mode: Image+Text card === */}
-                <div className={cn(
-                  'transition-all duration-400',
-                  mode === 'user' ? 'opacity-100 max-h-[600px]' : 'opacity-0 max-h-0 overflow-hidden'
-                )}>
-                  {/* Illustration banner */}
-                  <div className={`relative h-36 overflow-hidden ${getCategoryColor(skill.category).bg}`}>
-                    <img
-                      src={getCategoryColor(skill.category).illustration}
-                      alt={skill.category}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
-                    {/* Gradient overlay for readability */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-card via-card/40 to-transparent" />
-                    {/* Floating icon on illustration */}
-                    <div className="absolute bottom-3 left-4 flex items-center gap-3">
-                      <div className={`w-11 h-11 rounded-xl ${getCategoryColor(skill.category).bg} backdrop-blur-sm border ${getCategoryColor(skill.category).border} flex items-center justify-center text-xl shadow-lg`}>
-                        {skill.icon}
+                {mode === 'user' && (
+                  <>
+                    <div className={`relative h-36 overflow-hidden ${getCategoryColor(skill.category).bg} rounded-t-xl`}>
+                      <img
+                        src={getCategoryColor(skill.category).illustration}
+                        alt={skill.category}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-card via-card/40 to-transparent" />
+                      <div className="absolute bottom-3 left-4 flex items-center gap-3">
+                        <div className={`w-11 h-11 rounded-xl glass backdrop-blur-sm border ${getCategoryColor(skill.category).border} flex items-center justify-center text-xl shadow-warm-lg`}>
+                          {skill.icon}
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-foreground text-base leading-tight drop-shadow-sm font-candy">
+                            {skill.name}
+                          </h3>
+                          <span className={`text-xs font-medium ${getCategoryColor(skill.category).text}`}>
+                            {skill.category}
+                          </span>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-bold text-foreground text-base leading-tight drop-shadow-sm">
-                          {skill.name}
-                        </h3>
-                        <span className={`text-xs font-medium ${getCategoryColor(skill.category).text}`}>
+                    </div>
+
+                    <div className="p-4 pt-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-1 text-xs text-foreground-secondary">
+                          <Star className="w-3.5 h-3.5 fill-caramel text-caramel" />
+                          <span className="font-medium text-caramel">{skill.popularity || 0}</span>
+                        </div>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium ${getCategoryColor(skill.category).bg} ${getCategoryColor(skill.category).text}`}>
                           {skill.category}
                         </span>
                       </div>
-                    </div>
-                  </div>
 
-                  <div className="p-4 pt-3">
-                    {/* Popularity row */}
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                        <span className="font-medium">{skill.popularity || 0}</span>
+                      <p className="text-sm text-foreground-secondary mb-4 line-clamp-2 leading-relaxed font-body">
+                        {skill.description}
+                      </p>
+
+                      {skill.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mb-4">
+                          {skill.tags.map(tag => (
+                            <span
+                              key={tag}
+                              className="text-[10px] font-medium bg-secondary/50 text-foreground-secondary px-2 py-0.5 rounded-full border border-border/30"
+                            >
+                              #{tag.toLowerCase()}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      <a
+                        href={`https://github.com/${skill.repo}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1.5 text-xs text-foreground-tertiary hover:text-primary transition-colors mb-4 group/link"
+                      >
+                        <Github className="w-3.5 h-3.5" />
+                        <span>{skill.repo}</span>
+                        <span className="opacity-0 group-hover/link:opacity-100 transition-opacity">→</span>
+                      </a>
+
+                      <div className="flex items-center gap-2 mt-auto">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onRunSkill(skill);
+                          }}
+                          className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-primary to-primary-hover text-primary-foreground text-sm font-body font-semibold shadow-candy hover:shadow-candy-lg transition-all duration-300 btn-press"
+                        >
+                          <Play className="w-4 h-4 fill-current" />
+                          {t('skills.runSkill')}
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleLike(skill.id);
+                          }}
+                          className={cn(
+                            "p-2.5 rounded-xl transition-all duration-200 border btn-press",
+                            likedSkills.has(skill.id)
+                              ? "bg-pink-500/10 text-pink-500 border-pink-500/20"
+                              : "glass text-foreground-tertiary border-border/50 hover:text-foreground"
+                          )}
+                        >
+                          <Heart className={cn("w-4 h-4", likedSkills.has(skill.id) ? "fill-current" : "")} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleCart(skill.id);
+                          }}
+                          className={cn(
+                            "p-2.5 rounded-xl transition-all duration-200 border btn-press",
+                            cart.has(skill.id)
+                              ? "bg-green-500/10 text-green-500 border-green-500/20"
+                              : "glass text-foreground-tertiary border-border/50 hover:text-foreground"
+                          )}
+                        >
+                          {cart.has(skill.id) ? (
+                            <Check className="w-4 h-4" />
+                          ) : (
+                            <ShoppingBag className="w-4 h-4" />
+                          )}
+                        </button>
                       </div>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getCategoryColor(skill.category).bg} ${getCategoryColor(skill.category).text}`}>
-                        {skill.category}
-                      </span>
                     </div>
-
-                    {/* Description */}
-                    <p className="text-sm text-muted-foreground mb-4 line-clamp-2 leading-relaxed">
-                      {skill.description}
-                    </p>
-
-                    {/* Tags */}
-                    {skill.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mb-4">
-                        {skill.tags.map(tag => (
-                          <span
-                            key={tag}
-                            className="text-[10px] font-medium bg-secondary/50 text-foreground-tertiary px-2 py-0.5 rounded-full border border-border/50"
-                          >
-                            #{tag.toLowerCase()}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Source Link */}
-                    <a
-                      href={`https://github.com/${skill.repo}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors mb-4 group/link"
-                    >
-                      <Github className="w-3.5 h-3.5" />
-                      <span>{skill.repo}</span>
-                      <span className="opacity-0 group-hover/link:opacity-100 transition-opacity">→</span>
-                    </a>
-
-                    {/* Action buttons */}
-                    <div className="flex items-center gap-2 mt-auto">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onRunSkill(skill);
-                        }}
-                        className="flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary-hover shadow-sm hover:shadow-md transition-all duration-200"
-                      >
-                        <Play className="w-4 h-4 fill-current" />
-                        Run
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleLike(skill.id);
-                        }}
-                        className={cn(
-                          "p-2.5 rounded-xl transition-all duration-200 border",
-                          likedSkills.has(skill.id)
-                            ? "bg-pink-500/10 text-pink-500 border-pink-500/20"
-                            : "bg-background text-foreground-tertiary border-border hover:bg-secondary hover:text-foreground"
-                        )}
-                      >
-                        <Heart className={cn("w-4 h-4", likedSkills.has(skill.id) ? "fill-current" : "")} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onToggleCart(skill.id);
-                        }}
-                        className={cn(
-                          "p-2.5 rounded-xl transition-all duration-200 border",
-                          cart.has(skill.id)
-                            ? "bg-green-500/10 text-green-500 border-green-500/20"
-                            : "bg-background text-foreground-tertiary border-border hover:bg-secondary hover:text-foreground"
-                        )}
-                      >
-                        {cart.has(skill.id) ? (
-                          <Check className="w-4 h-4" />
-                        ) : (
-                          <ShoppingBag className="w-4 h-4" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                  </>
+                )}
               </div>
             ))}
           </div>
@@ -522,48 +532,53 @@ export function SkillsGrid({
           {/* Pagination Controls */}
           {!isDebouncing && totalPages > 1 && (
             <div className="flex flex-col items-center gap-4 pt-10">
-              {/* Arrows + Dots */}
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
                 <button
                   onClick={() => goToPage(currentPage - 1)}
                   disabled={currentPage === 0}
                   className={cn(
-                    'p-2 rounded-full transition-all duration-200',
+                    'p-2 rounded-full transition-all duration-200 btn-press',
                     currentPage === 0
                       ? 'text-foreground-muted cursor-not-allowed'
-                      : 'text-foreground-secondary hover:text-foreground hover:bg-secondary cursor-pointer'
+                      : 'text-foreground-secondary hover:text-foreground hover:bg-secondary/70 cursor-pointer'
                   )}
                   aria-label="Previous page"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
 
-                <div className="flex items-center gap-2" role="tablist" aria-label="Pages">
-                  {Array.from({ length: totalPages }).map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => goToPage(i)}
-                      className={cn(
-                        'rounded-full transition-all duration-300 cursor-pointer',
-                        i === currentPage
-                          ? 'w-6 h-2.5 bg-primary shadow-sm shadow-primary/30'
-                          : 'w-2.5 h-2.5 bg-foreground-muted hover:bg-foreground-tertiary'
-                      )}
-                      aria-label={`Page ${i + 1}`}
-                      aria-current={i === currentPage ? 'page' : undefined}
-                      role="tab"
-                    />
-                  ))}
-                </div>
+                <nav className="flex items-center gap-1" aria-label="Pagination">
+                  {paginationItems.map((item, idx) => {
+                    if (item === 'ellipsis-start' || item === 'ellipsis-end') {
+                      return <span key={`e-${idx}`} className="text-foreground-muted text-xs px-1.5">...</span>;
+                    }
+                    return (
+                      <button
+                        key={item}
+                        onClick={() => goToPage(item)}
+                        className={cn(
+                          'min-w-[32px] h-8 rounded-lg text-xs font-mono transition-all duration-200 cursor-pointer btn-press',
+                          item === currentPage
+                            ? 'bg-gradient-to-r from-primary to-primary-hover text-primary-foreground shadow-candy font-bold'
+                            : 'text-foreground-secondary hover:bg-secondary/70 hover:text-foreground'
+                        )}
+                        aria-label={`Page ${item + 1}`}
+                        aria-current={item === currentPage ? 'page' : undefined}
+                      >
+                        {item + 1}
+                      </button>
+                    );
+                  })}
+                </nav>
 
                 <button
                   onClick={() => goToPage(currentPage + 1)}
                   disabled={currentPage === totalPages - 1}
                   className={cn(
-                    'p-2 rounded-full transition-all duration-200',
+                    'p-2 rounded-full transition-all duration-200 btn-press',
                     currentPage === totalPages - 1
                       ? 'text-foreground-muted cursor-not-allowed'
-                      : 'text-foreground-secondary hover:text-foreground hover:bg-secondary cursor-pointer'
+                      : 'text-foreground-secondary hover:text-foreground hover:bg-secondary/70 cursor-pointer'
                   )}
                   aria-label="Next page"
                 >
@@ -571,7 +586,6 @@ export function SkillsGrid({
                 </button>
               </div>
 
-              {/* Page info */}
               <span className="text-xs text-foreground-tertiary font-mono">
                 {currentPage + 1} / {totalPages}
               </span>
@@ -580,22 +594,22 @@ export function SkillsGrid({
 
           {!isDebouncing && filteredSkills.length === 0 && (
             <div className="flex flex-col items-center justify-center py-24 text-center">
-              <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center mb-6">
+              <div className="w-20 h-20 rounded-2xl glass flex items-center justify-center mb-6 shadow-warm">
                 <Search className="w-8 h-8 text-foreground-tertiary" />
               </div>
-              <h3 className="text-lg font-bold text-foreground mb-2">
+              <h3 className="text-lg font-candy font-bold text-foreground mb-2">
                 {t('skills.noSkillsTitle')}
               </h3>
-              <p className="text-foreground-secondary text-sm max-w-md mb-6">
+              <p className="text-foreground-secondary text-sm font-body max-w-md mb-6">
                 {searchQuery
                   ? t('skills.noResultsSearch', { query: searchQuery })
                   : t('skills.noResultsFilter')}
               </p>
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-3 justify-center mb-6">
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery('')}
-                    className="px-4 py-2 text-sm font-medium bg-secondary text-foreground rounded-lg hover:bg-secondary/80 transition-colors"
+                    className="px-4 py-2 text-sm font-body font-medium glass text-foreground rounded-xl hover:shadow-warm-lg transition-all btn-press"
                   >
                     {t('skills.clearSearch')}
                   </button>
@@ -603,12 +617,29 @@ export function SkillsGrid({
                 {tagFilter && (
                   <button
                     onClick={() => setTagFilter(null)}
-                    className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary-hover transition-colors"
+                    className="px-4 py-2 text-sm font-body font-medium bg-gradient-to-r from-primary to-primary-hover text-primary-foreground rounded-xl shadow-candy hover:shadow-candy-lg transition-all btn-press"
                   >
                     {t('skills.showAll')}
                   </button>
                 )}
               </div>
+
+              {searchQuery && (
+                <div className="flex flex-col items-center gap-3">
+                  <p className="text-xs text-foreground-tertiary font-mono">{t('skills.trySearching')}</p>
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    {POPULAR_TAGS.map(tag => (
+                      <button
+                        key={tag}
+                        onClick={() => setSearchQuery(tag)}
+                        className="px-3 py-1 text-xs font-mono glass text-foreground-secondary rounded-full border border-border/30 hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-all cursor-pointer btn-press"
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

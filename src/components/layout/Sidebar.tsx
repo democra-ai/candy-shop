@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Search,
   Grid3X3,
@@ -42,14 +42,14 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { id: 'find', labelKey: 'nav.find', icon: Search, action: 'find' },
-  { id: 'cd', labelKey: 'nav.cd', icon: Grid3X3, action: 'cd' },
-  { id: 'man', labelKey: 'nav.man', icon: BookOpen, action: 'man' },
+  { id: 'find', labelKey: 'nav.find', userLabelKey: 'nav.find.user', icon: Search, action: 'find' },
+  { id: 'cd', labelKey: 'nav.cd', userLabelKey: 'nav.cd.user', icon: Grid3X3, action: 'cd' },
+  { id: 'man', labelKey: 'nav.man', userLabelKey: 'nav.man.user', icon: BookOpen, action: 'man' },
 ];
 
 const userNavItems = [
-  { id: 'create', labelKey: 'nav.create', icon: Plus, action: 'create' },
-  { id: 'library', labelKey: 'nav.library', icon: Library, action: 'library' },
+  { id: 'create', labelKey: 'nav.create', userLabelKey: 'nav.create.user', icon: Plus, action: 'create' },
+  { id: 'library', labelKey: 'nav.library', userLabelKey: 'nav.library.user', icon: Library, action: 'library' },
 ];
 
 // 主题配置
@@ -106,8 +106,18 @@ export function Sidebar({
   onChangeTheme,
 }: SidebarProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t, language, setLanguage } = useLanguage();
   const { mode, toggleMode } = useVersionMode();
+
+  // Determine which nav item is active based on current route
+  const getActiveAction = (): string | null => {
+    if (location.pathname === '/skills/create') return 'create';
+    if (location.pathname === '/skills/library') return 'library';
+    if (location.pathname === '/') return null; // home page - no specific nav item
+    return null;
+  };
+  const activeAction = getActiveAction();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showThemeSelector, setShowThemeSelector] = useState(false);
@@ -154,23 +164,30 @@ export function Sidebar({
     setShowThemeSelector(false);
   };
 
-  const NavButton = ({ item }: { item: (typeof navItems)[0] }) => (
-    <button
-      onClick={() => handleNavAction(item.action)}
-      className={cn(
-        'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg',
-        'text-sm font-mono transition-all duration-200 cursor-pointer',
-        'hover:bg-secondary hover:text-foreground',
-        'focus:outline-none focus:ring-2 focus:ring-primary/30',
-        collapsed ? 'justify-center' : 'justify-start'
-      )}
-      title={collapsed ? t(item.labelKey) : undefined}
-      aria-label={t(item.labelKey)}
-    >
-      <item.icon className={cn('w-5 h-5 flex-shrink-0 text-foreground-secondary')} />
-      {!collapsed && <span className="truncate">{t(item.labelKey)}</span>}
-    </button>
-  );
+  const NavButton = ({ item }: { item: (typeof navItems)[0] }) => {
+    const isActive = activeAction === item.action;
+    const label = mode === 'user' ? t(item.userLabelKey) : t(item.labelKey);
+    return (
+      <button
+        onClick={() => handleNavAction(item.action)}
+        className={cn(
+          'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg',
+          'text-sm font-mono transition-all duration-200 cursor-pointer',
+          'focus:outline-none focus:ring-2 focus:ring-primary/30',
+          isActive
+            ? 'bg-gradient-to-r from-primary/10 to-primary/5 text-primary border border-primary/20 shadow-sm'
+            : 'hover:bg-secondary/70 hover:text-foreground border border-transparent',
+          collapsed ? 'justify-center' : 'justify-start'
+        )}
+        title={collapsed ? label : undefined}
+        aria-label={label}
+        aria-current={isActive ? 'page' : undefined}
+      >
+        <item.icon className={cn('w-5 h-5 flex-shrink-0', isActive ? 'text-primary' : 'text-foreground-secondary')} />
+        {!collapsed && <span className="truncate">{label}</span>}
+      </button>
+    );
+  };
 
   const ThemeSelector = () => (
     <div ref={themeSelectorRef} className="relative">
@@ -189,7 +206,7 @@ export function Sidebar({
       >
         <div className={cn('flex items-center gap-3', collapsed && 'justify-center')}>
           <Palette className="w-5 h-5 text-foreground-secondary" />
-          {!collapsed && <span>{t('theme')}</span>}
+          {!collapsed && <span className="font-body">{t('theme')}</span>}
         </div>
         {!collapsed && (
           <ChevronDown
@@ -226,7 +243,10 @@ export function Sidebar({
               )}
             >
               <div
-                className="w-5 h-5 rounded-full border-2 border-border flex items-center justify-center"
+                className={cn(
+                  'w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all',
+                  currentTheme === theme.id ? 'border-primary ring-2 ring-primary/20 scale-110' : 'border-border hover:scale-105'
+                )}
                 style={{ backgroundColor: isDarkMode ? theme.light : theme.color }}
               >
                 {currentTheme === theme.id && <Check className="w-3 h-3 text-white" />}
@@ -261,7 +281,7 @@ export function Sidebar({
             aria-label="Go to home page"
           >
             <span className="text-2xl leading-none" aria-hidden="true">🍬</span>
-            <span className="font-bold text-lg font-candy">~/Skills</span>
+            <span className="font-bold text-lg font-candy candy-gradient-text">~/Skills</span>
           </button>
         )}
         {collapsed && <span className="text-2xl leading-none">🍬</span>}
@@ -432,22 +452,23 @@ export function Sidebar({
         <button
           onClick={toggleMode}
           className={cn(
-            'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg',
-            'text-sm font-mono transition-all duration-200',
-            'bg-gradient-to-r from-rose-500/10 to-amber-500/10',
-            'hover:from-rose-500/20 hover:to-amber-500/20',
-            'border border-rose-500/20 hover:border-rose-500/30',
+            'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl',
+            'text-sm font-body font-semibold transition-all duration-200',
+            'bg-gradient-to-r from-primary/10 via-caramel/10 to-mint/10',
+            'hover:from-primary/15 hover:via-caramel/15 hover:to-mint/15',
+            'border border-primary/20 hover:border-primary/30',
+            'btn-press',
             collapsed ? 'justify-center' : 'justify-start'
           )}
           title={collapsed ? (mode === 'dev' ? 'Switch to User Mode' : 'Switch to Dev Mode') : undefined}
         >
           {mode === 'dev' ? (
-            <Home className="w-5 h-5 text-rose-500" />
+            <Home className="w-5 h-5 text-primary" />
           ) : (
-            <Sparkles className="w-5 h-5 text-rose-500" />
+            <Sparkles className="w-5 h-5 text-primary" />
           )}
           {!collapsed && (
-            <span className="text-rose-500 dark:text-rose-400">
+            <span className="text-primary">
               {mode === 'dev' ? 'User Mode' : 'Dev Mode'}
             </span>
           )}
@@ -479,21 +500,43 @@ export function Sidebar({
 
   return (
     <>
-      {/* Mobile Menu Button */}
-      <button
-        onClick={() => setMobileOpen(true)}
-        className={cn(
-          'lg:hidden fixed top-4 left-4 z-50 p-2.5 rounded-lg',
-          'bg-background border border-border shadow-md',
-          'hover:bg-secondary transition-colors duration-200 cursor-pointer',
-          'min-w-[44px] min-h-[44px] flex items-center justify-center',
-          'focus:outline-none focus:ring-2 focus:ring-primary/30'
-        )}
-        aria-label="Open navigation menu"
-        aria-expanded={mobileOpen}
-      >
-        <Menu className="w-5 h-5" />
-      </button>
+      {/* Mobile Top Bar */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 h-14 glass border-b border-border/50 flex items-center justify-between px-4">
+        <button
+          onClick={() => setMobileOpen(true)}
+          className={cn(
+            'p-2 rounded-lg',
+            'hover:bg-secondary transition-colors duration-200 cursor-pointer',
+            'min-w-[40px] min-h-[40px] flex items-center justify-center',
+            'focus:outline-none focus:ring-2 focus:ring-primary/30'
+          )}
+          aria-label="Open navigation menu"
+          aria-expanded={mobileOpen}
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+
+        <button
+          onClick={() => navigate('/')}
+          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+        >
+          <span className="text-xl leading-none">🍬</span>
+          <span className="font-bold text-base font-candy">Candy Shop</span>
+        </button>
+
+        <button
+          onClick={onOpenCart}
+          className="p-2 rounded-lg hover:bg-secondary transition-colors duration-200 relative min-w-[40px] min-h-[40px] flex items-center justify-center"
+          aria-label={`Cart (${cartCount} items)`}
+        >
+          <ShoppingBag className="w-5 h-5" />
+          {cartCount > 0 && (
+            <span className="absolute top-1 right-1 w-4 h-4 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
+              {cartCount}
+            </span>
+          )}
+        </button>
+      </div>
 
       {/* Mobile Overlay */}
       {mobileOpen && (
@@ -506,7 +549,7 @@ export function Sidebar({
       {/* Mobile Sidebar */}
       <aside
         className={cn(
-          'lg:hidden fixed inset-y-0 left-0 z-50 flex flex-col w-72 bg-background border-r border-border',
+          'lg:hidden fixed inset-y-0 left-0 z-50 flex flex-col w-72 glass-strong border-r border-border/50',
           'transform transition-transform duration-300',
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         )}
@@ -527,7 +570,7 @@ export function Sidebar({
       <aside
         className={cn(
           'hidden lg:flex flex-col fixed inset-y-0 left-0 z-30',
-          'bg-card border-r border-border transition-all duration-300',
+          'glass-strong border-r border-border/50 transition-all duration-300',
           collapsed ? 'w-16' : 'w-64'
         )}
       >

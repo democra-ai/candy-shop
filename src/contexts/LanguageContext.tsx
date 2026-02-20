@@ -55,6 +55,8 @@ const translations: Record<Language, Record<string, string>> = {
     'hero.activeSkills': 'Active Skills',
     'hero.ready': 'Ready',
     'hero.comment': '// simple as candy',
+    'hero.skillsAvailable': 'skills',
+    'hero.categoriesCount': 'categories',
 
     // Hero Normal Mode
     'hero.badge': 'Trusted by 5,000+ happy users',
@@ -94,6 +96,14 @@ const translations: Record<Language, Record<string, string>> = {
     'skills.likeSkill': 'Like skill',
     'skills.unlikeSkill': 'Unlike skill',
     'skills.updatedToday': 'Updated today',
+    'skills.trySearching': 'Try searching for:',
+
+    // Sidebar User Mode labels
+    'nav.find.user': 'Browse',
+    'nav.cd.user': 'Categories',
+    'nav.man.user': 'Docs',
+    'nav.create.user': 'Create',
+    'nav.library.user': 'Library',
 
     // External Resources
     'external.title': 'Community Skills (External)',
@@ -168,6 +178,8 @@ const translations: Record<Language, Record<string, string>> = {
     'hero.activeSkills': '活跃技能',
     'hero.ready': '就绪',
     'hero.comment': '// 简单如糖果',
+    'hero.skillsAvailable': '个技能',
+    'hero.categoriesCount': '个分类',
 
     // Hero Normal Mode
     'hero.badge': '被5,000+用户信赖',
@@ -207,6 +219,14 @@ const translations: Record<Language, Record<string, string>> = {
     'skills.likeSkill': '喜欢技能',
     'skills.unlikeSkill': '取消喜欢',
     'skills.updatedToday': '今日更新',
+    'skills.trySearching': '试试搜索：',
+
+    // Sidebar User Mode labels
+    'nav.find.user': '浏览',
+    'nav.cd.user': '分类',
+    'nav.man.user': '文档',
+    'nav.create.user': '创建',
+    'nav.library.user': '技能库',
 
     // External Resources
     'external.title': '社区技能 (外部资源)',

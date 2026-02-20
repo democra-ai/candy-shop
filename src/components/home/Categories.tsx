@@ -23,13 +23,15 @@ export function Categories({ onSelectCategory, activeCategory }: { onSelectCateg
   const isAllActive = !activeCategory;
 
   return (
-    <section className="py-12 bg-background border-b border-border" id="categories-section">
-      <div className="container max-w-7xl mx-auto px-4">
+    <section className="py-12 relative" id="categories-section">
+      {/* Frosted glass background band */}
+      <div className="absolute inset-0 glass" aria-hidden="true" />
+      <div className="relative container max-w-7xl mx-auto px-4">
         <div className="flex flex-col items-center text-center mb-10">
-          <h2 className="text-3xl font-bold mb-3 text-foreground tracking-tight">
+          <h2 className="text-3xl font-candy font-bold mb-3 text-foreground tracking-tight">
             {t('categories.title')}
           </h2>
-          <p className="text-foreground-secondary max-w-2xl">
+          <p className="text-foreground-secondary font-body max-w-2xl">
             {t('categories.subtitle')}
           </p>
         </div>
@@ -45,10 +47,10 @@ export function Categories({ onSelectCategory, activeCategory }: { onSelectCateg
               onClick={() => onSelectCategory(null)}
               className={cn(
                 'snap-start shrink-0',
-                'px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200 border shadow-sm cursor-pointer',
+                'px-6 py-2.5 rounded-full text-sm font-body font-semibold transition-all duration-300 border cursor-pointer btn-press',
                 isAllActive
-                  ? 'bg-primary text-primary-foreground border-primary ring-2 ring-primary/30 shadow-md'
-                  : 'bg-secondary text-foreground hover:bg-secondary-hover border-border hover:shadow-md'
+                  ? 'bg-gradient-to-r from-primary to-primary-hover text-primary-foreground border-primary/0 shadow-candy animate-jelly'
+                  : 'glass text-foreground hover:shadow-warm-lg border-border/50 hover:border-primary/30'
               )}
             >
               {t('categories.allSkills')} ({SKILLS_DATA.length})
@@ -62,19 +64,19 @@ export function Categories({ onSelectCategory, activeCategory }: { onSelectCateg
                   onClick={() => onSelectCategory(cat.name)}
                   className={cn(
                     'snap-start shrink-0',
-                    'group flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200 border shadow-sm cursor-pointer',
+                    'group flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-body font-semibold transition-all duration-300 border cursor-pointer btn-press',
                     isActive
-                      ? 'bg-primary text-primary-foreground border-primary ring-2 ring-primary/30 shadow-md'
-                      : 'bg-card text-foreground-secondary hover:text-foreground hover:bg-secondary border-border hover:border-primary/30 hover:shadow-md'
+                      ? 'bg-gradient-to-r from-primary to-primary-hover text-primary-foreground border-primary/0 shadow-candy animate-jelly'
+                      : 'glass text-foreground-secondary hover:text-foreground border-border/50 hover:border-primary/30 hover:shadow-warm-lg'
                   )}
                 >
-                  <span className={cn('text-lg transition-all', isActive ? 'grayscale-0' : 'grayscale group-hover:grayscale-0')}>{cat.icon}</span>
+                  <span className={cn('text-lg transition-all', isActive ? 'grayscale-0 scale-110' : 'grayscale group-hover:grayscale-0')}>{cat.icon}</span>
                   <span>{cat.name}</span>
                   <span className={cn(
-                    'text-xs px-2 py-0.5 rounded-full transition-colors',
+                    'text-xs px-2 py-0.5 rounded-full transition-all font-mono',
                     isActive
-                      ? 'bg-white/20 text-primary-foreground'
-                      : 'bg-secondary text-foreground-tertiary group-hover:bg-primary/10 group-hover:text-primary'
+                      ? 'bg-white/25 text-primary-foreground'
+                      : 'bg-secondary/50 text-foreground-tertiary group-hover:bg-primary/10 group-hover:text-primary'
                   )}>
                     {cat.count}
                   </span>
@@ -82,8 +84,9 @@ export function Categories({ onSelectCategory, activeCategory }: { onSelectCateg
               );
             })}
           </div>
-          {/* Fade indicator for horizontal scroll on mobile */}
-          <div className="pointer-events-none absolute right-0 top-0 bottom-2 w-8 bg-gradient-to-l from-background to-transparent md:hidden" />
+          {/* Fade indicators for horizontal scroll on mobile */}
+          <div className="pointer-events-none absolute left-0 top-0 bottom-2 w-8 bg-gradient-to-r from-background/80 to-transparent md:hidden" />
+          <div className="pointer-events-none absolute right-0 top-0 bottom-2 w-8 bg-gradient-to-l from-background/80 to-transparent md:hidden" />
         </div>
       </div>
     </section>

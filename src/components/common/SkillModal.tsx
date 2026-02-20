@@ -4,6 +4,20 @@ import type { Skill } from '../../data/skillsData';
 import { toast } from 'sonner';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 
+const getCategoryModalColor = (category: string): { bg: string; border: string } => {
+  const map: Record<string, { bg: string; border: string }> = {
+    Development: { bg: 'bg-blue-500/15 dark:bg-blue-500/20', border: 'border-blue-500/20' },
+    Design: { bg: 'bg-pink-500/15 dark:bg-pink-500/20', border: 'border-pink-500/20' },
+    Marketing: { bg: 'bg-orange-500/15 dark:bg-orange-500/20', border: 'border-orange-500/20' },
+    Productivity: { bg: 'bg-emerald-500/15 dark:bg-emerald-500/20', border: 'border-emerald-500/20' },
+    Tools: { bg: 'bg-violet-500/15 dark:bg-violet-500/20', border: 'border-violet-500/20' },
+    Research: { bg: 'bg-cyan-500/15 dark:bg-cyan-500/20', border: 'border-cyan-500/20' },
+    Mobile: { bg: 'bg-lime-500/15 dark:bg-lime-500/20', border: 'border-lime-500/20' },
+    Writing: { bg: 'bg-yellow-500/15 dark:bg-yellow-500/20', border: 'border-yellow-500/20' },
+  };
+  return map[category] || { bg: 'bg-secondary', border: 'border-border' };
+};
+
 interface SkillModalProps {
   skill: Skill | null;
   onClose: () => void;
@@ -72,14 +86,14 @@ export function SkillModal({ skill, onClose, onRun }: SkillModalProps) {
       <div className="relative w-full max-w-2xl bg-card rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh] border border-border">
         {/* Header */}
         <div
-          className={`h-32 ${skill.color.replace('text-', 'bg-').replace('100', '50')} relative flex items-center justify-center`}
+          className={`h-32 ${getCategoryModalColor(skill.category).bg} relative flex items-center justify-center border-b ${getCategoryModalColor(skill.category).border}`}
         >
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-2.5 bg-white/50 hover:bg-white rounded-full transition-colors duration-200 cursor-pointer min-w-[40px] min-h-[40px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-primary/30"
+            className="absolute top-4 right-4 p-2.5 bg-background/60 hover:bg-background rounded-full transition-colors duration-200 cursor-pointer min-w-[40px] min-h-[40px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-primary/30"
             aria-label="Close modal"
           >
-            <X className="w-5 h-5 text-gray-600" />
+            <X className="w-5 h-5 text-foreground-secondary" />
           </button>
 
           <div className="text-6xl" aria-hidden="true">{skill.icon}</div>
@@ -189,23 +203,23 @@ export function SkillModal({ skill, onClose, onRun }: SkillModalProps) {
         {/* Footer Action */}
         <div className="p-4 border-t border-border bg-secondary/50 flex justify-end gap-3">
           <button
+            onClick={onClose}
+            className="px-5 py-2.5 bg-transparent text-foreground-secondary border border-border rounded-lg font-medium hover:bg-secondary hover:text-foreground transition-colors duration-200 cursor-pointer min-h-[40px] focus:outline-none focus:ring-2 focus:ring-border"
+          >
+            Close
+          </button>
+          <button
             onClick={() => {
               if (onRun && skill) {
                 onRun(skill);
                 onClose();
               }
             }}
-            className="px-6 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-500 transition-colors duration-200 shadow-lg flex items-center gap-2 cursor-pointer min-h-[40px] focus:outline-none focus:ring-2 focus:ring-green-500/50"
+            className="px-6 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary-hover transition-colors duration-200 shadow-lg shadow-primary/20 flex items-center gap-2 cursor-pointer min-h-[40px] focus:outline-none focus:ring-2 focus:ring-primary/50"
             aria-label={`Run ${skill.name}`}
           >
             <Play className="w-4 h-4" />
             Run Skill
-          </button>
-          <button
-            onClick={onClose}
-            className="px-6 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary-hover transition-colors duration-200 shadow-lg shadow-primary/20 cursor-pointer min-h-[40px] focus:outline-none focus:ring-2 focus:ring-primary/50"
-          >
-            Done
           </button>
         </div>
       </div>

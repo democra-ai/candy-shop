@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, Component, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, useSyncExternalStore, Component, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import type { User } from '@supabase/supabase-js';
@@ -433,6 +433,31 @@ function AppContent() {
   );
 }
 
+// Subscribe to dark mode class changes so Toast theme stays in sync
+const subscribeDarkMode = (cb: () => void) => {
+  const observer = new MutationObserver(cb);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+  return () => observer.disconnect();
+};
+const getDarkModeSnapshot = () => document.documentElement.classList.contains('dark');
+
+function ThemedToaster() {
+  const isDark = useSyncExternalStore(subscribeDarkMode, getDarkModeSnapshot);
+  return (
+    <Toaster
+      position="bottom-right"
+      theme={isDark ? 'dark' : 'light'}
+      toastOptions={{
+        style: {
+          background: 'var(--color-card)',
+          border: '1px solid var(--color-border)',
+          color: 'var(--color-foreground)',
+        },
+      }}
+    />
+  );
+}
+
 function App() {
   return (
     <ErrorBoundary>
@@ -440,17 +465,7 @@ function App() {
         <VersionModeProvider>
           <LanguageProvider>
             <AppContent />
-            <Toaster
-              position="bottom-right"
-              theme="dark"
-              toastOptions={{
-                style: {
-                  background: 'var(--color-card)',
-                  border: '1px solid var(--color-border)',
-                  color: 'var(--color-foreground)',
-                },
-              }}
-            />
+            <ThemedToaster />
           </LanguageProvider>
         </VersionModeProvider>
       </BrowserRouter>

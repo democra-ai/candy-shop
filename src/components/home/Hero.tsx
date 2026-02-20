@@ -1,10 +1,14 @@
-import { Search, FileText, Code2, TrendingUp, Sparkles, Candy } from 'lucide-react';
+import { Search, FileText, Code2, TrendingUp, Candy, Package } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { SKILLS_DATA, SKILL_CATEGORIES } from '../../data/skillsData';
 
 interface HeroProps {
   onOpenDocs: () => void;
 }
+
+const TOTAL_SKILLS = SKILLS_DATA.length;
+const TOTAL_CATEGORIES = SKILL_CATEGORIES.length;
 
 export function Hero({ onOpenDocs }: HeroProps) {
   const { t, language } = useLanguage();
@@ -13,9 +17,8 @@ export function Hero({ onOpenDocs }: HeroProps) {
 
   useEffect(() => {
     let index = 0;
-    const typingSpeed = 80; // ms per character
+    const typingSpeed = 50;
 
-    // Reset display text when language changes
     setDisplayText('');
 
     const timer = setInterval(() => {
@@ -28,21 +31,31 @@ export function Hero({ onOpenDocs }: HeroProps) {
     }, typingSpeed);
 
     return () => clearInterval(timer);
-  }, [fullText, language]); // Re-run typing effect when language changes
+  }, [fullText, language]);
+
   return (
-    <section className="relative pt-12 pb-20 lg:pt-20 lg:pb-32">
-      <div className="grid lg:grid-cols-2 gap-12 lg:gap-8 items-center">
+    <section className="relative pt-12 pb-20 lg:pt-20 lg:pb-32 overflow-hidden">
+      {/* Floating candy decorations */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
+        <span className="absolute top-20 left-[10%] text-3xl opacity-[0.15] animate-candy-float" style={{ animationDelay: '0s' }}>🍭</span>
+        <span className="absolute top-40 right-[15%] text-2xl opacity-[0.12] animate-candy-float" style={{ animationDelay: '1.5s' }}>🍬</span>
+        <span className="absolute bottom-20 left-[20%] text-2xl opacity-[0.12] animate-candy-float" style={{ animationDelay: '3s' }}>🧁</span>
+        <span className="absolute top-10 right-[30%] text-xl opacity-[0.08] animate-candy-float" style={{ animationDelay: '2s' }}>🍫</span>
+        <span className="absolute bottom-32 right-[10%] text-2xl opacity-[0.08] animate-float-slow">🍰</span>
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-12 lg:gap-8 items-center relative">
         {/* Left Content */}
         <div className="flex flex-col items-start space-y-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-mono font-medium">
-            <span className="flex h-1.5 w-1.5 rounded-full bg-primary"></span>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass border border-primary/20 text-primary text-xs font-mono font-medium shadow-candy">
+            <span className="flex h-1.5 w-1.5 rounded-full bg-primary animate-pulse"></span>
             v2.0.0
           </div>
 
           <div className="relative">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-candy font-bold tracking-tight text-foreground leading-[1.1]">
-              {displayText}
-              <span className="inline-block w-3 h-10 ml-1 -mb-1 bg-primary animate-pulse"></span>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-candy font-bold tracking-tight leading-[1.1]">
+              <span className="candy-gradient-raspberry-gold">{displayText}</span>
+              <span className="inline-block w-3 h-10 ml-1 -mb-1 bg-primary/70 animate-pulse rounded-sm"></span>
             </h1>
             <p className="mt-4 text-xl text-foreground-secondary font-mono">
               <span className="text-primary">{'>'} npm install intelligence</span>
@@ -58,34 +71,31 @@ export function Hero({ onOpenDocs }: HeroProps) {
               onClick={() =>
                 document.getElementById('skills-grid')?.scrollIntoView({ behavior: 'smooth' })
               }
-              className="h-12 px-6 bg-primary text-primary-foreground rounded-md font-mono font-medium hover:bg-primary-hover transition-all duration-200 flex items-center gap-2 shadow-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50 hover:shadow-xl hover:shadow-primary/10"
+              className="h-12 px-7 bg-gradient-to-r from-primary to-primary-hover text-primary-foreground rounded-xl font-body font-semibold hover:shadow-candy-lg transition-all duration-300 flex items-center gap-2 shadow-candy cursor-pointer btn-press focus:outline-none focus:ring-2 focus:ring-primary/50"
             >
               <Search className="w-4 h-4" />
               {t('hero.browseSkills')}
             </button>
             <button
               onClick={onOpenDocs}
-              className="h-12 px-6 bg-background border border-border text-foreground rounded-md font-mono font-medium hover:bg-secondary transition-all duration-200 flex items-center gap-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-border"
+              className="h-12 px-7 glass border border-border/50 text-foreground rounded-xl font-body font-semibold hover:border-primary/30 hover:shadow-warm-lg transition-all duration-300 flex items-center gap-2 cursor-pointer btn-press focus:outline-none focus:ring-2 focus:ring-border"
             >
               <FileText className="w-4 h-4 text-foreground-secondary" />
               {t('hero.docs')}
             </button>
           </div>
 
-          <div className="flex items-center gap-8 pt-4">
-            <div className="flex -space-x-2">
-              {[1, 2, 3, 4].map((i) => (
-                <div
-                  key={i}
-                  className="w-8 h-8 rounded-full border-2 border-background bg-secondary flex items-center justify-center"
-                  aria-hidden="true"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-primary" />
-                </div>
-              ))}
+          {/* Real stats */}
+          <div className="flex items-center gap-6 pt-4">
+            <div className="flex items-center gap-2 text-sm font-mono">
+              <Package className="w-4 h-4 text-primary" />
+              <span className="text-foreground font-bold">{TOTAL_SKILLS}</span>
+              <span className="text-foreground-secondary">{t('hero.skillsAvailable') || 'skills'}</span>
             </div>
-            <div className="text-sm font-mono text-foreground-secondary">
-              <span className="text-foreground font-bold">5,000+</span> happy users
+            <div className="w-px h-4 bg-border" />
+            <div className="flex items-center gap-2 text-sm font-mono">
+              <span className="text-foreground font-bold">{TOTAL_CATEGORIES}</span>
+              <span className="text-foreground-secondary">{t('hero.categoriesCount') || 'categories'}</span>
             </div>
           </div>
         </div>
@@ -93,9 +103,9 @@ export function Hero({ onOpenDocs }: HeroProps) {
         {/* Right Visuals */}
         <div className="relative lg:ml-auto w-full max-w-lg">
           {/* Main Visual Window */}
-          <div className="relative bg-card rounded-xl border border-border shadow-xl overflow-hidden">
+          <div className="relative glass rounded-2xl border border-border/50 shadow-glass overflow-hidden">
             {/* Window Header */}
-            <div className="h-10 bg-secondary/50 border-b border-border flex items-center px-4 justify-between">
+            <div className="h-10 bg-gradient-to-r from-secondary/80 to-secondary/40 border-b border-border/50 flex items-center px-4 justify-between">
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded-full bg-[#ff5f56]"></div>
                 <div className="w-3 h-3 rounded-full bg-[#ffbd2e]"></div>
@@ -112,41 +122,46 @@ export function Hero({ onOpenDocs }: HeroProps) {
                   <div className="text-sm text-foreground-secondary font-mono mb-1">
                     {t('hero.activeSkills')}
                   </div>
-                  <div className="text-2xl font-bold font-candy text-primary">127 {t('hero.ready')}</div>
+                  <div className="text-2xl font-bold font-candy text-primary">{TOTAL_SKILLS} {t('hero.ready')}</div>
                 </div>
-                <div className="p-2 bg-primary/10 rounded-lg">
+                <div className="p-2 bg-primary/10 rounded-xl">
                   <TrendingUp className="w-5 h-5 text-primary" />
                 </div>
               </div>
 
-              {/* Mock Chart */}
+              {/* Category breakdown chart */}
               <div className="h-32 flex items-end gap-2 justify-between px-2">
-                {[40, 65, 45, 80, 55, 90, 70, 85, 60, 95].map((h, i) => (
-                  <div key={i} className="w-full bg-secondary rounded-t-sm relative group">
-                    <div
-                      className="absolute bottom-0 w-full bg-primary rounded-t-sm transition-all duration-500 group-hover:bg-primary/80"
-                      style={{ height: `${h}%` }}
-                    ></div>
-                  </div>
-                ))}
+                {SKILL_CATEGORIES.map((cat) => {
+                  const count = SKILLS_DATA.filter(s => s.category === cat.name).length;
+                  const maxCount = Math.max(...SKILL_CATEGORIES.map(c => SKILLS_DATA.filter(s => s.category === c.name).length));
+                  const pct = maxCount > 0 ? Math.max(10, (count / maxCount) * 100) : 10;
+                  return (
+                    <div key={cat.name} className="w-full bg-secondary/50 rounded-t-sm relative group" title={`${cat.name}: ${count}`}>
+                      <div
+                        className="absolute bottom-0 w-full bg-gradient-to-t from-primary to-primary/60 rounded-t-sm transition-all duration-500 group-hover:from-primary/90 group-hover:to-primary/50"
+                        style={{ height: `${pct}%` }}
+                      ></div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
 
           {/* Floating Code Card */}
-          <div className="absolute -bottom-6 -left-6 bg-[#1e1e2e] text-[#cdd6f4] p-4 rounded-lg shadow-xl border border-white/10 font-mono text-sm max-w-[240px] hidden sm:block transform hover:-translate-y-1 transition-transform duration-300">
-            <div className="flex items-center gap-2 text-xs text-white/40 mb-2">
+          <div className="absolute -bottom-6 -left-6 glass-strong p-4 rounded-xl shadow-candy border border-primary/10 font-mono text-sm max-w-[240px] hidden sm:block animate-candy-float" style={{ animationDelay: '0.5s' }}>
+            <div className="flex items-center gap-2 text-xs text-foreground-tertiary mb-2">
               <Code2 className="w-3 h-3" />
               <span>skill.ts</span>
             </div>
             <div>
-              <span className="text-[#cba6f7]">const</span>{' '}
-              <span className="text-[#a6e3a1]">ai</span> ={' '}
-              <span className="text-[#89b4fa]">await</span>{' '}
-              <span className="text-[#f9e2af]">useSkill</span>();
+              <span className="text-syntax-keyword">const</span>{' '}
+              <span className="text-syntax-variable">ai</span> ={' '}
+              <span className="text-syntax-function">await</span>{' '}
+              <span className="text-caramel">useSkill</span>();
             </div>
-            <div className="text-[#6c7086] text-xs mt-1 flex items-center gap-1">
-              {t('hero.comment')} <Candy className="w-3 h-3 inline text-[#f38ba8]" />
+            <div className="text-syntax-comment text-xs mt-1 flex items-center gap-1">
+              {t('hero.comment')} <Candy className="w-3 h-3 inline text-primary" />
             </div>
           </div>
         </div>
