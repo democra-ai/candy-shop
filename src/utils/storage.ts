@@ -157,4 +157,21 @@ export const storageUtils = {
     const likes = storageUtils.getLikes();
     return likes.includes(skillId);
   },
+
+  // Cart management
+  getCart: (): string[] => {
+    try {
+      return JSON.parse(localStorage.getItem('cart_items') || '[]');
+    } catch {
+      return [];
+    }
+  },
+
+  saveCart: (ids: string[]): void => {
+    try {
+      localStorage.setItem('cart_items', JSON.stringify(ids));
+    } catch (error) {
+      console.error('Failed to save cart:', error);
+    }
+  },
 };

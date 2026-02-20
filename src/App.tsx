@@ -1,6 +1,7 @@
-import { useState, useEffect, Component, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, Component, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'sonner';
+import type { User } from '@supabase/supabase-js';
 import { supabase } from './lib/supabaseClient';
 import { Layout } from './components/layout/Layout';
 import { Hero } from './components/home/Hero';
@@ -18,6 +19,7 @@ import { SkillExecutor } from './components/skill-creator/SkillExecutor';
 import type { Skill, SkillCategory } from './types/skill-creator';
 import { storageUtils } from './utils/storage';
 import { SKILLS_DATA } from './data/skillsData';
+import { type Skill as StoreSkill } from './data/skillsData';
 import { toast } from 'sonner';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { VersionModeProvider } from './contexts/VersionModeContext';
@@ -115,6 +117,16 @@ function usePageTitle() {
   }, [location.pathname]);
 }
 
+interface HomePageProps {
+  user: User | null;
+  cart: Set<string>;
+  onToggleCart: (id: string) => void;
+  onOpenAuth: () => void;
+  onOpenCart: () => void;
+  onOpenDocs: () => void;
+  onRunSkill: (skill: StoreSkill) => void;
+}
+
 function HomePage({
   user,
   cart,
@@ -123,7 +135,7 @@ function HomePage({
   onOpenCart,
   onOpenDocs,
   onRunSkill,
-}: any) {
+}: HomePageProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [tagFilter, setTagFilter] = useState<string | null>(null);
 
@@ -149,7 +161,7 @@ function HomePage({
       <Hero onOpenDocs={onOpenDocs} />
       <Categories
         activeCategory={tagFilter}
-        onSelectCategory={(tag) => {
+        onSelectCategory={(tag: string | null) => {
           setTagFilter(tag);
           setSearchQuery('');
           document.getElementById('skills-grid')?.scrollIntoView({ behavior: 'smooth' });
@@ -172,24 +184,39 @@ function HomePage({
 
 function AppContent() {
   const navigate = useNavigate();
+  const location = useLocation();
   usePageTitle(); // Update document.title on route change
+
+  // Scroll to top on route change
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
 
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isDocsOpen, setIsDocsOpen] = useState(false);
 
-  const [user, setUser] = useState<any>(null);
-  const [cart, setCart] = useState<Set<string>>(new Set());
+  const [user, setUser] = useState<User | null>(null);
+  const [cart, setCart] = useState<Set<string>>(() => new Set(storageUtils.getCart()));
   const [executingSkill, setExecutingSkill] = useState<Skill | null>(null);
 
+  // Persist cart to localStorage whenever it changes
+  const updateCart = useCallback((updater: (prev: Set<string>) => Set<string>) => {
+    setCart((prev) => {
+      const next = updater(prev);
+      storageUtils.saveCart([...next]);
+      return next;
+    });
+  }, []);
+
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }: { data: { session: any } }) => {
+    supabase.auth.getSession().then(({ data: { session } }: { data: { session: { user: User } | null } }) => {
       setUser(session?.user ?? null);
     });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
+    } = supabase.auth.onAuthStateChange((_event: string, session: { user: User } | null) => {
       setUser(session?.user ?? null);
     });
 
@@ -199,7 +226,7 @@ function AppContent() {
   const handleAddToCart = (id: string) => {
     const skill = SKILLS_DATA.find(s => s.id === id);
     const name = skill?.name || id;
-    setCart((prev) => {
+    updateCart((prev) => {
       const next = new Set(prev);
       if (next.has(id)) {
         next.delete(id);
@@ -213,14 +240,14 @@ function AppContent() {
   };
 
   const handleRemoveFromCart = (id: string) => {
-    setCart((prev) => {
+    updateCart((prev) => {
       const next = new Set(prev);
       next.delete(id);
       return next;
     });
   };
 
-  const handleClearCart = () => setCart(new Set());
+  const handleClearCart = () => updateCart(() => new Set());
 
   const handlePurchase = () => {
     // Check if user is logged in
@@ -260,12 +287,12 @@ function AppContent() {
       }
     });
 
-    setCart(new Set());
+    updateCart(() => new Set());
     setIsCartOpen(false);
     navigate('/skills/library');
   };
 
-  const handleRunSkill = (storeSkill: any) => {
+  const handleRunSkill = (storeSkill: StoreSkill) => {
     // Convert store skill to Skill format for executor
     // CRITICAL: skillMdUrl must be passed through so SkillExecutor can
     // fetch the real SKILL.md instructions from GitHub
@@ -280,10 +307,10 @@ function AppContent() {
       tags: storeSkill.tags || [],
       skillMdUrl: storeSkill.skillMdUrl, // ← Critical: enables SKILL.md fetch
       config: {
-        capabilities: storeSkill.capabilities ?? [],
-        systemPrompt: storeSkill.systemPrompt ?? '',
+        capabilities: [],
+        systemPrompt: '',
         parameters: storeSkill.config,
-        tools: storeSkill.tools ?? [],
+        tools: [],
       },
       sourceFiles: [],
       analysisContext: {
@@ -297,7 +324,7 @@ function AppContent() {
         suggestedCapabilities: [],
         filesSummary: [],
         confidence: 0,
-        systemPrompt: storeSkill.systemPrompt ?? '',
+        systemPrompt: '',
       },
       installCommand: storeSkill.installCommand,
       popularity: storeSkill.popularity ?? 0,
@@ -310,6 +337,35 @@ function AppContent() {
     setExecutingSkill(skill);
   };
 
+  const openAuth = useCallback(() => setIsAuthOpen(true), []);
+  const openCart = useCallback(() => setIsCartOpen(true), []);
+  const openDocs = useCallback(() => setIsDocsOpen(true), []);
+
+  const navToFind = useCallback(() => {
+    navigate('/');
+    setTimeout(() => {
+      document.getElementById('search-input')?.focus();
+      document.getElementById('skills-grid')?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  }, [navigate]);
+
+  const navToCd = useCallback(() => {
+    navigate('/');
+    setTimeout(() => {
+      document.getElementById('categories-section')?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  }, [navigate]);
+
+  const sharedLayoutProps = {
+    onOpenAuth: openAuth,
+    onOpenCart: openCart,
+    user,
+    cartCount: cart.size,
+    onNavFind: navToFind,
+    onNavCd: navToCd,
+    onNavMan: openDocs,
+  };
+
   return (
     <>
       <Routes>
@@ -320,9 +376,9 @@ function AppContent() {
               user={user}
               cart={cart}
               onToggleCart={handleAddToCart}
-              onOpenAuth={() => setIsAuthOpen(true)}
-              onOpenCart={() => setIsCartOpen(true)}
-              onOpenDocs={() => setIsDocsOpen(true)}
+              onOpenAuth={openAuth}
+              onOpenCart={openCart}
+              onOpenDocs={openDocs}
               onRunSkill={handleRunSkill}
             />
           }
@@ -330,28 +386,7 @@ function AppContent() {
         <Route
           path="/skills/create"
           element={
-            <Layout
-              onOpenAuth={() => setIsAuthOpen(true)}
-              onOpenCart={() => setIsCartOpen(true)}
-              user={user}
-              cartCount={cart.size}
-              onNavFind={() => {
-                navigate('/');
-                setTimeout(() => {
-                  document.getElementById('search-input')?.focus();
-                  document.getElementById('skills-grid')?.scrollIntoView({ behavior: 'smooth' });
-                }, 100);
-              }}
-              onNavCd={() => {
-                navigate('/');
-                setTimeout(() => {
-                  document
-                    .getElementById('categories-section')
-                    ?.scrollIntoView({ behavior: 'smooth' });
-                }, 100);
-              }}
-              onNavMan={() => setIsDocsOpen(true)}
-            >
+            <Layout {...sharedLayoutProps}>
               <SkillCreationPage
                 onComplete={() => {
                   navigate('/skills/library');
@@ -364,28 +399,7 @@ function AppContent() {
         <Route
           path="/skills/library"
           element={
-            <Layout
-              onOpenAuth={() => setIsAuthOpen(true)}
-              onOpenCart={() => setIsCartOpen(true)}
-              user={user}
-              cartCount={cart.size}
-              onNavFind={() => {
-                navigate('/');
-                setTimeout(() => {
-                  document.getElementById('search-input')?.focus();
-                  document.getElementById('skills-grid')?.scrollIntoView({ behavior: 'smooth' });
-                }, 100);
-              }}
-              onNavCd={() => {
-                navigate('/');
-                setTimeout(() => {
-                  document
-                    .getElementById('categories-section')
-                    ?.scrollIntoView({ behavior: 'smooth' });
-                }, 100);
-              }}
-              onNavMan={() => setIsDocsOpen(true)}
-            >
+            <Layout {...sharedLayoutProps}>
               <MySkillsLibrary
                 onCreateNew={() => navigate('/skills/create')}
                 onUseSkill={(skill) => setExecutingSkill(skill)}

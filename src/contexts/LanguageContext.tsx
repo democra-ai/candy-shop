@@ -72,8 +72,15 @@ const translations: Record<Language, Record<string, string>> = {
 
     // Categories
     'categories.title': 'Skill Directories',
+    'categories.subtitle': 'Explore our curated collections of AI agent skills specialized for your workflow.',
+    'categories.allSkills': 'All Skills',
 
     // Skills Grid
+    'skills.noSkillsTitle': 'No skills found',
+    'skills.noResultsSearch': 'No results match "{query}". Try a different search term or browse all categories.',
+    'skills.noResultsFilter': 'No skills match the selected filter.',
+    'skills.clearSearch': 'Clear search',
+    'skills.showAll': 'Show all skills',
     'skills.freshlyBaked': 'Freshly Baked Skills',
     'skills.categoryModules': '{category} Modules',
     'skills.search': 'Search skills... (⌘K)',
@@ -178,8 +185,15 @@ const translations: Record<Language, Record<string, string>> = {
 
     // Categories
     'categories.title': '技能目录',
+    'categories.subtitle': '探索我们精心策划的 AI 代理技能集合，专为您的工作流程而设。',
+    'categories.allSkills': '全部技能',
 
     // Skills Grid
+    'skills.noSkillsTitle': '未找到技能',
+    'skills.noResultsSearch': '没有匹配 "{query}" 的结果。请尝试不同的搜索词或浏览所有分类。',
+    'skills.noResultsFilter': '没有技能匹配所选筛选条件。',
+    'skills.clearSearch': '清除搜索',
+    'skills.showAll': '显示全部技能',
     'skills.freshlyBaked': '新鲜出炉的技能',
     'skills.categoryModules': '{category} 模块',
     'skills.search': '搜索技能... (⌘K)',

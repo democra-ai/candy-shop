@@ -1,7 +1,8 @@
 import { X, Copy, Check, Terminal, Play, Github, ExternalLink, FileText } from 'lucide-react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Skill } from '../../data/skillsData';
 import { toast } from 'sonner';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 interface SkillModalProps {
   skill: Skill | null;
@@ -12,6 +13,16 @@ interface SkillModalProps {
 export function SkillModal({ skill, onClose, onRun }: SkillModalProps) {
   const [copied, setCopied] = useState(false);
   const [installCopied, setInstallCopied] = useState(false);
+  const modalRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(modalRef, !!skill);
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (skill) {
+      document.body.style.overflow = 'hidden';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [skill]);
 
   // Close on Escape key
   const handleKeyDown = useCallback(
@@ -46,6 +57,7 @@ export function SkillModal({ skill, onClose, onRun }: SkillModalProps) {
 
   return (
     <div
+      ref={modalRef}
       className="fixed inset-0 z-[100] flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
@@ -89,19 +101,12 @@ export function SkillModal({ skill, onClose, onRun }: SkillModalProps) {
             {skill.description}
           </p>
 
-          {/* Detailed Description */}
-          <div className="mb-6 p-4 bg-muted/30 rounded-lg border border-border">
-            <h3 className="text-sm font-bold text-foreground mb-2">About This Skill</h3>
-            <p className="text-foreground-secondary text-sm leading-relaxed">
-              {skill.description}
-            </p>
-            {skill.greeting && (
-              <div className="mt-3 pt-3 border-t border-border/50">
-                <p className="text-xs text-muted-foreground mb-1">Greeting:</p>
-                <p className="text-foreground-secondary text-sm italic">"{skill.greeting}"</p>
-              </div>
-            )}
-          </div>
+          {skill.greeting && (
+            <div className="mb-6 p-4 bg-muted/30 rounded-lg border border-border">
+              <p className="text-xs text-muted-foreground mb-1">Greeting:</p>
+              <p className="text-foreground-secondary text-sm italic">"{skill.greeting}"</p>
+            </div>
+          )}
 
           {/* Install Command */}
           <div className="mb-8">

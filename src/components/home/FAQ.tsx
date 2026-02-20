@@ -1,6 +1,7 @@
-import { FileIcon, ChevronDown, ChevronRight } from 'lucide-react';
+import { FileIcon, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { cn } from '../../utils/cn';
 
 export function FAQ() {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
@@ -28,31 +29,42 @@ export function FAQ() {
             </h2>
 
             <div className="space-y-4" role="list">
-              {faqs.map((faq, i) => (
-                <div key={i} className="border border-primary/10 rounded-lg overflow-hidden" role="listitem">
-                  <button
-                    onClick={() => setOpenIndex(openIndex === i ? null : i)}
-                    className="w-full flex items-center gap-3 p-4 text-left hover:bg-primary/10 transition-colors duration-200 font-mono text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30 focus:ring-inset"
-                    aria-expanded={openIndex === i}
-                    aria-label={`${t(faq.qKey)} — ${openIndex === i ? 'collapse' : 'expand'}`}
-                  >
-                    {openIndex === i ? (
-                      <ChevronDown className="w-4 h-4 text-primary shrink-0 transition-transform duration-200" />
-                    ) : (
-                      <ChevronRight className="w-4 h-4 text-foreground-secondary shrink-0 transition-transform duration-200" />
-                    )}
-                    <span className="text-foreground font-bold">
-                      ## {i + 1}. {t(faq.qKey)}
-                    </span>
-                  </button>
+              {faqs.map((faq, i) => {
+                const isOpen = openIndex === i;
+                return (
+                  <div key={i} className="border border-primary/10 rounded-lg overflow-hidden" role="listitem">
+                    <button
+                      onClick={() => setOpenIndex(isOpen ? null : i)}
+                      className="w-full flex items-center gap-3 p-4 text-left hover:bg-primary/10 transition-colors duration-200 font-mono text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30 focus:ring-inset"
+                      aria-expanded={isOpen}
+                      aria-label={`${t(faq.qKey)} — ${isOpen ? 'collapse' : 'expand'}`}
+                    >
+                      <ChevronRight
+                        className={cn(
+                          'w-4 h-4 shrink-0 transition-transform duration-300',
+                          isOpen ? 'rotate-90 text-primary' : 'text-foreground-secondary'
+                        )}
+                      />
+                      <span className="text-foreground font-bold">
+                        ## {i + 1}. {t(faq.qKey)}
+                      </span>
+                    </button>
 
-                  {openIndex === i && (
-                    <div className="px-4 pb-4 pl-11 text-foreground-secondary text-sm leading-relaxed border-t border-primary/10 bg-primary/5 pt-4 font-body animate-fade-in">
-                      {t(faq.aKey)}
+                    <div
+                      className={cn(
+                        'grid transition-all duration-300 ease-in-out',
+                        isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+                      )}
+                    >
+                      <div className="overflow-hidden">
+                        <div className="px-4 pb-4 pl-11 text-foreground-secondary text-sm leading-relaxed border-t border-primary/10 bg-primary/5 pt-4 font-body">
+                          {t(faq.aKey)}
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

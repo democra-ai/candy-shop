@@ -21,6 +21,7 @@ import {
   Sparkles,
   Home,
 } from 'lucide-react';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabaseClient';
 import { cn } from '../../utils/cn';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -29,7 +30,7 @@ import { useVersionMode } from '../../contexts/VersionModeContext';
 interface SidebarProps {
   onOpenAuth: () => void;
   onOpenCart: () => void;
-  user: any;
+  user: SupabaseUser | null;
   cartCount: number;
   onNavFind: () => void;
   onNavCd: () => void;
@@ -370,7 +371,6 @@ export function Sidebar({
               const avatarUrl =
                 user.user_metadata?.avatar_url ||
                 user.user_metadata?.picture ||
-                user.picture ||
                 user.identities?.[0]?.identity_data?.avatar_url;
 
               if (avatarUrl) {

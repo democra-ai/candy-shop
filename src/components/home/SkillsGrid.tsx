@@ -1,4 +1,4 @@
-import { Search, ShoppingBag, Check, X, Calendar, Heart, Play, Star, Github } from 'lucide-react';
+import { Search, ShoppingBag, Check, X, Calendar, Heart, Play, Star, Github, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { SKILLS_DATA, type Skill } from '../../data/skillsData';
 import { SkillModal } from '../common/SkillModal';
@@ -7,6 +7,7 @@ import { cn } from '../../utils/cn';
 import { toast } from 'sonner';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useVersionMode } from '../../contexts/VersionModeContext';
+import { useDebounce } from '../../hooks/useDebounce';
 
 interface SkillsGridProps {
   searchQuery: string;
@@ -43,32 +44,25 @@ export function SkillsGrid({
 }: SkillsGridProps) {
   const { t } = useLanguage();
   const { mode } = useVersionMode();
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+  const isDebouncing = searchQuery !== debouncedSearchQuery;
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
   // Use lazy initializer to load liked skills from storage
   const [likedSkills, setLikedSkills] = useState<Set<string>>(() => new Set(storageUtils.getLikes()));
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const ITEMS_PER_LOAD = 12;
-  const loadMoreRef = useRef<HTMLDivElement>(null);
-  // Track the base visible count - resets when filters change
-  const baseVisibleCount = 12;
-  // Track additional items loaded beyond base
-  const [additionalLoaded, setAdditionalLoaded] = useState(0);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const ITEMS_PER_PAGE = 12;
+  const [currentPage, setCurrentPage] = useState(0);
 
-  // Calculate total visible count using useMemo
-  const actualVisibleCount = useMemo(() => {
-    return baseVisibleCount + additionalLoaded;
-  }, [additionalLoaded]);
-
-  // Reset additional loaded count when filters change
-  const prevFiltersRef = useRef({ searchQuery, tagFilter });
+  // Reset page when filters change
+  const prevFiltersRef = useRef({ searchQuery: debouncedSearchQuery, tagFilter });
   useEffect(() => {
     const prev = prevFiltersRef.current;
-    if (prev.searchQuery !== searchQuery || prev.tagFilter !== tagFilter) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setAdditionalLoaded(0);
-      prevFiltersRef.current = { searchQuery, tagFilter };
+    if (prev.searchQuery !== debouncedSearchQuery || prev.tagFilter !== tagFilter) {
+      setCurrentPage(0);
+      prevFiltersRef.current = { searchQuery: debouncedSearchQuery, tagFilter };
     }
-  }, [searchQuery, tagFilter]);
+  }, [debouncedSearchQuery, tagFilter]);
 
   // Cmd+K / Ctrl+K keyboard shortcut to focus search
   useEffect(() => {
@@ -82,30 +76,8 @@ export function SkillsGrid({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Intersection Observer for infinite scroll
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-           
-          setAdditionalLoaded((prev) => prev + ITEMS_PER_LOAD);
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    if (loadMoreRef.current) {
-      observer.observe(loadMoreRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
-
   const handleLike = (skillId: string) => {
     const isLiked = likedSkills.has(skillId);
-    console.log('[Like] Clicked on skill:', skillId);
-    console.log('[Like] Currently liked:', isLiked);
-
     const skillName = SKILLS_DATA.find(s => s.id === skillId)?.name || skillId;
     if (isLiked) {
       storageUtils.removeLike(skillId);
@@ -129,17 +101,72 @@ export function SkillsGrid({
     return SKILLS_DATA
       .filter((skill) => {
         const matchesSearch =
-          skill.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          skill.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          skill.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
+          skill.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+          skill.description.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+          skill.tags.some(t => t.toLowerCase().includes(debouncedSearchQuery.toLowerCase()));
 
         const matchesTag = tagFilter ?
           (skill.tags.includes(tagFilter) || skill.category === tagFilter) : true;
 
         return matchesSearch && matchesTag;
       })
-      .sort((a, b) => (b.popularity || 0) - (a.popularity || 0)); // Sort by popularity
-  }, [searchQuery, tagFilter]);
+      .sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+  }, [debouncedSearchQuery, tagFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredSkills.length / ITEMS_PER_PAGE));
+  const pageSkills = filteredSkills.slice(currentPage * ITEMS_PER_PAGE, (currentPage + 1) * ITEMS_PER_PAGE);
+
+  const goToPage = (page: number) => {
+    const clamped = Math.max(0, Math.min(page, totalPages - 1));
+    setCurrentPage(clamped);
+    gridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  // Track last visible count for skeleton matching
+  const lastVisibleCountRef = useRef(pageSkills.length || ITEMS_PER_PAGE);
+  if (pageSkills.length > 0) lastVisibleCountRef.current = pageSkills.length;
+
+  // Use refs to avoid re-registering listeners on every page change
+  const currentPageRef = useRef(currentPage);
+  const totalPagesRef = useRef(totalPages);
+  currentPageRef.current = currentPage;
+  totalPagesRef.current = totalPages;
+
+  // Keyboard left/right arrow navigation + swipe support
+  useEffect(() => {
+    let touchStartX = 0;
+    const SWIPE_THRESHOLD = 50;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
+      if (e.key === 'ArrowLeft') goToPage(currentPageRef.current - 1);
+      if (e.key === 'ArrowRight') goToPage(currentPageRef.current + 1);
+    };
+
+    const handleTouchStart = (e: TouchEvent) => {
+      touchStartX = e.touches[0].clientX;
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      const diff = touchStartX - e.changedTouches[0].clientX;
+      if (Math.abs(diff) > SWIPE_THRESHOLD) {
+        if (diff > 0) goToPage(currentPageRef.current + 1);
+        else goToPage(currentPageRef.current - 1);
+      }
+    };
+
+    const grid = gridRef.current;
+    document.addEventListener('keydown', handleKeyDown);
+    grid?.addEventListener('touchstart', handleTouchStart, { passive: true });
+    grid?.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      grid?.removeEventListener('touchstart', handleTouchStart);
+      grid?.removeEventListener('touchend', handleTouchEnd);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <>
@@ -175,26 +202,69 @@ export function SkillsGrid({
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={t('skills.search')}
                   className={cn(
-                    'w-full h-10 pl-10 pr-4 bg-background border border-input rounded-lg text-sm font-mono',
+                    'w-full h-10 pl-10 pr-16 bg-background border border-input rounded-lg text-sm font-mono',
                     'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
                     'transition-all placeholder:text-muted-foreground',
                     'shadow-sm hover:shadow-md'
                   )}
                 />
+                <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono font-medium text-muted-foreground bg-secondary border border-border rounded">
+                  <span className="text-xs">⌘</span>K
+                </kbd>
               </div>
             </div>
           </div>
 
+          {/* Skeleton Grid (during debounce) */}
+          {isDebouncing && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array.from({ length: lastVisibleCountRef.current }).map((_, i) => (
+                <div
+                  key={i}
+                  className="bg-card rounded-xl border border-border overflow-hidden"
+                >
+                  <div className="h-10 bg-secondary/50 animate-pulse" />
+                  <div className="p-5 space-y-3">
+                    <div className="h-4 bg-secondary/50 rounded animate-pulse w-3/4" />
+                    <div className="h-3 bg-secondary/50 rounded animate-pulse w-full" />
+                    <div className="h-3 bg-secondary/50 rounded animate-pulse w-2/3" />
+                    <div className="flex gap-2 pt-2">
+                      <div className="h-5 w-16 bg-secondary/50 rounded-full animate-pulse" />
+                      <div className="h-5 w-12 bg-secondary/50 rounded-full animate-pulse" />
+                    </div>
+                  </div>
+                  <div className="h-10 bg-secondary/30 animate-pulse" />
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredSkills.slice(0, actualVisibleCount).map((skill) => (
+          {!isDebouncing && (
+          <div ref={gridRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {pageSkills.map((skill, index) => (
               <div
                 key={skill.id}
+                role="button"
+                tabIndex={0}
                 onClick={() => setSelectedSkill(skill)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setSelectedSkill(skill);
+                  }
+                }}
+                aria-label={`View details for ${skill.name}`}
+                style={{
+                  animationDelay: `${Math.min(index * 50, 600)}ms`,
+                  animationFillMode: 'forwards',
+                }}
                 className={cn(
                   'group bg-card rounded-xl border border-border shadow-card',
-                  'hover:shadow-lg hover:border-primary/30 hover:-translate-y-1',
-                  'transition-all duration-300 flex flex-col h-full overflow-hidden cursor-pointer'
+                  'hover:shadow-lg hover:shadow-primary/5 hover:border-primary/30 hover:-translate-y-1.5',
+                  'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none',
+                  'transition-all duration-300 flex flex-col h-full overflow-hidden cursor-pointer',
+                  'opacity-0 animate-slide-up'
                 )}
               >
                 {/* === Dev Mode: Code-style card === */}
@@ -220,17 +290,9 @@ export function SkillsGrid({
                   </div>
 
                   {/* Code Content */}
-                  <div className="p-5 flex-1 font-mono text-sm leading-relaxed relative">
-                    {/* Line Numbers */}
-                    <div className="absolute left-4 top-5 bottom-5 w-6 text-right text-muted-foreground/40 select-none text-xs flex flex-col gap-1">
-                      <span>1</span>
-                      <span>2</span>
-                      <span>3</span>
-                      <span>4</span>
-                    </div>
-
+                  <div className="p-5 flex-1 font-mono text-sm leading-relaxed">
                     {/* Syntax Highlighted Text */}
-                    <div className="pl-10">
+                    <div className="pl-4 border-l-2 border-border">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-syntax-keyword font-bold">export</span>
                         <span className="text-syntax-variable font-bold">
@@ -334,11 +396,14 @@ export function SkillsGrid({
                   mode === 'user' ? 'opacity-100 max-h-[600px]' : 'opacity-0 max-h-0 overflow-hidden'
                 )}>
                   {/* Illustration banner */}
-                  <div className="relative h-36 overflow-hidden">
+                  <div className={`relative h-36 overflow-hidden ${getCategoryColor(skill.category).bg}`}>
                     <img
                       src={getCategoryColor(skill.category).illustration}
                       alt={skill.category}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
                     />
                     {/* Gradient overlay for readability */}
                     <div className="absolute inset-0 bg-gradient-to-t from-card via-card/40 to-transparent" />
@@ -452,25 +517,98 @@ export function SkillsGrid({
               </div>
             ))}
           </div>
+          )}
 
-          {/* Load More Trigger */}
-          {actualVisibleCount < filteredSkills.length && (
-            <div
-              ref={loadMoreRef}
-              className="flex justify-center items-center py-8"
-            >
-              <div className="flex items-center gap-3 text-muted-foreground font-mono text-sm">
-                <div className="w-2 h-2 rounded-full bg-primary animate-bounce"></div>
-                <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                <span className="ml-2">{t('skills.loadingMore')}</span>
+          {/* Pagination Controls */}
+          {!isDebouncing && totalPages > 1 && (
+            <div className="flex flex-col items-center gap-4 pt-10">
+              {/* Arrows + Dots */}
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 0}
+                  className={cn(
+                    'p-2 rounded-full transition-all duration-200',
+                    currentPage === 0
+                      ? 'text-foreground-muted cursor-not-allowed'
+                      : 'text-foreground-secondary hover:text-foreground hover:bg-secondary cursor-pointer'
+                  )}
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+
+                <div className="flex items-center gap-2" role="tablist" aria-label="Pages">
+                  {Array.from({ length: totalPages }).map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => goToPage(i)}
+                      className={cn(
+                        'rounded-full transition-all duration-300 cursor-pointer',
+                        i === currentPage
+                          ? 'w-6 h-2.5 bg-primary shadow-sm shadow-primary/30'
+                          : 'w-2.5 h-2.5 bg-foreground-muted hover:bg-foreground-tertiary'
+                      )}
+                      aria-label={`Page ${i + 1}`}
+                      aria-current={i === currentPage ? 'page' : undefined}
+                      role="tab"
+                    />
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === totalPages - 1}
+                  className={cn(
+                    'p-2 rounded-full transition-all duration-200',
+                    currentPage === totalPages - 1
+                      ? 'text-foreground-muted cursor-not-allowed'
+                      : 'text-foreground-secondary hover:text-foreground hover:bg-secondary cursor-pointer'
+                  )}
+                  aria-label="Next page"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
               </div>
+
+              {/* Page info */}
+              <span className="text-xs text-foreground-tertiary font-mono">
+                {currentPage + 1} / {totalPages}
+              </span>
             </div>
           )}
 
-          {filteredSkills.length === 0 && (
-            <div className="text-center py-20 text-muted-foreground font-mono">
-              {t('skills.noResults', { query: searchQuery })}
+          {!isDebouncing && filteredSkills.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center mb-6">
+                <Search className="w-8 h-8 text-foreground-tertiary" />
+              </div>
+              <h3 className="text-lg font-bold text-foreground mb-2">
+                {t('skills.noSkillsTitle')}
+              </h3>
+              <p className="text-foreground-secondary text-sm max-w-md mb-6">
+                {searchQuery
+                  ? t('skills.noResultsSearch', { query: searchQuery })
+                  : t('skills.noResultsFilter')}
+              </p>
+              <div className="flex gap-3">
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="px-4 py-2 text-sm font-medium bg-secondary text-foreground rounded-lg hover:bg-secondary/80 transition-colors"
+                  >
+                    {t('skills.clearSearch')}
+                  </button>
+                )}
+                {tagFilter && (
+                  <button
+                    onClick={() => setTagFilter(null)}
+                    className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary-hover transition-colors"
+                  >
+                    {t('skills.showAll')}
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>

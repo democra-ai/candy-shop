@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import type { User } from '@supabase/supabase-js';
 import { Sidebar } from './Sidebar';
 import { useLanguage } from '../../contexts/LanguageContext';
 
@@ -84,7 +85,7 @@ interface LayoutProps {
   children: React.ReactNode;
   onOpenAuth: () => void;
   onOpenCart: () => void;
-  user: any;
+  user: User | null;
   cartCount: number;
   onNavFind: () => void;
   onNavCd: () => void;

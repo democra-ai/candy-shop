@@ -1,11 +1,12 @@
 import { ShoppingBag, User as UserIcon, LogOut, Plus, Library } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import type { User } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabaseClient';
 
 interface HeaderProps {
   onOpenAuth: () => void;
   onOpenCart: () => void;
-  user: any;
+  user: User | null;
   cartCount: number;
   onNavFind: () => void;
   onNavCd: () => void;
@@ -26,42 +27,42 @@ export function Header({ onOpenAuth, onOpenCart, user, cartCount, onNavFind, onN
               ~/ Candy-Shop
             </span>
           </button>
-          <div className="flex items-center gap-1.5 ml-2 px-2 py-0.5 rounded-full bg-green-100 border border-green-200">
+          <div className="flex items-center gap-1.5 ml-2 px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-500/10 border border-green-200 dark:border-green-500/20">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
             </span>
-            <span className="text-[10px] font-medium text-green-700 uppercase tracking-wider font-mono">Open</span>
+            <span className="text-[10px] font-medium text-green-700 dark:text-green-400 uppercase tracking-wider font-mono">Open</span>
           </div>
         </div>
 
         {/* Navigation Links */}
         <nav className="hidden md:flex items-center gap-6 text-sm font-mono text-foreground-secondary">
-          <button onClick={onNavFind} className="hover:text-primary transition-colors flex items-center gap-2 group">
+          <button onClick={onNavFind} className="hover:text-primary transition-colors flex items-center gap-2 group cursor-pointer rounded px-1 py-0.5 focus:outline-none focus:ring-2 focus:ring-primary/30">
             <span className="text-secondary">$</span>
             <span className="group-hover:translate-x-0.5 transition-transform">find --sweet</span>
           </button>
-          <button onClick={onNavCd} className="hover:text-primary transition-colors flex items-center gap-2 group">
+          <button onClick={onNavCd} className="hover:text-primary transition-colors flex items-center gap-2 group cursor-pointer rounded px-1 py-0.5 focus:outline-none focus:ring-2 focus:ring-primary/30">
             <span className="text-secondary">$</span>
             <span className="group-hover:translate-x-0.5 transition-transform">cd /chocolates</span>
           </button>
-          <button onClick={onNavMan} className="hover:text-primary transition-colors flex items-center gap-2 group">
+          <button onClick={onNavMan} className="hover:text-primary transition-colors flex items-center gap-2 group cursor-pointer rounded px-1 py-0.5 focus:outline-none focus:ring-2 focus:ring-primary/30">
             <span className="text-secondary">$</span>
             <span className="group-hover:translate-x-0.5 transition-transform">man recipes</span>
           </button>
-          
+
           {user && (
             <>
-              <button 
-                onClick={() => navigate('/skills/create')} 
-                className="hover:text-primary transition-colors flex items-center gap-2 group"
+              <button
+                onClick={() => navigate('/skills/create')}
+                className="hover:text-primary transition-colors flex items-center gap-2 group cursor-pointer rounded px-1 py-0.5 focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
                 <Plus className="w-4 h-4" />
                 <span className="group-hover:translate-x-0.5 transition-transform">create skills</span>
               </button>
-              <button 
-                onClick={() => navigate('/skills/library')} 
-                className="hover:text-primary transition-colors flex items-center gap-2 group"
+              <button
+                onClick={() => navigate('/skills/library')}
+                className="hover:text-primary transition-colors flex items-center gap-2 group cursor-pointer rounded px-1 py-0.5 focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
                 <Library className="w-4 h-4" />
                 <span className="group-hover:translate-x-0.5 transition-transform">my skills</span>
