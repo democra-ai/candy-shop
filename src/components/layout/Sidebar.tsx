@@ -92,6 +92,8 @@ const themes = [
   },
 ];
 
+// Tauri titleBarStyle: "Overlay" provides the native drag region
+
 export function Sidebar({
   onOpenAuth,
   onOpenCart,
@@ -268,17 +270,21 @@ export function Sidebar({
 
   const sidebarContent = (
     <>
+      {/* macOS Title Bar Spacer */}
+      <div className="h-11 flex-shrink-0" aria-hidden="true" />
+
       {/* Logo */}
       <div
         className={cn(
-          'flex items-center gap-3 px-4 py-5 border-b border-border',
+          'flex items-center gap-3 px-4 border-b border-border',
+          'py-3',
           collapsed ? 'justify-center' : 'justify-between'
         )}
       >
         {!collapsed && (
           <button
             onClick={() => navigate('/')}
-            className="flex items-center gap-2 hover:opacity-80 transition-opacity duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30 rounded-lg px-1"
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30 rounded-lg px-1 "
             aria-label="Go to home page"
           >
             <span className="text-2xl leading-none animate-candy-float" aria-hidden="true">🍭</span>
@@ -506,7 +512,7 @@ export function Sidebar({
         <button
           onClick={() => setMobileOpen(true)}
           className={cn(
-            'p-2 rounded-lg',
+            'p-2 rounded-lg ',
             'hover:bg-secondary transition-colors duration-200 cursor-pointer',
             'min-w-[40px] min-h-[40px] flex items-center justify-center',
             'focus:outline-none focus:ring-2 focus:ring-primary/30'
@@ -519,7 +525,7 @@ export function Sidebar({
 
         <button
           onClick={() => navigate('/')}
-          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+          className="flex items-center gap-2 hover:opacity-80 transition-opacity "
         >
           <span className="text-xl leading-none animate-candy-float">🍭</span>
           <span className="font-bold text-base font-candy">Candy Shop</span>
@@ -527,7 +533,7 @@ export function Sidebar({
 
         <button
           onClick={onOpenCart}
-          className="p-2 rounded-lg hover:bg-secondary transition-colors duration-200 relative min-w-[40px] min-h-[40px] flex items-center justify-center"
+          className="p-2 rounded-lg hover:bg-secondary transition-colors duration-200 relative min-w-[40px] min-h-[40px] flex items-center justify-center "
           aria-label={`Cart (${cartCount} items)`}
         >
           <ShoppingBag className="w-5 h-5" />

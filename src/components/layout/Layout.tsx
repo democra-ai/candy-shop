@@ -170,6 +170,8 @@ export function Layout({
         onChangeTheme={changeTheme}
       />
       <main className="lg:pl-64 pt-14 lg:pt-0 min-h-screen relative">
+        {/* Spacer for title bar overlay */}
+        <div className="hidden lg:block h-11" aria-hidden="true" />
         <div className="container max-w-7xl mx-auto px-4 sm:px-8 py-8 md:py-12">{children}</div>
       </main>
 

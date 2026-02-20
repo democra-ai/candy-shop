@@ -459,16 +459,19 @@ function ThemedToaster() {
 }
 
 function App() {
+  const Router = BrowserRouter;
+  const routerProps = { basename: import.meta.env.BASE_URL };
+
   return (
     <ErrorBoundary>
-      <BrowserRouter basename={import.meta.env.BASE_URL}>
+      <Router {...routerProps}>
         <VersionModeProvider>
           <LanguageProvider>
             <AppContent />
             <ThemedToaster />
           </LanguageProvider>
         </VersionModeProvider>
-      </BrowserRouter>
+      </Router>
     </ErrorBoundary>
   );
 }

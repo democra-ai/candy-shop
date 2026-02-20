@@ -1,0 +1,18 @@
+[package]
+name = "candy-shop"
+version = "1.0.0"
+description = "Candy Shop — Local AI Skills Manager for macOS"
+authors = ["Tacits"]
+edition = "2021"
+
+[lib]
+name = "candy_shop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

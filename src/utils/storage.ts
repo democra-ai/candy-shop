@@ -2,8 +2,22 @@ import type { Skill } from '../types/skill-creator';
 
 const SKILLS_KEY = 'user_skills';
 
+function getSetting(key: string, fallback: unknown = null): unknown {
+  try {
+    const val = localStorage.getItem(key);
+    return val !== null ? JSON.parse(val) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function setSetting(key: string, value: unknown) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
 export const storageUtils = {
-  // Skills management
+  init: async () => {},
+
   getSkills: (): Skill[] => {
     try {
       return JSON.parse(localStorage.getItem(SKILLS_KEY) || '[]');
@@ -89,41 +103,38 @@ export const storageUtils = {
     return skills.find(s => s.id === skillId);
   },
 
-  // Execution history
   saveExecutionHistory: (skillId: string, input: string, output: string, duration: number): void => {
+    const historyKey = `skill_history_${skillId}`;
     try {
-      const historyKey = `skill_history_${skillId}`;
-      const history = JSON.parse(localStorage.getItem(historyKey) || '[]');
-      history.push({
+      const history = getSetting(historyKey, []) as unknown[];
+      (history as Record<string, unknown>[]).push({
         id: `exec-${Date.now()}`,
         input,
         output,
         timestamp: new Date().toISOString(),
         duration,
       });
-      // Keep only last 50 executions
       if (history.length > 50) {
         history.shift();
       }
-      localStorage.setItem(historyKey, JSON.stringify(history));
+      setSetting(historyKey, history);
     } catch (error) {
       console.error('Failed to save execution history:', error);
     }
   },
 
   getExecutionHistory: (skillId: string) => {
+    const historyKey = `skill_history_${skillId}`;
     try {
-      const historyKey = `skill_history_${skillId}`;
-      return JSON.parse(localStorage.getItem(historyKey) || '[]');
+      return getSetting(historyKey, []);
     } catch {
       return [];
     }
   },
 
-  // Likes management
   getLikes: (): string[] => {
     try {
-      return JSON.parse(localStorage.getItem('liked_skills') || '[]');
+      return getSetting('liked_skills', []) as string[];
     } catch {
       return [];
     }
@@ -134,7 +145,7 @@ export const storageUtils = {
       const likes = storageUtils.getLikes();
       if (!likes.includes(skillId)) {
         likes.push(skillId);
-        localStorage.setItem('liked_skills', JSON.stringify(likes));
+        setSetting('liked_skills', likes);
       }
     } catch (error) {
       console.error('Failed to save like:', error);
@@ -146,7 +157,7 @@ export const storageUtils = {
     try {
       const likes = storageUtils.getLikes();
       const filtered = likes.filter(id => id !== skillId);
-      localStorage.setItem('liked_skills', JSON.stringify(filtered));
+      setSetting('liked_skills', filtered);
     } catch (error) {
       console.error('Failed to remove like:', error);
       throw error;
@@ -158,10 +169,9 @@ export const storageUtils = {
     return likes.includes(skillId);
   },
 
-  // Cart management
   getCart: (): string[] => {
     try {
-      return JSON.parse(localStorage.getItem('cart_items') || '[]');
+      return getSetting('cart_items', []) as string[];
     } catch {
       return [];
     }
@@ -169,7 +179,7 @@ export const storageUtils = {
 
   saveCart: (ids: string[]): void => {
     try {
-      localStorage.setItem('cart_items', JSON.stringify(ids));
+      setSetting('cart_items', ids);
     } catch (error) {
       console.error('Failed to save cart:', error);
     }
