@@ -16,7 +16,8 @@ pinned: false
 Browse, run, create, and share AI agent skills — all in one place.
 
 [![Live Demo](https://img.shields.io/badge/🤗_HuggingFace-Live_Demo-yellow?style=for-the-badge)](https://huggingface.co/spaces/tao-shen/candy-shop)
-[![GitHub](https://img.shields.io/badge/GitHub-Source_Code-black?style=for-the-badge&logo=github)](https://github.com/tao-shen/candy-shop)
+[![Vercel](https://img.shields.io/badge/Vercel-Deployed-black?style=for-the-badge&logo=vercel)](https://candy-shop-three.vercel.app)
+[![GitHub](https://img.shields.io/badge/GitHub-Source_Code-black?style=for-the-badge&logo=github)](https://github.com/democra-ai/candy-shop)
 
 </div>
 
@@ -43,7 +44,8 @@ Run any skill directly in the browser with a full-featured chat interface powere
 Build and publish your own skills with a name, description, system prompt, and configuration — no coding required.
 
 ### Multi-Platform
-- **Web** — Hosted on [HuggingFace Spaces](https://huggingface.co/spaces/tao-shen/candy-shop)
+- **Web (Vercel)** — Production frontend on [Vercel](https://candy-shop-three.vercel.app) with automatic deploys
+- **Web (HuggingFace)** — Also on [HuggingFace Spaces](https://huggingface.co/spaces/tao-shen/candy-shop) via Docker
 - **Desktop** — Native macOS app built with [Tauri v2](https://v2.tauri.app)
 - **Self-hosted** — Docker-ready for your own infrastructure
 
@@ -61,7 +63,7 @@ Build and publish your own skills with a name, description, system prompt, and c
 
 ```bash
 # Clone the repository
-git clone https://github.com/tao-shen/candy-shop.git
+git clone https://github.com/democra-ai/candy-shop.git
 cd candy-shop
 
 # Install dependencies
@@ -126,7 +128,7 @@ candy-shop/
 Contributions are welcome! Here are some ways to get involved:
 
 - **Add a skill** — Submit a PR with a new skill entry in `src/data/skillsData.ts`
-- **Fix bugs** — Check the [Issues](https://github.com/tao-shen/candy-shop/issues) tab
+- **Fix bugs** — Check the [Issues](https://github.com/democra-ai/candy-shop/issues) tab
 - **Improve UI/UX** — Design contributions are always appreciated
 - **Translate** — Help us add more languages
 
@@ -140,6 +142,6 @@ MIT
 
 **AI is simple like candy** 🍬
 
-[Live Demo](https://huggingface.co/spaces/tao-shen/candy-shop) · [GitHub](https://github.com/tao-shen/candy-shop) · [Report Bug](https://github.com/tao-shen/candy-shop/issues)
+[Live Demo](https://huggingface.co/spaces/tao-shen/candy-shop) · [GitHub](https://github.com/democra-ai/candy-shop) · [Report Bug](https://github.com/democra-ai/candy-shop/issues)
 
 </div>
