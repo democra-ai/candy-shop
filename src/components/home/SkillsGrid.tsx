@@ -1,4 +1,4 @@
-import { Search, ShoppingBag, Check, X, Heart, Play, Star, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, ShoppingBag, Check, X, Heart, Play, Star, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { SKILLS_DATA, type Skill } from '../../data/skillsData';
 import { SkillModal } from '../common/SkillModal';
@@ -6,7 +6,6 @@ import { storageUtils } from '../../utils/storage';
 import { cn } from '../../utils/cn';
 import { toast } from 'sonner';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { useVersionMode } from '../../contexts/VersionModeContext';
 import { useDebounce } from '../../hooks/useDebounce';
 import { CANDY_EMOJIS } from '../../utils/candy';
 
@@ -18,6 +17,10 @@ interface SkillsGridProps {
   cart: Set<string>;
   onToggleCart: (id: string) => void;
   onRunSkill: (skill: Skill) => void;
+  onMatchCraving?: (tags: string[]) => void;
+  userCandies?: Skill[];
+  onPostCandy?: () => void;
+  onPostCraving?: () => void;
 }
 
 const getCategoryColor = (category: string) => {
@@ -51,9 +54,12 @@ export function SkillsGrid({
   cart,
   onToggleCart,
   onRunSkill,
+  onMatchCraving,
+  userCandies = [],
+  onPostCandy,
+  onPostCraving,
 }: SkillsGridProps) {
   const { t } = useLanguage();
-  const { mode } = useVersionMode();
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const isDebouncing = searchQuery !== debouncedSearchQuery;
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
@@ -104,21 +110,28 @@ export function SkillsGrid({
     }
   };
 
+  const allSkills = useMemo(() => [...userCandies, ...SKILLS_DATA], [userCandies]);
+
   const filteredSkills = useMemo(() => {
-    return SKILLS_DATA
-      .filter((skill) => {
-        const matchesSearch =
-          skill.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-          skill.description.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-          skill.tags.some(t => t.toLowerCase().includes(debouncedSearchQuery.toLowerCase()));
+    const filtered = allSkills.filter((skill) => {
+      const matchesSearch =
+        skill.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+        skill.description.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+        skill.tags.some(t => t.toLowerCase().includes(debouncedSearchQuery.toLowerCase()));
 
-        const matchesTag = tagFilter ?
-          (skill.tags.includes(tagFilter) || skill.category === tagFilter) : true;
+      const matchesTag = tagFilter ?
+        (skill.tags.includes(tagFilter) || skill.category === tagFilter) : true;
 
-        return matchesSearch && matchesTag;
-      })
-      .sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
-  }, [debouncedSearchQuery, tagFilter]);
+      return matchesSearch && matchesTag;
+    });
+    // User-posted candies always float to top, then sort by popularity
+    return filtered.sort((a, b) => {
+      const aUser = a.id.startsWith('user-candy-') ? 1 : 0;
+      const bUser = b.id.startsWith('user-candy-') ? 1 : 0;
+      if (aUser !== bUser) return bUser - aUser;
+      return (b.popularity || 0) - (a.popularity || 0);
+    });
+  }, [debouncedSearchQuery, tagFilter, allSkills]);
 
   const totalPages = Math.max(1, Math.ceil(filteredSkills.length / ITEMS_PER_PAGE));
   const pageSkills = filteredSkills.slice(currentPage * ITEMS_PER_PAGE, (currentPage + 1) * ITEMS_PER_PAGE);
@@ -216,8 +229,8 @@ export function SkillsGrid({
               </div>
             </div>
 
-            <div className="w-full md:w-96 relative group">
-              <div className="relative">
+            <div className="flex gap-3 items-center w-full md:w-auto">
+              <div className="relative flex-1 md:w-80">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground-tertiary" />
                 <input
                   ref={searchInputRef}
@@ -237,6 +250,24 @@ export function SkillsGrid({
                   <span className="text-xs">⌘</span>K
                 </kbd>
               </div>
+              {onPostCandy && (
+                <button
+                  onClick={onPostCandy}
+                  className="h-11 px-4 flex items-center gap-2 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl font-body font-semibold text-sm hover:shadow-[0_4px_20px_rgba(244,63,94,0.4)] transition-all duration-200 btn-press whitespace-nowrap shadow-[0_2px_12px_rgba(244,63,94,0.25)]"
+                >
+                  <Plus className="w-4 h-4" />
+                  Post Candy
+                </button>
+              )}
+              {onPostCraving && (
+                <button
+                  onClick={onPostCraving}
+                  className="h-11 px-4 flex items-center gap-2 bg-blue-500/10 border border-blue-500/30 text-blue-500 rounded-xl font-body font-semibold text-sm hover:bg-blue-500/20 hover:border-blue-500/50 transition-all duration-200 btn-press whitespace-nowrap"
+                >
+                  <Plus className="w-4 h-4" />
+                  Post Craving
+                </button>
+              )}
             </div>
           </div>
 
@@ -288,88 +319,16 @@ export function SkillsGrid({
                   'card-luxe gradient-border'
                 )}
               >
-                {/* === Dev Mode: Code-style card === */}
-                {mode === 'dev' && (
-                  <>
-                    {/* Window Chrome */}
-                    <div className="h-9 px-4 border-b border-border/50 flex items-center bg-secondary/20 group-hover:bg-secondary/40 transition-colors">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-2.5 h-2.5 rounded-full bg-red-400/80"></div>
-                        <div className="w-2.5 h-2.5 rounded-full bg-yellow-400/80"></div>
-                        <div className="w-2.5 h-2.5 rounded-full bg-green-400/80"></div>
-                      </div>
-                      <span className="ml-3 text-[11px] font-mono text-foreground-tertiary truncate">{skill.id}.ts</span>
-                      <div className="ml-auto flex items-center gap-1.5">
-                        <span className="animate-candy-float inline-block text-sm" style={{ animationDelay: `${(skillIndex % 5) * 0.4}s` }}>
-                          {CANDY_EMOJIS[skillIndex % CANDY_EMOJIS.length]}
+                {/* Your Candy badge */}
+                {skill.id.startsWith('user-candy-') && (
+                      <div className="px-5 pt-3 pb-0">
+                        <span className="text-[10px] font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full border border-primary/20 font-mono">
+                          ✦ Your Candy
                         </span>
                       </div>
-                    </div>
-
-                    {/* Code Body */}
-                    <div className="p-4 flex-1 font-mono text-[13px] leading-[1.7] space-y-1">
-                      <div>
-                        <span className="text-syntax-keyword">import</span>{' '}
-                        <span className="text-syntax-variable">{skill.name.replace(/\s+/g, '')}</span>{' '}
-                        <span className="text-syntax-keyword">from</span>{' '}
-                        <span className="text-syntax-string truncate text-xs">"{skill.installCommand.split(' ').pop()}"</span>
-                      </div>
-                      <div className="h-2" />
-                      <p className="text-syntax-comment text-xs line-clamp-2 leading-relaxed">
-                        // {skill.description}
-                      </p>
-                      <div className="h-1" />
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        <span className="text-[10px] font-semibold bg-primary/8 text-primary px-1.5 py-0.5 rounded">{skill.category}</span>
-                        {skill.tags.slice(0, 3).map(tag => (
-                          <span key={tag} className="text-[10px] bg-secondary/40 text-foreground-tertiary px-1.5 py-0.5 rounded">{tag}</span>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Status Bar */}
-                    <div className="px-4 py-2 border-t border-border/50 bg-secondary/10 flex items-center justify-between group-hover:bg-secondary/20 transition-colors">
-                      <div className="flex items-center gap-1 text-[11px] font-mono text-foreground-tertiary">
-                        <Star className="w-3 h-3 fill-caramel text-caramel" />
-                        <span>{skill.popularity || 0}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); onRunSkill(skill); }}
-                          className="p-1.5 rounded-md hover:text-green-500 hover:bg-green-500/10 transition-colors cursor-pointer focus:outline-none"
-                          title={t('skills.runSkill')}
-                          aria-label={`Run ${skill.name}`}
-                        >
-                          <Play className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleLike(skill.id); }}
-                          className="p-1.5 rounded-md hover:text-pink-500 hover:bg-pink-500/10 transition-colors cursor-pointer focus:outline-none"
-                          type="button"
-                          aria-label={likedSkills.has(skill.id) ? 'Unlike' : 'Like'}
-                        >
-                          <Heart className={cn('w-3.5 h-3.5', likedSkills.has(skill.id) ? 'fill-pink-500 text-pink-500' : '')} />
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); onToggleCart(skill.id); }}
-                          className={cn(
-                            'p-1.5 rounded-md transition-colors cursor-pointer focus:outline-none',
-                            cart.has(skill.id) ? 'text-green-500' : 'hover:text-primary hover:bg-primary/10'
-                          )}
-                          aria-label={cart.has(skill.id) ? t('skills.removeFromBag', { name: skill.name }) : t('skills.addToBag', { name: skill.name })}
-                        >
-                          {cart.has(skill.id) ? <Check className="w-3.5 h-3.5" /> : <ShoppingBag className="w-3.5 h-3.5" />}
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* === User Mode: Clean card === */}
-                {mode === 'user' && (
-                  <>
+                    )}
                     {/* Card Header */}
-                    <div className="p-5 pb-0">
+                    <div className={cn('p-5', skill.id.startsWith('user-candy-') ? 'pt-2 pb-0' : 'pb-0')}>
                       <div className="flex items-start gap-3.5">
                         <div className={cn(
                           'w-12 h-12 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0',
@@ -432,6 +391,15 @@ export function SkillsGrid({
                         <Play className="w-3.5 h-3.5 fill-current" />
                         {t('skills.runSkill')}
                       </button>
+                      {onMatchCraving && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onMatchCraving(skill.tags); }}
+                          className="h-9 px-2.5 rounded-lg flex items-center justify-center gap-1.5 text-[11px] font-body font-medium bg-secondary/50 text-foreground-tertiary hover:text-primary hover:bg-primary/10 transition-all duration-200 btn-press whitespace-nowrap"
+                          title="Find matching cravings"
+                        >
+                          😋
+                        </button>
+                      )}
                       <button
                         onClick={(e) => { e.stopPropagation(); handleLike(skill.id); }}
                         className={cn(
@@ -455,8 +423,6 @@ export function SkillsGrid({
                         {cart.has(skill.id) ? <Check className="w-3.5 h-3.5" /> : <ShoppingBag className="w-3.5 h-3.5" />}
                       </button>
                     </div>
-                  </>
-                )}
               </div>
             ))}
           </div>

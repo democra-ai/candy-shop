@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback, useSyncExternalStore, Component, type ReactNode } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate, Navigate, useLocation, useSearchParams } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from './lib/supabaseClient';
 import { Layout } from './components/layout/Layout';
-import { Hero } from './components/home/Hero';
+import { Hero, type MarketplaceTab } from './components/home/Hero';
 import { SkillsGrid } from './components/home/SkillsGrid';
+import { CravingsGrid } from './components/home/CravingsGrid';
+import { PostCravingModal } from './components/home/PostCravingModal';
+import { PostCandyModal } from './components/home/PostCandyModal';
 import { Categories } from './components/home/Categories';
 import { ExternalResources } from './components/home/ExternalResources';
 import { FAQ } from './components/home/FAQ';
@@ -20,9 +23,9 @@ import type { Skill, SkillCategory } from './types/skill-creator';
 import { storageUtils } from './utils/storage';
 import { SKILLS_DATA } from './data/skillsData';
 import { type Skill as StoreSkill } from './data/skillsData';
+import type { Craving } from './data/cravingsData';
 import { toast } from 'sonner';
 import { LanguageProvider } from './contexts/LanguageContext';
-import { VersionModeProvider } from './contexts/VersionModeContext';
 
 // ---------------------------------------------------------------------------
 // Error Boundary — prevents blank screen on unhandled errors
@@ -125,6 +128,10 @@ interface HomePageProps {
   onOpenCart: () => void;
   onOpenDocs: () => void;
   onRunSkill: (skill: StoreSkill) => void;
+  onNavCandy: () => void;
+  onNavCraving: () => void;
+  onNavPostCraving: () => void;
+  onNavPostCandy: () => void;
 }
 
 function HomePage({
@@ -135,50 +142,153 @@ function HomePage({
   onOpenCart,
   onOpenDocs,
   onRunSkill,
+  onNavCandy,
+  onNavCraving,
+  onNavPostCraving,
+  onNavPostCandy,
 }: HomePageProps) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawTab = searchParams.get('tab');
+  const activeTab: MarketplaceTab = rawTab === 'craving' ? 'craving' : 'candy';
 
-  const handleSearchFocus = () => {
-    document.getElementById('search-input')?.focus();
-    document.getElementById('skills-grid')?.scrollIntoView({ behavior: 'smooth' });
+  const [candySearch, setCandySearch] = useState('');
+  const [candyTagFilter, setCandyTagFilter] = useState<string | null>(null);
+  const [cravingSearch, setCravingSearch] = useState('');
+  const [cravingTagFilter, setCravingTagFilter] = useState<string | null>(null);
+
+  // Modal state
+  const [isPostCravingOpen, setIsPostCravingOpen] = useState(false);
+  const [isPostCandyOpen, setIsPostCandyOpen] = useState(false);
+
+  // User-posted items (persisted to localStorage)
+  const [userCravings, setUserCravings] = useState<Craving[]>(() => storageUtils.getUserCravings());
+  const [userCandies, setUserCandies] = useState<StoreSkill[]>(() => storageUtils.getUserCandies());
+
+  const setActiveTab = (tab: MarketplaceTab) => {
+    setSearchParams(tab === 'craving' ? { tab: 'craving' } : {});
+    setTimeout(() => {
+      const id = tab === 'craving' ? 'cravings-grid' : 'skills-grid';
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+    }, 50);
+  };
+
+  const handleMatchCandy = (tags: string[]) => {
+    setCandyTagFilter(tags[0] ?? null);
+    setCandySearch('');
+    setActiveTab('candy');
+  };
+
+  const handleMatchCraving = (tags: string[]) => {
+    setCravingTagFilter(tags[0] ?? null);
+    setCravingSearch('');
+    setActiveTab('craving');
   };
 
   const handleCategoryScroll = () => {
     document.getElementById('categories-section')?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Opens the Post Craving modal (switches to craving tab first)
+  const handleOpenPostCraving = () => {
+    setActiveTab('craving');
+    setTimeout(() => setIsPostCravingOpen(true), 100);
+  };
+
+  // Opens the Post Candy modal (switches to candy tab first)
+  const handleOpenPostCandy = () => {
+    setActiveTab('candy');
+    setTimeout(() => setIsPostCandyOpen(true), 100);
+  };
+
+  const handleSubmitCraving = (craving: Craving) => {
+    storageUtils.saveUserCraving(craving);
+    setUserCravings(storageUtils.getUserCravings());
+    toast.success(`Craving "${craving.title}" posted! Agents will find you.`);
+  };
+
+  const handleSubmitCandy = (candy: StoreSkill) => {
+    storageUtils.saveUserCandy(candy);
+    setUserCandies(storageUtils.getUserCandies());
+    toast.success(`Candy "${candy.name}" is live in the marketplace!`);
+  };
+
   return (
-    <Layout
-      onOpenAuth={onOpenAuth}
-      onOpenCart={onOpenCart}
-      user={user}
-      cartCount={cart.size}
-      onNavFind={handleSearchFocus}
-      onNavCd={handleCategoryScroll}
-      onNavMan={onOpenDocs}
-    >
-      <Hero onOpenDocs={onOpenDocs} />
-      <Categories
-        activeCategory={tagFilter}
-        onSelectCategory={(tag: string | null) => {
-          setTagFilter(tag);
-          setSearchQuery('');
-          document.getElementById('skills-grid')?.scrollIntoView({ behavior: 'smooth' });
-        }}
+    <>
+      <Layout
+        onOpenAuth={onOpenAuth}
+        onOpenCart={onOpenCart}
+        user={user}
+        cartCount={cart.size}
+        onNavFind={() => setActiveTab('candy')}
+        onNavCd={handleCategoryScroll}
+        onNavMan={onOpenDocs}
+        onNavCandy={onNavCandy}
+        onNavCraving={onNavCraving}
+        onNavPostCraving={handleOpenPostCraving}
+        onNavPostCandy={handleOpenPostCandy}
+      >
+        <Hero
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          onPostCraving={handleOpenPostCraving}
+          onPostCandy={handleOpenPostCandy}
+        />
+
+        {/* CANDY TAB */}
+        {activeTab === 'candy' && (
+          <>
+            <Categories
+              activeCategory={candyTagFilter}
+              onSelectCategory={(tag: string | null) => {
+                setCandyTagFilter(tag);
+                setCandySearch('');
+                document.getElementById('skills-grid')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+            />
+            <SkillsGrid
+              searchQuery={candySearch}
+              setSearchQuery={setCandySearch}
+              tagFilter={candyTagFilter}
+              setTagFilter={setCandyTagFilter}
+              cart={cart}
+              onToggleCart={onToggleCart}
+              onRunSkill={onRunSkill}
+              onMatchCraving={handleMatchCraving}
+              userCandies={userCandies}
+              onPostCandy={handleOpenPostCandy}
+              onPostCraving={handleOpenPostCraving}
+            />
+            <ExternalResources />
+            <FAQ />
+          </>
+        )}
+
+        {/* CRAVING TAB */}
+        {activeTab === 'craving' && (
+          <CravingsGrid
+            searchQuery={cravingSearch}
+            setSearchQuery={setCravingSearch}
+            tagFilter={cravingTagFilter}
+            setTagFilter={setCravingTagFilter}
+            onMatchCandy={handleMatchCandy}
+            onPostCraving={handleOpenPostCraving}
+            onPostCandy={handleOpenPostCandy}
+            userCravings={userCravings}
+          />
+        )}
+      </Layout>
+
+      <PostCravingModal
+        isOpen={isPostCravingOpen}
+        onClose={() => setIsPostCravingOpen(false)}
+        onSubmit={handleSubmitCraving}
       />
-      <SkillsGrid
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        tagFilter={tagFilter}
-        setTagFilter={setTagFilter}
-        cart={cart}
-        onToggleCart={onToggleCart}
-        onRunSkill={onRunSkill}
+      <PostCandyModal
+        isOpen={isPostCandyOpen}
+        onClose={() => setIsPostCandyOpen(false)}
+        onSubmit={handleSubmitCandy}
       />
-      <ExternalResources />
-      <FAQ />
-    </Layout>
+    </>
   );
 }
 
@@ -356,6 +466,22 @@ function AppContent() {
     }, 100);
   }, [navigate]);
 
+  const navToCandy = useCallback(() => {
+    navigate('/');
+  }, [navigate]);
+
+  const navToCraving = useCallback(() => {
+    navigate('/?tab=craving');
+  }, [navigate]);
+
+  const navToPostCraving = useCallback(() => {
+    navigate('/');
+  }, [navigate]);
+
+  const navToPostCandy = useCallback(() => {
+    navigate('/?tab=craving');
+  }, [navigate]);
+
   const sharedLayoutProps = {
     onOpenAuth: openAuth,
     onOpenCart: openCart,
@@ -364,6 +490,10 @@ function AppContent() {
     onNavFind: navToFind,
     onNavCd: navToCd,
     onNavMan: openDocs,
+    onNavCandy: navToCandy,
+    onNavCraving: navToCraving,
+    onNavPostCraving: navToPostCraving,
+    onNavPostCandy: navToPostCandy,
   };
 
   return (
@@ -380,6 +510,10 @@ function AppContent() {
               onOpenCart={openCart}
               onOpenDocs={openDocs}
               onRunSkill={handleRunSkill}
+              onNavCandy={navToCandy}
+              onNavCraving={navToCraving}
+              onNavPostCraving={navToPostCraving}
+              onNavPostCandy={navToPostCandy}
             />
           }
         />
@@ -465,12 +599,10 @@ function App() {
   return (
     <ErrorBoundary>
       <Router {...routerProps}>
-        <VersionModeProvider>
-          <LanguageProvider>
-            <AppContent />
-            <ThemedToaster />
-          </LanguageProvider>
-        </VersionModeProvider>
+        <LanguageProvider>
+          <AppContent />
+          <ThemedToaster />
+        </LanguageProvider>
       </Router>
     </ErrorBoundary>
   );

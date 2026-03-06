@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Save, X, Edit2, Sparkles, AlertCircle } from 'lucide-react';
 import type { Skill, AnalysisResult, SkillCategory } from '../../types/skill-creator';
-import { getCandyEmoji } from '../../utils/candy';
 
 interface SkillPreviewEditorProps {
   skill: Partial<Skill>;
@@ -155,7 +154,7 @@ export function SkillPreviewEditor({
               {/* Footer */}
               <div className="h-10 px-4 border-t border-gray-100 bg-[#FAFAFA] flex items-center justify-between text-xs font-mono text-gray-500">
                 <span>{CATEGORY_LABELS[skill.category as SkillCategory] || 'Category'}</span>
-                <span className="text-primary animate-candy-float inline-block">{getCandyEmoji(skill.id ?? '')}</span>
+                <span className="text-primary animate-candy-float inline-block">{skill.icon || '🤖'}</span>
               </div>
             </div>
           </div>

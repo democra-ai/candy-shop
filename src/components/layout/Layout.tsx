@@ -90,6 +90,10 @@ interface LayoutProps {
   onNavFind: () => void;
   onNavCd: () => void;
   onNavMan: () => void;
+  onNavCandy: () => void;
+  onNavCraving: () => void;
+  onNavPostCraving: () => void;
+  onNavPostCandy: () => void;
 }
 
 export function Layout({
@@ -101,6 +105,10 @@ export function Layout({
   onNavFind,
   onNavCd,
   onNavMan,
+  onNavCandy,
+  onNavCraving,
+  onNavPostCraving,
+  onNavPostCandy,
 }: LayoutProps) {
   const { t } = useLanguage();
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -164,14 +172,16 @@ export function Layout({
         onNavFind={onNavFind}
         onNavCd={onNavCd}
         onNavMan={onNavMan}
+        onNavCandy={onNavCandy}
+        onNavCraving={onNavCraving}
+        onNavPostCraving={onNavPostCraving}
+        onNavPostCandy={onNavPostCandy}
         isDarkMode={isDarkMode}
         onToggleTheme={toggleTheme}
         currentTheme={currentTheme}
         onChangeTheme={changeTheme}
       />
-      <main className="lg:pl-64 pt-14 lg:pt-0 min-h-screen relative">
-        {/* Spacer for title bar overlay */}
-        <div className="hidden lg:block h-11" aria-hidden="true" />
+      <main className="lg:pl-64 pt-14 min-h-screen relative">
         <div className="container max-w-7xl mx-auto px-4 sm:px-8 py-8 md:py-12">{children}</div>
       </main>
 

@@ -6,21 +6,24 @@ const EXTERNAL_LINKS = [
     nameKey: 'external.anthropic',
     descriptionKey: 'external.anthropicDesc',
     url: 'https://github.com/anthropics/claude-skills',
-    icon: <Github className="w-5 h-5 text-foreground-secondary" />,
+    Icon: Github,
+    iconClass: 'w-5 h-5 text-foreground-secondary',
     color: 'border-border hover:border-primary',
   },
   {
     nameKey: 'external.obra',
     descriptionKey: 'external.obraDesc',
     url: 'https://github.com/obra/superpowers',
-    icon: <Zap className="w-5 h-5 text-warning" />,
+    Icon: Zap,
+    iconClass: 'w-5 h-5 text-warning',
     color: 'border-border hover:border-warning',
   },
   {
     nameKey: 'external.awesome',
     descriptionKey: 'external.awesomeDesc',
     url: 'https://github.com/ClaudioHQ/awesome-claude-skills',
-    icon: <Rocket className="w-5 h-5 text-primary" />,
+    Icon: Rocket,
+    iconClass: 'w-5 h-5 text-primary',
     color: 'border-border hover:border-primary',
   },
 ];
@@ -46,7 +49,7 @@ export function ExternalResources() {
               className={`group bg-card p-6 rounded-xl border shadow-sm transition-all duration-200 hover:shadow-md flex items-start gap-4 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30 ${link.color}`}
               aria-label={`${t(link.nameKey)} - opens in new tab`}
             >
-              <div className="mt-1 shrink-0">{link.icon}</div>
+              <div className="mt-1 shrink-0"><link.Icon className={link.iconClass} /></div>
               <div>
                 <h3 className="font-bold text-foreground group-hover:text-primary transition-colors duration-200 flex items-center gap-2">
                   {t(link.nameKey)}

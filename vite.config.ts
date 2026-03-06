@@ -9,7 +9,10 @@ export default defineConfig({
   clearScreen: false,
   server: {
     port: 5173,
-    strictPort: true,
+    strictPort: false,
+    // Disable HMR to prevent React Fast Refresh state corruption (black screens)
+    // Forces clean full-page reload on every file change (~200ms)
+    hmr: false,
     host: process.env.TAURI_DEV_HOST || 'localhost',
     watch: {
       ignored: ['**/src-tauri/**'],

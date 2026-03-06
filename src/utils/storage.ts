@@ -184,4 +184,40 @@ export const storageUtils = {
       console.error('Failed to save cart:', error);
     }
   },
+
+  // ── User-posted marketplace items ──────────────────────────────────────────
+
+  getUserCravings: (): import('../data/cravingsData').Craving[] => {
+    try {
+      return getSetting('user_market_cravings', []) as import('../data/cravingsData').Craving[];
+    } catch {
+      return [];
+    }
+  },
+
+  saveUserCraving: (craving: import('../data/cravingsData').Craving): void => {
+    try {
+      const existing = storageUtils.getUserCravings();
+      setSetting('user_market_cravings', [craving, ...existing]);
+    } catch (error) {
+      console.error('Failed to save craving:', error);
+    }
+  },
+
+  getUserCandies: (): import('../data/skillsData').Skill[] => {
+    try {
+      return getSetting('user_market_candies', []) as import('../data/skillsData').Skill[];
+    } catch {
+      return [];
+    }
+  },
+
+  saveUserCandy: (candy: import('../data/skillsData').Skill): void => {
+    try {
+      const existing = storageUtils.getUserCandies();
+      setSetting('user_market_candies', [candy, ...existing]);
+    } catch (error) {
+      console.error('Failed to save candy:', error);
+    }
+  },
 };

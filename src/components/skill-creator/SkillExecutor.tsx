@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { getCandyEmoji } from '../../utils/candy';
+
 import {
   X,
   Send,
@@ -1712,8 +1712,8 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
         {/* ── Header ─────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/50 glass-strong shrink-0">
           <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-caramel flex items-center justify-center text-xl shadow-candy ring-1 ring-primary/20">
-              <span className="animate-candy-float inline-block">{getCandyEmoji(skill.id)}</span>
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-xl border border-primary/20">
+              <span>{skill.icon || '🤖'}</span>
             </div>
             <div>
               <div className="flex items-center gap-2">
