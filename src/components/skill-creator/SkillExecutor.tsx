@@ -1778,7 +1778,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                 <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${showModelPicker ? 'rotate-180' : ''}`} />
               </button>
               {showModelPicker && (
-                <div className="absolute right-0 mt-2 w-72 glass-strong border border-border/50 rounded-xl shadow-candy-lg z-50 overflow-hidden">
+                <div className="absolute right-0 mt-2 w-72 bg-background border border-border/50 rounded-xl shadow-candy-lg z-[200] overflow-hidden">
                   <div className="p-2.5 border-b border-border/50 bg-secondary/30">
                     <p className="text-xs font-medium text-foreground-secondary font-body">Select Model</p>
                   </div>
