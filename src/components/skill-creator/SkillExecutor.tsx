@@ -1186,7 +1186,13 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
 
   const handleSend = useCallback(async () => {
     const text = input.trim();
-    if ((!text && attachedFiles.length === 0) || isRunning || !connected) return;
+    if ((!text && attachedFiles.length === 0) || isRunning) return;
+    // If not connected yet, wait briefly for connection to establish
+    if (!connected) {
+      setConnectionError('Still connecting to server, please try again in a moment.');
+      setTimeout(() => setConnectionError(null), 3000);
+      return;
+    }
 
     // Prepare file attachments
     const files: FileAttachment[] = attachedFiles.map((f) => ({
@@ -2246,7 +2252,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                   onKeyDown={handleKeyDown}
                   placeholder={activeQuestion ? "Type your answer here..." : "What should the agent do?"}
                   rows={2}
-                  disabled={isRunning || !connected}
+                  disabled={isRunning}
                   className="w-full pl-4 pr-28 py-3.5 bg-input border border-input-border rounded-xl
                     text-sm text-foreground placeholder-foreground-tertiary font-body
                     focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/30
@@ -2259,7 +2265,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                   {!isRunning && (
                     <button
                       onClick={() => fileInputRef.current?.click()}
-                      disabled={!connected}
+                      disabled={isRunning}
                       className="p-2.5 bg-secondary/40 text-foreground-tertiary rounded-lg hover:bg-secondary hover:text-foreground-secondary
                         disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer min-w-[38px] min-h-[38px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-border/30"
                       title="Attach files"
@@ -2280,7 +2286,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                   ) : (
                     <button
                       onClick={handleSend}
-                      disabled={(!input.trim() && attachedFiles.length === 0) || !connected}
+                      disabled={!input.trim() && attachedFiles.length === 0}
                         className="p-2.5 bg-gradient-to-r from-primary to-primary-hover text-primary-foreground rounded-lg hover:shadow-candy
                         disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer min-w-[38px] min-h-[38px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-primary/50 shadow-candy disabled:shadow-none btn-press"
                       title="Send (Enter)"
