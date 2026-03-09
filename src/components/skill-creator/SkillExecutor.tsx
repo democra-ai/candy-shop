@@ -1677,60 +1677,9 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
 
   // ── Render ──────────────────────────────────────────────────────────────
 
-  // Connection screen
-  if (connecting) {
-    return (
-      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[110] backdrop-blur-md">
-        <div className="glass-strong rounded-2xl p-8 max-w-sm w-full mx-4 text-center border border-border/50 shadow-candy-lg">
-          <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-foreground mb-2 font-candy">Connecting to OpenCode</h3>
-          <p className="text-sm text-foreground-tertiary font-body">Establishing connection to server...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (connectionError && !connected) {
-    return (
-      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[110] backdrop-blur-md">
-        <div className="glass-strong rounded-2xl p-8 max-w-md w-full mx-4 text-center border border-border/50 shadow-candy-lg">
-          <AlertCircle className="w-10 h-10 text-error mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-foreground mb-2 font-candy">Connection Failed</h3>
-          <p className="text-sm text-error/80 mb-1">{connectionError}</p>
-          <p className="text-xs text-foreground-tertiary mb-6 mt-2 font-body">
-            Check your network connection and ensure the OpenCode server is running.
-          </p>
-          <div className="flex gap-3 justify-center">
-            <button
-              onClick={() => {
-                setConnecting(true);
-                setConnectionError(null);
-                opencode.connect()
-                  .then(({ version }) => {
-                    setConnected(true);
-                    setServerVersion(version);
-                  })
-                  .catch((err) => setConnectionError((err as Error).message))
-                  .finally(() => setConnecting(false));
-              }}
-              disabled={connecting}
-              className="px-5 py-2.5 bg-gradient-to-r from-primary to-primary-hover text-primary-foreground text-sm rounded-lg hover:shadow-candy-lg transition-all duration-200 cursor-pointer min-h-[40px] disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary/50 shadow-candy btn-press font-body"
-              aria-label="Retry connection"
-            >
-              {connecting ? 'Connecting...' : 'Retry'}
-            </button>
-            <button
-              onClick={onClose}
-              className="px-5 py-2.5 glass text-foreground-secondary text-sm rounded-lg hover:text-foreground transition-all duration-200 cursor-pointer min-h-[40px] focus:outline-none focus:ring-2 focus:ring-border/50 border border-border/50 btn-press font-body"
-              aria-label="Close"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // NOTE: No early returns for connecting/error states.
+  // The full dialog (including input box) always renders.
+  // Connection status is shown as an overlay inside the chat area.
 
   // Build GitHub URL from skill.repo if available
   const githubUrl = skill.repo
@@ -1769,10 +1718,22 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                 )}
               </div>
               <div className="flex items-center gap-2.5 text-xs mt-0.5">
-                <span className="flex items-center gap-1.5 text-success">
-                  <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-                  Connected
-                </span>
+                {connecting ? (
+                  <span className="flex items-center gap-1.5 text-primary">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Connecting...
+                  </span>
+                ) : connectionError && !connected ? (
+                  <span className="flex items-center gap-1.5 text-error">
+                    <AlertCircle className="w-3 h-3" />
+                    Disconnected
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1.5 text-success">
+                    <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                    Connected
+                  </span>
+                )}
                 {serverVersion && (
                   <span className="text-foreground-muted font-mono">v{serverVersion}</span>
                 )}
@@ -1933,7 +1894,50 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
             )}
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto min-h-0 p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto min-h-0 p-4 space-y-4 relative">
+              {/* Connection overlay — shown inside chat area, input stays visible */}
+              {connecting && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm rounded-lg">
+                  <div className="text-center">
+                    <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto mb-3" />
+                    <h3 className="text-sm font-semibold text-foreground font-candy">Connecting to OpenCode</h3>
+                    <p className="text-xs text-foreground-tertiary mt-1 font-body">Establishing connection...</p>
+                  </div>
+                </div>
+              )}
+              {connectionError && !connected && !connecting && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm rounded-lg">
+                  <div className="text-center max-w-sm px-4">
+                    <AlertCircle className="w-8 h-8 text-error mx-auto mb-3" />
+                    <h3 className="text-sm font-semibold text-foreground font-candy">Connection Failed</h3>
+                    <p className="text-xs text-error/80 mt-1">{connectionError}</p>
+                    <div className="flex gap-2 justify-center mt-4">
+                      <button
+                        onClick={() => {
+                          setConnecting(true);
+                          setConnectionError(null);
+                          opencode.connect()
+                            .then(({ version }) => {
+                              setConnected(true);
+                              setServerVersion(version);
+                            })
+                            .catch((err) => setConnectionError((err as Error).message))
+                            .finally(() => setConnecting(false));
+                        }}
+                        className="px-4 py-2 bg-gradient-to-r from-primary to-primary-hover text-primary-foreground text-xs rounded-lg hover:shadow-candy-lg transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50 shadow-candy btn-press font-body"
+                      >
+                        Retry
+                      </button>
+                      <button
+                        onClick={onClose}
+                        className="px-4 py-2 glass text-foreground-secondary text-xs rounded-lg hover:text-foreground transition-all cursor-pointer focus:outline-none border border-border/50 btn-press font-body"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
               {/* Skill intro: self-intro + view instructions + edit */}
               {showSkillBanner && skillLoadStatus !== 'idle' && (
                 <div className={`rounded-lg border text-sm overflow-hidden ${
