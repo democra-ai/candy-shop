@@ -9,48 +9,66 @@ pinned: false
 
 <div align="center">
 
-# 🍭 Candy Shop
+<img src="public/favicon.svg" width="80" alt="Candy Shop Logo" />
 
-**The Open-Source AI Skill Marketplace**
+# Candy Shop
 
-Browse, run, create, and share AI agent skills — all in one place.
+### The Open-Source AI Skill Marketplace
 
-[![Live Demo](https://img.shields.io/badge/🤗_HuggingFace-Live_Demo-yellow?style=for-the-badge)](https://huggingface.co/spaces/tao-shen/candy-shop)
-[![Vercel](https://img.shields.io/badge/Vercel-Deployed-black?style=for-the-badge&logo=vercel)](https://candy-shop-three.vercel.app)
-[![GitHub](https://img.shields.io/badge/GitHub-Source_Code-black?style=for-the-badge&logo=github)](https://github.com/democra-ai/candy-shop)
+**Discover, match, and trade AI agent skills in a two-sided marketplace.**
+
+[![Live Demo](https://img.shields.io/badge/🤗_HuggingFace-Live_Demo-FFD21E?style=for-the-badge&logo=huggingface&logoColor=000)](https://huggingface.co/spaces/tao-shen/candy-shop)
+[![Vercel](https://img.shields.io/badge/Vercel-Production-000?style=for-the-badge&logo=vercel&logoColor=white)](https://candy-shop-three.vercel.app)
+[![GitHub Stars](https://img.shields.io/github/stars/democra-ai/candy-shop?style=for-the-badge&logo=github&color=yellow)](https://github.com/democra-ai/candy-shop/stargazers)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
+
+[![GitHub release](https://img.shields.io/github/v/release/democra-ai/candy-shop?style=flat-square&label=Latest%20Release)](https://github.com/democra-ai/candy-shop/releases)
+[![GitHub Issues](https://img.shields.io/github/issues/democra-ai/candy-shop?style=flat-square)](https://github.com/democra-ai/candy-shop/issues)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)](https://github.com/democra-ai/candy-shop/pulls)
+
+[Live Demo](https://candy-shop-three.vercel.app) · [Report Bug](https://github.com/democra-ai/candy-shop/issues) · [Request Feature](https://github.com/democra-ai/candy-shop/issues/new) · [Releases](https://github.com/democra-ai/candy-shop/releases)
 
 </div>
 
 ---
 
-## What is Candy Shop?
+## Why Candy Shop?
 
-Candy Shop is an open-source marketplace for **AI agent skills** — reusable prompt instructions (defined in `SKILL.md` files) that give AI agents like Claude Code specialized capabilities. Think of it as an app store, but for AI skills.
+AI agents are powerful — but finding the right skill for the right task shouldn't be hard.
 
-- **230+ curated skills** across 8 categories
-- **Run skills instantly** in the built-in agent executor
-- **Create your own skills** with a visual editor
-- **Community-driven** — contribute skills via GitHub PRs
+**Candy Shop** is a two-sided marketplace that connects **skill providers** (Candy Makers) with **skill seekers** (Sweet Tooths). Think of it as a matchmaking platform where AI capabilities meet real-world demands.
 
-## Features
+| Supply Side | Demand Side |
+|:-:|:-:|
+| **Candy** | **Craving** |
+| AI skills offered by agents | Requests posted by users |
+| Browse → Run → Install | Post → Match → Fulfill |
 
-### Skill Marketplace
-Browse and search a curated collection of AI skills organized into categories: Development, Design, Tools, Marketing, Mobile, Productivity, Research, and Writing.
+> **240+ curated skills** across 8 categories — ready to use, fork, or extend.
+
+## Key Features
+
+### Two-Sided Marketplace
+- **Find Candy** — Browse and search a curated catalog of AI agent skills
+- **Find Craving** — Discover open requests from users looking for specific AI capabilities
+- **Smart Matching** — Click any skill to find matching cravings, or any craving to find matching skills
 
 ### Built-in Skill Executor
-Run any skill directly in the browser with a full-featured chat interface powered by [OpenCode](https://github.com/nichochar/opencode). Supports streaming responses, file attachments, tool use, and interactive Q&A.
+Run any skill directly in the browser with a full-featured chat interface powered by [OpenCode](https://github.com/nichochar/opencode). Streaming responses, file attachments, tool use — no setup required.
 
 ### Skill Creator
-Build and publish your own skills with a name, description, system prompt, and configuration — no coding required.
+Build and publish your own skills with a visual editor — name, description, system prompt, and parameters. No coding required.
 
-### Multi-Platform
-- **Web (Vercel)** — Production frontend on [Vercel](https://candy-shop-three.vercel.app) with automatic deploys
-- **Web (HuggingFace)** — Also on [HuggingFace Spaces](https://huggingface.co/spaces/tao-shen/candy-shop) via Docker
-- **Desktop** — Native macOS app built with [Tauri v2](https://v2.tauri.app)
-- **Self-hosted** — Docker-ready for your own infrastructure
+### Cross-Platform
+| Platform | Status | Details |
+|----------|--------|---------|
+| Web (Vercel) | Production | Auto-deploy from `main` |
+| Web (HuggingFace) | Production | Docker-based Spaces deployment |
+| macOS Desktop | Available | Native app via Tauri v2 |
+| Self-hosted | Supported | Docker-ready |
 
 ### Theming & i18n
-6 color themes (Indigo, Ocean, Emerald, Sunset, Rose, Purple) with dark/light mode. Full English and Chinese localization.
+6 color themes with dark/light mode. Full English and Chinese localization.
 
 ## Quick Start
 
@@ -62,79 +80,95 @@ Build and publish your own skills with a name, description, system prompt, and c
 ### Development
 
 ```bash
-# Clone the repository
 git clone https://github.com/democra-ai/candy-shop.git
 cd candy-shop
-
-# Install dependencies
 pnpm install
-
-# Start dev server
 pnpm dev
 ```
 
 Open [http://localhost:5173](http://localhost:5173) in your browser.
 
-### Build for Production
+### Build
 
 ```bash
+# Web
 pnpm build
-```
 
-### Docker (HuggingFace Spaces)
+# Desktop (macOS)
+pnpm tauri build
 
-```bash
+# Docker
 docker build -t candy-shop .
 docker run -p 7860:7860 candy-shop
 ```
 
-### Desktop App (Tauri)
+### Environment Variables
+
+Copy `.env.example` to `.env` and fill in your keys:
 
 ```bash
-pnpm tauri build
+cp .env.example .env
 ```
+
+See [`.env.example`](.env.example) for required variables.
 
 ## Tech Stack
 
 | Layer | Technology |
-|---|---|
-| Frontend | React 19, TypeScript, Tailwind CSS |
+|-------|------------|
+| Frontend | React 19 · TypeScript · Tailwind CSS |
 | Build | Vite 7 |
 | Desktop | Tauri v2 (Rust) |
 | Auth | Supabase |
-| AI SDK | Anthropic SDK, OpenCode SDK |
-| Deployment | Docker, HuggingFace Spaces, Vercel |
+| AI | Anthropic SDK · OpenCode SDK |
+| Deploy | Vercel · Docker · HuggingFace Spaces |
 
-## Project Structure
+## Architecture
 
 ```
 candy-shop/
 ├── src/
-│   ├── components/       # React components
-│   │   ├── home/         # Landing page sections (Hero, FAQ, etc.)
-│   │   ├── skill-creator/# Skill creator & executor
-│   │   └── ui/           # Shared UI components
-│   ├── contexts/         # React contexts (Auth, Language, Theme)
-│   ├── data/             # Skills catalog data
-│   └── lib/              # API clients (OpenCode, Supabase)
-├── src-tauri/            # Tauri native app config
-├── public/               # Static assets & illustrations
-├── Dockerfile            # HuggingFace Spaces deployment
+│   ├── components/
+│   │   ├── home/              # Hero, SkillsGrid, CravingsGrid, Categories
+│   │   ├── layout/            # Sidebar, Layout, Header
+│   │   ├── skill-creator/     # Visual skill editor
+│   │   └── ui/                # Shared UI primitives
+│   ├── contexts/              # Auth, Language, Theme, VersionMode
+│   ├── data/                  # Skills & Cravings catalogs
+│   ├── lib/                   # API clients (OpenCode, Supabase)
+│   └── pages/                 # Route pages
+├── src-tauri/                 # Native desktop app (Rust)
+├── public/                    # Static assets & illustrations
+├── Dockerfile                 # HuggingFace Spaces deployment
 └── package.json
 ```
 
+## Roadmap
+
+- [ ] Backend persistence (Supabase / Postgres)
+- [ ] User profiles & reputation system
+- [ ] Skill reviews & ratings
+- [ ] Revenue sharing for Candy Makers
+- [ ] Skill composition (chain multiple skills)
+- [ ] API for programmatic skill discovery
+- [ ] Windows & Linux desktop builds
+
 ## Contributing
 
-Contributions are welcome! Here are some ways to get involved:
+Contributions are welcome! Here's how to get involved:
 
-- **Add a skill** — Submit a PR with a new skill entry in `src/data/skillsData.ts`
-- **Fix bugs** — Check the [Issues](https://github.com/democra-ai/candy-shop/issues) tab
+- **Add a skill** — Submit a PR with a new entry in `src/data/skillsData.ts`
+- **Fix bugs** — Check [open issues](https://github.com/democra-ai/candy-shop/issues)
 - **Improve UI/UX** — Design contributions are always appreciated
-- **Translate** — Help us add more languages
+- **Translate** — Help us add more languages beyond English and Chinese
+
+## Releases
+
+All desktop app builds and versioned releases are published on the [Releases](https://github.com/democra-ai/candy-shop/releases) page. Download the latest macOS `.dmg` or check the changelog there.
 
 ## License
 
-MIT
+Candy Shop is licensed under the [MIT License](LICENSE).
 
 ---
 
@@ -142,6 +176,8 @@ MIT
 
 **AI is simple like candy** 🍬
 
-[Live Demo](https://huggingface.co/spaces/tao-shen/candy-shop) · [GitHub](https://github.com/democra-ai/candy-shop) · [Report Bug](https://github.com/democra-ai/candy-shop/issues)
+Built by [Democra AI](https://github.com/democra-ai)
+
+[Live Demo](https://candy-shop-three.vercel.app) · [GitHub](https://github.com/democra-ai/candy-shop) · [Releases](https://github.com/democra-ai/candy-shop/releases) · [Issues](https://github.com/democra-ai/candy-shop/issues)
 
 </div>
