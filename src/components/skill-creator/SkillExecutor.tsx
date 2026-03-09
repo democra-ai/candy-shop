@@ -48,7 +48,6 @@ import {
   type FilePart,
   type PatchPart,
   type ModelConfig,
-  type ProviderModel,
   type TodoItem,
   type SessionInfo,
   type QuestionEvent,
@@ -868,10 +867,8 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
     fileName: string;
   }>>([]);
 
-  // Model state – fetched from the server
-  const [models, setModels] = useState<ProviderModel[]>([]);
-  const [selectedModel, setSelectedModel] = useState<ModelConfig | null>(null);
-  const [showModelPicker, setShowModelPicker] = useState(false);
+  // Fixed model – only GLM-4.7 is available
+  const selectedModel: ModelConfig = { providerID: 'zhipu', modelID: 'glm-4.7' };
 
   // Skill loading state
   const [skillInstructions, setSkillInstructions] = useState<string | null>(null);
@@ -916,21 +913,6 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
           }
         } catch {
           // Not critical
-        }
-
-        // Fetch available models from the server
-        try {
-          const { models: serverModels, defaultModel } =
-            await opencode.getModels();
-          if (!cancelled && serverModels.length > 0) {
-            setModels(serverModels);
-            setSelectedModel(defaultModel ?? {
-              providerID: serverModels[0].providerID,
-              modelID: serverModels[0].modelID,
-            });
-          }
-        } catch {
-          // Not critical – user just can't pick models
         }
 
         // Fetch SKILL.md for this skill (if available)
@@ -1009,19 +991,6 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       console.log('[SkillExec] activeQuestion CLEARED (null)');
     }
   }, [activeQuestion]);
-
-  // ── Close model picker on outside click ─────────────────────────────────
-
-  useEffect(() => {
-    if (!showModelPicker) return;
-    const handler = (e: MouseEvent) => {
-      if (!(e.target as Element).closest('.model-picker')) {
-        setShowModelPicker(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [showModelPicker]);
 
   // ── Create a new session ────────────────────────────────────────────────
 
@@ -1757,86 +1726,10 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
               <MessageSquare className="w-4 h-4" />
             </button>
 
-            {/* Model picker */}
-            <div className="relative model-picker">
-              <button
-                onClick={() => setShowModelPicker(!showModelPicker)}
-                className="flex items-center gap-2 px-3 py-2 text-xs border border-border/50 rounded-lg hover:bg-secondary text-foreground-secondary hover:text-foreground transition-all duration-200 cursor-pointer min-h-[36px] focus:outline-none focus:ring-2 focus:ring-primary/30 font-mono"
-                aria-label="Select model"
-                aria-expanded={showModelPicker}
-              >
-                <Settings className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">
-                  {selectedModel
-                    ? models.find(
-                        (m) =>
-                          m.providerID === selectedModel.providerID &&
-                          m.modelID === selectedModel.modelID
-                      )?.name ?? selectedModel.modelID
-                    : 'Select model'}
-                </span>
-                <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${showModelPicker ? 'rotate-180' : ''}`} />
-              </button>
-              {showModelPicker && (
-                <div className="absolute right-0 mt-2 w-72 bg-background border border-border/50 rounded-xl shadow-candy-lg z-[200] overflow-hidden">
-                  <div className="p-2.5 border-b border-border/50 bg-secondary/30">
-                    <p className="text-xs font-medium text-foreground-secondary font-body">Select Model</p>
-                  </div>
-                  <div className="max-h-80 overflow-y-auto">
-                    {models.length === 0 && (
-                      <p className="px-3 py-2 text-xs text-foreground-tertiary">
-                        No models available
-                      </p>
-                    )}
-                    {/* Group by provider */}
-                    {Array.from(new Set(models.map((m) => m.providerID))).map(
-                      (pid) => (
-                        <div key={pid}>
-                          <div className="px-3 py-1.5 text-[10px] font-semibold text-foreground-muted uppercase tracking-wider bg-background-secondary/40 font-body">
-                            {models.find((m) => m.providerID === pid)
-                              ?.providerName ?? pid}
-                          </div>
-                          {models
-                            .filter((m) => m.providerID === pid)
-                            .map((model) => {
-                              const isSelected =
-                                selectedModel?.providerID ===
-                                  model.providerID &&
-                                selectedModel?.modelID === model.modelID;
-                              return (
-                                <button
-                                  key={`${model.providerID}/${model.modelID}`}
-                                  onClick={() => {
-                                    setSelectedModel({
-                                      providerID: model.providerID,
-                                      modelID: model.modelID,
-                                    });
-                                    setShowModelPicker(false);
-                                  }}
-                                  className={`w-full text-left px-3 py-2.5 text-xs hover:bg-secondary/60 transition-colors duration-150 flex items-center gap-2 cursor-pointer min-h-[36px] focus:outline-none focus:ring-2 focus:ring-primary/30 font-mono ${
-                                    isSelected
-                                    ? 'bg-primary/15 text-primary font-medium'
-                                      : 'text-foreground-secondary'
-                                  }`}
-                                  aria-pressed={isSelected}
-                                >
-                                  <span className="truncate flex-1">
-                                    {model.name}
-                                  </span>
-                                  {model.reasoning && (
-                                    <span className="text-[9px] px-1 py-0.5 rounded bg-primary/15 text-primary">
-                                      reasoning
-                                    </span>
-                                  )}
-                                </button>
-                              );
-                            })}
-                        </div>
-                      )
-                    )}
-                  </div>
-                </div>
-              )}
+            {/* Model label (fixed to GLM-4.7) */}
+            <div className="flex items-center gap-2 px-3 py-2 text-xs border border-border/50 rounded-lg text-foreground-secondary min-h-[36px] font-mono">
+              <Settings className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">GLM-4.7</span>
             </div>
 
             {/* Close */}
