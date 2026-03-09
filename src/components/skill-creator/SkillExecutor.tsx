@@ -1868,7 +1868,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
           )}
 
           {/* Main chat area */}
-          <div className="flex-1 flex flex-col min-w-0">
+          <div className="flex-1 flex flex-col min-w-0 min-h-0">
             {/* Todos bar */}
             <TodosView todos={todos} />
 
@@ -1897,7 +1897,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
             )}
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto min-h-0 p-4 space-y-4">
               {/* Skill intro: self-intro + view instructions + edit */}
               {showSkillBanner && skillLoadStatus !== 'idle' && (
                 <div className={`rounded-lg border text-sm overflow-hidden ${
