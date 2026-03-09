@@ -1259,6 +1259,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
     const cbT0 = performance.now();
     const cbTs = () => `+${(performance.now() - cbT0).toFixed(0)}ms`;
     let partUpdateCount = 0;
+    let retryCount = 0;
 
     const callbacks = {
       onPartUpdated: (rawPart: Part, delta?: string) => {
@@ -1390,6 +1391,41 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       onSessionStatus: (status: string) => {
         console.log(`[SkillExec] ${cbTs()} onSessionStatus: "${status}"`);
         setSessionStatus(status);
+
+        // Detect infinite retry loop: if the backend keeps retrying without
+        // producing any content, the AI model is likely unreachable.
+        if (status === 'retry') {
+          retryCount++;
+          if (retryCount >= 3 && partUpdateCount === 0) {
+            console.error(`[SkillExec] ${cbTs()} Model retry loop detected (${retryCount} retries, 0 parts). Aborting.`);
+            opencode.cleanup();
+            if (sid) {
+              opencode.abortSession(sid).catch(() => {});
+            }
+            setIsRunning(false);
+            setSessionStatus('idle');
+            setEntries((prev) => {
+              const last = prev[prev.length - 1];
+              if (last?.type === 'assistant') {
+                const errorPart: TextPart = {
+                  id: `retry-error-${Date.now()}`,
+                  sessionID: sid!,
+                  messageID: last.messageId,
+                  type: 'text',
+                  text: '**Error:** The AI model failed to respond after multiple retries. The model API may be temporarily unavailable. Please try a different model or try again later.',
+                };
+                return [
+                  ...prev.slice(0, -1),
+                  { ...last, parts: [...last.parts, errorPart], isComplete: true },
+                ];
+              }
+              return prev;
+            });
+          }
+        } else if (status === 'busy') {
+          // Reset retry count when busy (not retrying)
+          // Don't reset — retry alternates busy→retry→busy→retry
+        }
       },
 
       onComplete: () => {
