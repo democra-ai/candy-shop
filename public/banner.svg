@@ -1,0 +1,117 @@
+<svg width="1200" height="300" viewBox="0 0 1200 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="300" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFF7FB"/>
+      <stop offset="0.55" stop-color="#F9F2FF"/>
+      <stop offset="1" stop-color="#F2F6FF"/>
+    </linearGradient>
+
+    <radialGradient id="spot" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(860 110) rotate(25) scale(520 320)">
+      <stop offset="0" stop-color="#A855F7" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#A855F7" stop-opacity="0"/>
+    </radialGradient>
+
+    <filter id="grain" x="-20%" y="-20%" width="140%" height="140%" filterUnits="objectBoundingBox">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch" />
+      <feColorMatrix type="matrix" values="
+        1 0 0 0 0
+        0 1 0 0 0
+        0 0 1 0 0
+        0 0 0 0.12 0" />
+      <feComposite operator="in" in2="SourceGraphic"/>
+    </filter>
+
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#EC4899"/>
+      <stop offset="1" stop-color="#A855F7"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="300" fill="url(#bg)"/>
+  <rect width="1200" height="300" fill="url(#spot)"/>
+
+  <!-- Subtle network lines (very low opacity) -->
+  <g opacity="0.10" stroke="#6B21A8" stroke-width="1">
+    <path d="M140 210 C 260 120, 360 240, 520 150" />
+    <path d="M520 150 C 640 80, 760 170, 900 105" />
+    <path d="M260 120 C 320 70, 410 80, 470 120" />
+    <path d="M360 240 C 470 220, 610 250, 740 205" />
+    <path d="M740 205 C 860 160, 980 220, 1080 155" />
+  </g>
+
+  <!-- Nodes -->
+  <g opacity="0.18">
+    <circle cx="140" cy="210" r="4.5" fill="#EC4899"/>
+    <circle cx="260" cy="120" r="4" fill="#A855F7"/>
+    <circle cx="360" cy="240" r="4" fill="#A855F7"/>
+    <circle cx="520" cy="150" r="5" fill="#EC4899"/>
+    <circle cx="740" cy="205" r="4" fill="#A855F7"/>
+    <circle cx="900" cy="105" r="4.5" fill="#EC4899"/>
+    <circle cx="1080" cy="155" r="4" fill="#A855F7"/>
+    <circle cx="470" cy="120" r="3.5" fill="#A855F7"/>
+  </g>
+
+  <!-- Title -->
+  <g>
+    <text x="600" y="150" text-anchor="middle"
+          font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, 'Helvetica Neue', Arial, 'Noto Sans', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif"
+          font-size="86" font-weight="800" letter-spacing="-1.2"
+          fill="#111827" opacity="0.92">
+      Candy Shop
+    </text>
+    <text x="600" y="204" text-anchor="middle"
+          font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, 'Helvetica Neue', Arial, 'Noto Sans', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif"
+          font-size="26" font-weight="560" letter-spacing="0"
+          fill="#374151" opacity="0.62">
+      The Open-Source AI Skill Marketplace
+    </text>
+    <!-- small accent underline -->
+    <path d="M360 220 C 460 232, 740 232, 840 220"
+          stroke="url(#accent)" stroke-width="5" stroke-linecap="round" opacity="0.26"/>
+
+    <!-- Pills (subtle) -->
+    <g transform="translate(367 238)">
+      <!-- pill 1 -->
+      <rect x="0" y="0" rx="999" ry="999" width="150" height="36" fill="#111827" opacity="0.06"/>
+      <circle cx="18" cy="18" r="4.8" fill="#EC4899" opacity="0.52"/>
+      <text x="34" y="24"
+            font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, 'Helvetica Neue', Arial, 'Noto Sans', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif"
+            font-size="14" font-weight="650" fill="#111827" opacity="0.56">
+        Open Source
+      </text>
+
+      <!-- pill 2 -->
+      <g transform="translate(162 0)">
+        <rect x="0" y="0" rx="999" ry="999" width="132" height="36" fill="#111827" opacity="0.06"/>
+        <circle cx="18" cy="18" r="4.8" fill="#A855F7" opacity="0.50"/>
+        <text x="34" y="24"
+              font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, 'Helvetica Neue', Arial, 'Noto Sans', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif"
+              font-size="14" font-weight="650" fill="#111827" opacity="0.56">
+          AI Skills
+        </text>
+      </g>
+
+      <!-- pill 3 -->
+      <g transform="translate(306 0)">
+        <rect x="0" y="0" rx="999" ry="999" width="160" height="36" fill="#111827" opacity="0.06"/>
+        <circle cx="18" cy="18" r="4.8" fill="#EC4899" opacity="0.48"/>
+        <text x="34" y="24"
+              font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, 'Helvetica Neue', Arial, 'Noto Sans', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif"
+              font-size="14" font-weight="650" fill="#111827" opacity="0.56">
+          Marketplace
+        </text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Tiny candy hint (abstract swirl) -->
+  <g opacity="0.22" transform="translate(1060 62)">
+    <path d="M54 0 C 25 2, 8 18, 10 36 C 12 52, 30 60, 44 52 C 57 44, 55 26, 41 25 C 28 24, 23 36, 31 43"
+          stroke="url(#accent)" stroke-width="4" stroke-linecap="round" fill="none"/>
+    <circle cx="54" cy="0" r="3" fill="#EC4899"/>
+  </g>
+
+  <!-- Soft grain -->
+  <rect width="1200" height="300" filter="url(#grain)" opacity="0.12"/>
+</svg>

@@ -9,13 +9,7 @@ pinned: false
 
 <div align="center">
 
-<img src="public/favicon.svg" width="80" alt="Candy Shop Logo" />
-
-# Candy Shop
-
-### The Open-Source AI Skill Marketplace
-
-**Discover, match, and trade AI agent skills in a two-sided marketplace.**
+<img src="public/banner.svg" width="100%" alt="Candy Shop Banner" />
 
 [![Live Demo](https://img.shields.io/badge/🤗_HuggingFace-Live_Demo-FFD21E?style=for-the-badge&logo=huggingface&logoColor=000)](https://huggingface.co/spaces/tao-shen/candy-shop)
 [![Vercel](https://img.shields.io/badge/Vercel-Production-000?style=for-the-badge&logo=vercel&logoColor=white)](https://candy-shop-three.vercel.app)
@@ -32,7 +26,7 @@ pinned: false
 
 ---
 
-## Why Candy Shop?
+## 🍭 Why Candy Shop?
 
 AI agents are powerful — but finding the right skill for the right task shouldn't be hard.
 
@@ -174,7 +168,7 @@ Candy Shop is licensed under the [MIT License](LICENSE).
 
 <div align="center">
 
-**AI is simple like candy** 🍬
+**AI is simple like candy**
 
 Built by [Democra AI](https://github.com/democra-ai)
 
