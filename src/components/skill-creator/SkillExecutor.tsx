@@ -867,8 +867,8 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
     fileName: string;
   }>>([]);
 
-  // Fixed model – only GLM-4.7 is available
-  const selectedModel: ModelConfig = { providerID: 'zhipu', modelID: 'glm-4.7' };
+  // Fixed model – only GLM-4.7 on zhipuai-coding-plan provider works
+  const selectedModel: ModelConfig = { providerID: 'zhipuai-coding-plan', modelID: 'glm-4.7' };
 
   // Skill loading state
   const [skillInstructions, setSkillInstructions] = useState<string | null>(null);
