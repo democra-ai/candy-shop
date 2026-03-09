@@ -144,8 +144,6 @@ function HomePage({
   onRunSkill,
   onNavCandy,
   onNavCraving,
-  onNavPostCraving,
-  onNavPostCandy,
 }: HomePageProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get('tab');
