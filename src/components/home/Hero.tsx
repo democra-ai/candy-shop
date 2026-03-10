@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Plus } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { SKILLS_DATA, REGISTRY_STATS } from '../../data/skillsData';
+import { REGISTRY_STATS } from '../../data/skillsData';
 import { CRAVINGS_DATA } from '../../data/cravingsData';
 
 export type MarketplaceTab = 'candy' | 'craving';
@@ -13,7 +13,6 @@ interface HeroProps {
   onPostCandy: () => void;
 }
 
-const TOTAL_CANDIES = SKILLS_DATA.length;
 const TOTAL_CRAVINGS = CRAVINGS_DATA.length;
 const OPEN_CRAVINGS = CRAVINGS_DATA.filter((c) => c.status === 'open').length;
 
@@ -93,7 +92,7 @@ export function Hero({ activeTab, onTabChange, onPostCraving, onPostCandy }: Her
               text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full
               ${activeTab === 'candy' ? 'bg-white/20 text-white' : 'bg-secondary text-foreground-tertiary'}
             `}>
-              {TOTAL_CANDIES}
+              {REGISTRY_STATS.totalSkills.toLocaleString()}
             </span>
           </button>
 
@@ -121,7 +120,7 @@ export function Hero({ activeTab, onTabChange, onPostCraving, onPostCandy }: Her
         {/* Context-aware sub-label */}
         <p className="text-xs font-mono text-foreground-tertiary -mt-4">
           {activeTab === 'candy'
-            ? `${TOTAL_CANDIES} curated · ${REGISTRY_STATS.totalSkills.toLocaleString()} in registry · ${(REGISTRY_STATS.totalInstalls / 1e6).toFixed(1)}M total installs`
+            ? `${REGISTRY_STATS.totalSkills.toLocaleString()} skills · ${REGISTRY_STATS.totalRepos.toLocaleString()} repos · ${(REGISTRY_STATS.totalInstalls / 1e6).toFixed(1)}M total installs`
             : `${OPEN_CRAVINGS} open requests · ${urgentCount} urgent · post candy to fulfill demand`}
         </p>
 
@@ -167,15 +166,9 @@ export function Hero({ activeTab, onTabChange, onPostCraving, onPostCandy }: Her
             className={`flex items-center gap-2 transition-colors ${activeTab === 'candy' ? 'text-primary' : 'text-foreground-secondary hover:text-foreground'}`}
           >
             <span className="text-base">🍬</span>
-            <span className="font-bold">{TOTAL_CANDIES}</span>
-            <span className="text-foreground-tertiary">curated</span>
+            <span className="font-bold">{REGISTRY_STATS.totalSkills.toLocaleString()}</span>
+            <span className="text-foreground-tertiary">skills</span>
           </button>
-          <div className="w-px h-4 bg-border" />
-          <div className="flex items-center gap-2 text-foreground-secondary">
-            <span className="text-base">📦</span>
-            <span className="font-bold text-foreground">{REGISTRY_STATS.totalSkills.toLocaleString()}</span>
-            <span className="text-foreground-tertiary">in registry</span>
-          </div>
           <div className="w-px h-4 bg-border" />
           <div className="flex items-center gap-2 text-foreground-secondary">
             <span className="text-base">🏗️</span>
