@@ -1572,7 +1572,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       systemParts.push('\n\n--- Candy Shop catalog (id - name). In this browser environment npx skills find cannot run; use the list below to suggest skills when the user asks e.g. "有没有写论文的 skill". ---\n');
       const catalogLines = SKILLS_DATA.filter((s) => s?.id != null && s?.name != null).map((s) => `${s.id} - ${s.name}`);
       systemParts.push(catalogLines.join('\n'));
-      systemParts.push('\n\nWhen the user asks for skills (thesis, paper, writing, etc.), suggest matching skills from the list above by id and name, and mention they can run them here or browse https://skills.sh for more.');
+      systemParts.push('\n\nWhen the user asks for skills (thesis, paper, writing, etc.), suggest matching skills from the list above by id and name, and mention they can run them here or browse the registry for more.');
     }
     const systemPrompt = systemParts.length ? systemParts.join('') : undefined;
 

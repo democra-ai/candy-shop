@@ -24,7 +24,7 @@ export interface Skill {
   greeting?: string;
 }
 
-// ── Registry types (compact format from skills.sh) ──────────────────
+// ── Registry types (compact format) ─────────────────────────────────
 // Each entry is [name, installs, source_repo]
 export type RegistryEntry = [string, number, string];
 

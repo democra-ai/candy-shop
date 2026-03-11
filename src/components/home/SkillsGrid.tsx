@@ -282,7 +282,7 @@ export function SkillsGrid({
                   Skills Registry Database
                 </p>
                 <p className="text-xs font-mono text-foreground-tertiary">
-                  Synced from skills.sh · Updated {REGISTRY_STATS.lastUpdated}
+                  Community-indexed · Updated {REGISTRY_STATS.lastUpdated}
                 </p>
               </div>
             </div>
@@ -659,7 +659,7 @@ function RegistryBrowser() {
                   Skills Registry Database
                 </h2>
                 <p className="text-sm font-mono text-foreground-tertiary mt-1">
-                  {REGISTRY_STATS.totalSkills.toLocaleString()} skills · {REGISTRY_STATS.totalRepos.toLocaleString()} repos · {(REGISTRY_STATS.totalInstalls / 1e6).toFixed(1)}M installs · synced from skills.sh
+                  {REGISTRY_STATS.totalSkills.toLocaleString()} skills · {REGISTRY_STATS.totalRepos.toLocaleString()} repos · {(REGISTRY_STATS.totalInstalls / 1e6).toFixed(1)}M installs
                 </p>
               </div>
             </div>
