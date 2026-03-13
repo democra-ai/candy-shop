@@ -867,8 +867,8 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
     fileName: string;
   }>>([]);
 
-  // Fixed model – only GLM-4.7 on zhipuai-coding-plan provider works
-  const selectedModel: ModelConfig = { providerID: 'zhipuai-coding-plan', modelID: 'glm-4.7' };
+  // Fixed model – only GLM-4.5 on zhipuai-coding-plan provider works
+  const selectedModel: ModelConfig = { providerID: 'zhipuai-coding-plan', modelID: 'glm-4.5' };
 
   // Skill loading state
   const [skillInstructions, setSkillInstructions] = useState<string | null>(null);
@@ -1732,10 +1732,10 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
               <MessageSquare className="w-4 h-4" />
             </button>
 
-            {/* Model label (fixed to GLM-4.7) */}
+            {/* Model label (fixed to GLM-4.5) */}
             <div className="flex items-center gap-2 px-3 py-2 text-xs border border-border/50 rounded-lg text-foreground-secondary min-h-[36px] font-mono">
               <Settings className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">GLM-4.7</span>
+              <span className="hidden sm:inline">GLM-4.5</span>
             </div>
 
             {/* Close */}
