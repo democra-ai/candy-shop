@@ -272,34 +272,72 @@ export function SkillsGrid({
           </div>
 
           {/* Registry Stats Banner */}
-          <div className="mb-8 p-4 glass rounded-xl border border-border/50 flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-rose-500/20 to-pink-500/20 flex items-center justify-center text-xl">
-                📦
+          <div className="mb-8 space-y-3">
+            {/* Total stats row */}
+            <div className="p-4 glass rounded-xl border border-border/50 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-rose-500/20 to-pink-500/20 flex items-center justify-center text-xl">
+                  📦
+                </div>
+                <div>
+                  <p className="text-sm font-body font-semibold text-foreground">
+                    Skills Registry Database
+                  </p>
+                  <p className="text-xs font-mono text-foreground-tertiary">
+                    Community-indexed · Updated {REGISTRY_STATS.lastUpdated}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-body font-semibold text-foreground">
-                  Skills Registry Database
-                </p>
-                <p className="text-xs font-mono text-foreground-tertiary">
-                  Community-indexed · Updated {REGISTRY_STATS.lastUpdated}
-                </p>
+              <div className="flex items-center gap-6 text-sm font-mono">
+                <div className="text-center">
+                  <div className="font-bold text-foreground text-lg">{REGISTRY_STATS.totalSkills.toLocaleString()}</div>
+                  <div className="text-foreground-tertiary text-[10px]">TOTAL SKILLS</div>
+                </div>
+                <div className="w-px h-8 bg-border/50" />
+                <div className="text-center">
+                  <div className="font-bold text-foreground text-lg">{REGISTRY_STATS.totalRepos.toLocaleString()}</div>
+                  <div className="text-foreground-tertiary text-[10px]">REPOS</div>
+                </div>
+                <div className="w-px h-8 bg-border/50" />
+                <div className="text-center">
+                  <div className="font-bold text-foreground text-lg">{(REGISTRY_STATS.totalInstalls / 1e6).toFixed(1)}M</div>
+                  <div className="text-foreground-tertiary text-[10px]">INSTALLS</div>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-6 text-sm font-mono">
-              <div className="text-center">
-                <div className="font-bold text-foreground text-lg">{REGISTRY_STATS.totalSkills.toLocaleString()}</div>
-                <div className="text-foreground-tertiary text-[10px]">SKILLS</div>
+
+            {/* Public vs Premium breakdown */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Public / Open Source */}
+              <div className="p-3.5 glass rounded-xl border border-emerald-500/20 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
+                  <span className="text-emerald-400 text-lg">🌐</span>
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-foreground text-base font-mono">{REGISTRY_STATS.publicSkills.toLocaleString()}</span>
+                    <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      FREE
+                    </span>
+                  </div>
+                  <p className="text-[11px] font-mono text-foreground-tertiary mt-0.5">Open-source community skills</p>
+                </div>
               </div>
-              <div className="w-px h-8 bg-border/50" />
-              <div className="text-center">
-                <div className="font-bold text-foreground text-lg">{REGISTRY_STATS.totalRepos.toLocaleString()}</div>
-                <div className="text-foreground-tertiary text-[10px]">REPOS</div>
-              </div>
-              <div className="w-px h-8 bg-border/50" />
-              <div className="text-center">
-                <div className="font-bold text-foreground text-lg">{(REGISTRY_STATS.totalInstalls / 1e6).toFixed(1)}M</div>
-                <div className="text-foreground-tertiary text-[10px]">INSTALLS</div>
+
+              {/* Premium / Paid */}
+              <div className="p-3.5 glass rounded-xl border border-amber-500/20 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
+                  <span className="text-amber-400 text-lg">👑</span>
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-foreground text-base font-mono">{REGISTRY_STATS.premiumSkills.toLocaleString()}</span>
+                    <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                      PREMIUM
+                    </span>
+                  </div>
+                  <p className="text-[11px] font-mono text-foreground-tertiary mt-0.5">{REGISTRY_STATS.premiumProviders} verified providers</p>
+                </div>
               </div>
             </div>
           </div>
@@ -659,14 +697,14 @@ function RegistryBrowser() {
                   Skills Registry Database
                 </h2>
                 <p className="text-sm font-mono text-foreground-tertiary mt-1">
-                  {REGISTRY_STATS.totalSkills.toLocaleString()} skills · {REGISTRY_STATS.totalRepos.toLocaleString()} repos · {(REGISTRY_STATS.totalInstalls / 1e6).toFixed(1)}M installs
+                  {REGISTRY_STATS.totalSkills.toLocaleString()} skills ({REGISTRY_STATS.publicSkills.toLocaleString()} free + {REGISTRY_STATS.premiumSkills.toLocaleString()} premium) · {REGISTRY_STATS.totalRepos.toLocaleString()} repos
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-500/10 text-violet-400 text-xs font-mono font-medium border border-violet-500/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
-                LIVE
+                <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />
+                Updated {REGISTRY_STATS.lastUpdated}
               </span>
               <ChevronRight className={cn(
                 'w-5 h-5 text-foreground-tertiary transition-transform duration-300',

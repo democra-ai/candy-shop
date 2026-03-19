@@ -33,6 +33,9 @@ export interface RegistryStats {
   totalInstalls: number;
   totalRepos: number;
   lastUpdated: string;
+  publicSkills: number;
+  premiumSkills: number;
+  premiumProviders: number;
 }
 
 // Pre-computed stats from the full 88K+ skills registry
@@ -41,6 +44,9 @@ export const REGISTRY_STATS: RegistryStats = {
   totalInstalls: 12617035,
   totalRepos: 11622,
   lastUpdated: '2026-03-09',
+  publicSkills: 85120,
+  premiumSkills: 3240,
+  premiumProviders: 186,
 };
 
 // Lazy-load the full registry (4.4MB compact JSON)

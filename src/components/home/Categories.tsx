@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { SKILLS_DATA, SKILL_CATEGORIES } from '../../data/skillsData';
+import { SKILLS_DATA, SKILL_CATEGORIES, REGISTRY_STATS } from '../../data/skillsData';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { cn } from '../../utils/cn';
 
@@ -53,7 +53,7 @@ export function Categories({ onSelectCategory, activeCategory }: { onSelectCateg
                   : 'glass text-foreground hover:shadow-warm-lg border-border/50 hover:border-primary/30'
               )}
             >
-              {t('categories.allSkills')} ({SKILLS_DATA.length})
+              {t('categories.allSkills')} ({REGISTRY_STATS.totalSkills.toLocaleString()})
             </button>
 
             {categories.map((cat: CategoryData) => {
