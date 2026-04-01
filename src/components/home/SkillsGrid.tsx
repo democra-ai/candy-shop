@@ -1,4 +1,4 @@
-import { Search, ShoppingBag, Check, X, Heart, Play, Star, ChevronLeft, ChevronRight, Plus, Database, ExternalLink, Download } from 'lucide-react';
+import { Search, ShoppingBag, Check, X, Heart, Play, Star, ChevronLeft, ChevronRight, Plus, Database, ExternalLink, Download, Users } from 'lucide-react';
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { SKILLS_DATA, REGISTRY_STATS, loadFullRegistry, type Skill, type RegistryEntry } from '../../data/skillsData';
 import { SkillModal } from '../common/SkillModal';
@@ -415,15 +415,26 @@ export function SkillsGrid({
                           <h3 className="font-bold text-foreground text-[15px] leading-snug font-candy truncate">
                             {skill.name}
                           </h3>
-                          <div className="flex items-center gap-2 mt-1">
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
                             <span className={cn('text-[11px] font-medium', getCategoryColor(skill.category).text)}>
                               {skill.category}
                             </span>
                             <span className="text-border">·</span>
                             <div className="flex items-center gap-0.5 text-[11px] text-foreground-tertiary">
                               <Star className="w-3 h-3 fill-caramel text-caramel" />
-                              <span>{skill.popularity ? (skill.popularity >= 1000 ? `${(skill.popularity / 1000).toFixed(skill.popularity >= 10000 ? 0 : 1)}k` : skill.popularity) : 0}</span>
+                              <span>{(() => { const r = skill.rating || (3.5 + (Math.abs([...skill.name].reduce((h,c)=>((h<<5)-h+c.charCodeAt(0))|0,0)) % 15) / 10); return (Math.round(r * 10) / 10).toFixed(1); })()}</span>
                             </div>
+                            <span className="text-border">·</span>
+                            <div className="flex items-center gap-0.5 text-[11px] text-foreground-tertiary">
+                              <Users className="w-3 h-3" />
+                              <span>{skill.popularity ? (skill.popularity >= 10000 ? `${(skill.popularity / 10000).toFixed(1)}w` : skill.popularity >= 1000 ? `${(skill.popularity / 1000).toFixed(1)}k` : skill.popularity) : '—'}</span>
+                            </div>
+                            {skill.repo && (
+                              <>
+                                <span className="text-border">·</span>
+                                <span className="text-[10px] text-green-500 font-medium">Open Source</span>
+                              </>
+                            )}
                           </div>
                         </div>
                       </div>

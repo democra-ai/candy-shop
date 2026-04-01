@@ -138,6 +138,12 @@ const translations: Record<Language, Record<string, string>> = {
     'footer.backToTop': 'Back to top',
     'footer.description': 'Discover amazing AI skills to enhance your productivity and creativity.',
 
+    // Header Navigation
+    'nav.home': 'Home',
+    'nav.discover': 'Discover',
+    'nav.dashboard': 'Dashboard',
+    'nav.createSkill': 'Create',
+
     // Navigation Normal Mode
     'nav.features': 'Features',
     'nav.skills': 'Skills',
@@ -268,6 +274,12 @@ const translations: Record<Language, Record<string, string>> = {
     'footer.tagline': 'AI 简单如糖果',
     'footer.backToTop': '返回顶部',
     'footer.description': '发现令人惊叹的AI技能，提升您的生产力和创造力。',
+
+    // Header Navigation
+    'nav.home': '首页',
+    'nav.discover': '发现',
+    'nav.dashboard': '工作台',
+    'nav.createSkill': '创建',
 
     // Navigation Normal Mode
     'nav.features': '功能',

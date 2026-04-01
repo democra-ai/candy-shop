@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useSyncExternalStore, Component, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, Navigate, useLocation, useSearchParams } from 'react-router-dom';
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from './lib/supabaseClient';
 import { Layout } from './components/layout/Layout';
@@ -19,13 +19,17 @@ import { DocsModal } from './components/common/DocsModal';
 import { SkillCreationPage } from './pages/SkillCreationPage';
 import { MySkillsLibrary } from './components/skill-creator/MySkillsLibrary';
 import { SkillExecutor } from './components/skill-creator/SkillExecutor';
+import { SkillDetailPage } from './pages/SkillDetailPage';
+import { CravingDetailPage } from './pages/CravingDetailPage';
+import { DashboardPage } from './pages/DashboardPage';
+import { SettingsPage } from './pages/SettingsPage';
 import type { Skill, SkillCategory } from './types/skill-creator';
 import { storageUtils } from './utils/storage';
 import { SKILLS_DATA } from './data/skillsData';
 import { type Skill as StoreSkill } from './data/skillsData';
 import type { Craving } from './data/cravingsData';
-import { toast } from 'sonner';
 import { LanguageProvider } from './contexts/LanguageContext';
+import { useRealtimeNotifications } from './hooks/api/useRealtimeSkills';
 
 // ---------------------------------------------------------------------------
 // Error Boundary — prevents blank screen on unhandled errors
@@ -109,6 +113,8 @@ const PAGE_TITLES: Record<string, string> = {
   '/': 'Candy Shop — AI Skills Marketplace',
   '/skills/create': 'Create Skill — Candy Shop',
   '/skills/library': 'My Library — Candy Shop',
+  '/dashboard': 'Dashboard — Candy Shop',
+  '/settings': 'Settings — Candy Shop',
   '/auth/callback': 'Signing in... — Candy Shop',
 };
 
@@ -120,6 +126,9 @@ function usePageTitle() {
   }, [location.pathname]);
 }
 
+// ---------------------------------------------------------------------------
+// Home Page (original two-sided marketplace)
+// ---------------------------------------------------------------------------
 interface HomePageProps {
   user: User | null;
   cart: Set<string>;
@@ -154,11 +163,9 @@ function HomePage({
   const [cravingSearch, setCravingSearch] = useState('');
   const [cravingTagFilter, setCravingTagFilter] = useState<string | null>(null);
 
-  // Modal state
   const [isPostCravingOpen, setIsPostCravingOpen] = useState(false);
   const [isPostCandyOpen, setIsPostCandyOpen] = useState(false);
 
-  // User-posted items (persisted to localStorage)
   const [userCravings, setUserCravings] = useState<Craving[]>(() => storageUtils.getUserCravings());
   const [userCandies, setUserCandies] = useState<StoreSkill[]>(() => storageUtils.getUserCandies());
 
@@ -186,13 +193,11 @@ function HomePage({
     document.getElementById('categories-section')?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Opens the Post Craving modal (switches to craving tab first)
   const handleOpenPostCraving = () => {
     setActiveTab('craving');
     setTimeout(() => setIsPostCravingOpen(true), 100);
   };
 
-  // Opens the Post Candy modal (switches to candy tab first)
   const handleOpenPostCandy = () => {
     setActiveTab('candy');
     setTimeout(() => setIsPostCandyOpen(true), 100);
@@ -232,7 +237,6 @@ function HomePage({
           onPostCandy={handleOpenPostCandy}
         />
 
-        {/* CANDY TAB */}
         {activeTab === 'candy' && (
           <>
             <Categories
@@ -261,7 +265,6 @@ function HomePage({
           </>
         )}
 
-        {/* CRAVING TAB */}
         {activeTab === 'craving' && (
           <CravingsGrid
             searchQuery={cravingSearch}
@@ -290,12 +293,15 @@ function HomePage({
   );
 }
 
+// ---------------------------------------------------------------------------
+// App Content
+// ---------------------------------------------------------------------------
 function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
-  usePageTitle(); // Update document.title on route change
+  usePageTitle();
+  useRealtimeNotifications();
 
-  // Scroll to top on route change
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [location.pathname]);
@@ -308,7 +314,6 @@ function AppContent() {
   const [cart, setCart] = useState<Set<string>>(() => new Set(storageUtils.getCart()));
   const [executingSkill, setExecutingSkill] = useState<Skill | null>(null);
 
-  // Persist cart to localStorage whenever it changes
   const updateCart = useCallback((updater: (prev: Set<string>) => Set<string>) => {
     setCart((prev) => {
       const next = updater(prev);
@@ -358,17 +363,14 @@ function AppContent() {
   const handleClearCart = () => updateCart(() => new Set());
 
   const handlePurchase = () => {
-    // Check if user is logged in
     if (!user) {
       setIsAuthOpen(true);
       return;
     }
 
-    // Convert store skills to user skills
     const storeSkills = SKILLS_DATA.filter((skill) => cart.has(skill.id));
 
     storeSkills.forEach((storeSkill) => {
-      // Check if already owned
       const existing = storageUtils
         .getSkills()
         .find((s) => s.name === storeSkill.name && s.origin === 'store');
@@ -401,9 +403,6 @@ function AppContent() {
   };
 
   const handleRunSkill = (storeSkill: StoreSkill) => {
-    // Convert store skill to Skill format for executor
-    // CRITICAL: skillMdUrl must be passed through so SkillExecutor can
-    // fetch the real SKILL.md instructions from GitHub
     const skill: Skill = {
       id: `store-${storeSkill.id}`,
       userId: user?.id || 'anonymous',
@@ -413,7 +412,7 @@ function AppContent() {
       icon: storeSkill.icon,
       color: storeSkill.color,
       tags: storeSkill.tags || [],
-      skillMdUrl: storeSkill.skillMdUrl, // ← Critical: enables SKILL.md fetch
+      skillMdUrl: storeSkill.skillMdUrl,
       config: {
         capabilities: [],
         systemPrompt: '',
@@ -497,6 +496,7 @@ function AppContent() {
   return (
     <>
       <Routes>
+        {/* Home — original two-sided marketplace */}
         <Route
           path="/"
           element={
@@ -515,6 +515,53 @@ function AppContent() {
             />
           }
         />
+
+        {/* Skill Detail — new page with stars/ratings */}
+        <Route
+          path="/candy/:id"
+          element={
+            <Layout {...sharedLayoutProps}>
+              <SkillDetailPage
+                cart={cart}
+                onToggleCart={handleAddToCart}
+                onRunSkill={handleRunSkill}
+                userId={user?.id}
+              />
+            </Layout>
+          }
+        />
+
+        {/* Craving Detail — new page */}
+        <Route
+          path="/craving/:id"
+          element={
+            <Layout {...sharedLayoutProps}>
+              <CravingDetailPage />
+            </Layout>
+          }
+        />
+
+        {/* Dashboard — new page */}
+        <Route
+          path="/dashboard"
+          element={
+            <Layout {...sharedLayoutProps}>
+              <DashboardPage user={user} onOpenAuth={openAuth} />
+            </Layout>
+          }
+        />
+
+        {/* Settings — new page */}
+        <Route
+          path="/settings"
+          element={
+            <Layout {...sharedLayoutProps}>
+              <SettingsPage />
+            </Layout>
+          }
+        />
+
+        {/* Skill Creation */}
         <Route
           path="/skills/create"
           element={
@@ -528,6 +575,8 @@ function AppContent() {
             </Layout>
           }
         />
+
+        {/* My Library */}
         <Route
           path="/skills/library"
           element={
@@ -540,6 +589,7 @@ function AppContent() {
             </Layout>
           }
         />
+
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/index.html" element={<Navigate to="/" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />

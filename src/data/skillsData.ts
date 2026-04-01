@@ -22,6 +22,14 @@ export interface Skill {
   skillMdUrl: string;
   config: Record<string, unknown>;
   greeting?: string;
+  // Extended fields for detail view
+  rating?: number;
+  ratingCount?: number;
+  developer?: string;
+  version?: string;
+  users?: number;
+  openSource?: boolean;
+  showcases?: Array<{ title: string; image?: string }>;
 }
 
 // ── Registry types (compact format) ─────────────────────────────────
