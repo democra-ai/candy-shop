@@ -5,6 +5,7 @@ import { Card, CardContent } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { SKILLS_DATA, REGISTRY_STATS } from '../data/skillsData';
 import { useLanguage } from '../contexts/LanguageContext';
+import { OfficialCollections } from '../components/home/OfficialCollections';
 
 const FEATURES = [
   {
@@ -211,6 +212,9 @@ export function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* Official Collections */}
+      <OfficialCollections compact />
 
       {/* CTA */}
       <section className="py-24 relative">

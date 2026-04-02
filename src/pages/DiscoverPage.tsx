@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { cn } from '../utils/cn';
 import { Candy, Heart } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { OfficialCollections } from '../components/home/OfficialCollections';
 
 type MarketplaceTab = 'candy' | 'craving';
 
@@ -118,6 +119,7 @@ export function DiscoverPage({ cart, onToggleCart, onRunSkill }: DiscoverPagePro
               setCandySearch('');
             }}
           />
+          <OfficialCollections compact />
           <SkillsGrid
             searchQuery={candySearch}
             setSearchQuery={setCandySearch}
