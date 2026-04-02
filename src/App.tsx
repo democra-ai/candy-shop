@@ -12,6 +12,7 @@ import { PostCandyModal } from './components/home/PostCandyModal';
 import { Categories } from './components/home/Categories';
 import { ExternalResources } from './components/home/ExternalResources';
 import { FAQ } from './components/home/FAQ';
+import { EditorPicks } from './components/home/EditorPicks';
 import { AuthModal } from './components/auth/AuthModal';
 import { AuthCallback } from './components/auth/AuthCallback';
 import { CartDrawer } from './components/common/CartDrawer';
@@ -239,6 +240,7 @@ function HomePage({
 
         {activeTab === 'candy' && (
           <>
+            <EditorPicks onRunSkill={onRunSkill} />
             <Categories
               activeCategory={candyTagFilter}
               onSelectCategory={(tag: string | null) => {

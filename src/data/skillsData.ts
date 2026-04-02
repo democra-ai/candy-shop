@@ -29,7 +29,9 @@ export interface Skill {
   version?: string;
   users?: number;
   openSource?: boolean;
-  showcases?: Array<{ title: string; image?: string }>;
+  showcases?: Array<{ title: string; image?: string; emoji?: string }>;
+  editorPick?: boolean;
+  editorNote?: string;
 }
 
 // ── Registry types (compact format) ─────────────────────────────────
@@ -117,6 +119,16 @@ export const SKILLS_DATA: Skill[] = [
     repo: 'vercel-labs/agent-skills',
     skillMdUrl: mdUrl('vercel-labs', 'agent-skills', 'vercel-react-best-practices'),
     config: {}, tags: ['React', 'Next.js', 'Frontend'],
+    editorPick: true,
+    editorNote: 'The gold standard for React development — from the team behind Next.js',
+    rating: 4.8,
+    developer: 'Vercel',
+    version: 'v2.1',
+    showcases: [
+      { title: 'Server Component Patterns', emoji: '⚡' },
+      { title: 'Streaming SSR Setup', emoji: '🌊' },
+      { title: 'Modern Hooks Guide', emoji: '🪝' },
+    ],
   },
   {
     id: 'remotion-best-practices',
@@ -130,6 +142,16 @@ export const SKILLS_DATA: Skill[] = [
     repo: 'remotion-dev/skills',
     skillMdUrl: mdUrl('remotion-dev', 'skills', 'remotion-best-practices'),
     config: {}, tags: ['Video', 'React', 'Motion'],
+    editorPick: true,
+    editorNote: 'Build stunning programmatic videos with React — featured by the Remotion team',
+    rating: 4.7,
+    developer: 'Remotion',
+    version: 'v4.0',
+    showcases: [
+      { title: 'Dynamic Video Templates', emoji: '🎥' },
+      { title: 'Audio Visualization', emoji: '🎵' },
+      { title: 'Batch Video Rendering', emoji: '📦' },
+    ],
   },
   {
     id: 'vercel-composition-patterns',
@@ -195,6 +217,16 @@ export const SKILLS_DATA: Skill[] = [
     repo: 'anthropics/skills',
     skillMdUrl: mdUrl('anthropics', 'skills', 'mcp-builder'),
     config: {}, tags: [],
+    editorPick: true,
+    editorNote: 'The official way to build MCP servers — the protocol powering AI tool use',
+    rating: 4.6,
+    developer: 'Anthropic',
+    version: 'v1.2',
+    showcases: [
+      { title: 'Custom Tool Server', emoji: '🔧' },
+      { title: 'Agent Integration', emoji: '🤖' },
+      { title: 'Resource Providers', emoji: '📡' },
+    ],
   },
   {
     id: 'test-driven-development',
@@ -208,6 +240,16 @@ export const SKILLS_DATA: Skill[] = [
     repo: 'obra/superpowers',
     skillMdUrl: mdUrl('obra', 'superpowers', 'test-driven-development'),
     config: {}, tags: [],
+    editorPick: true,
+    editorNote: 'Red-green-refactor made easy — write bulletproof code from day one',
+    rating: 4.7,
+    developer: 'Obra',
+    version: 'v2.0',
+    showcases: [
+      { title: 'Red-Green-Refactor', emoji: '🔴' },
+      { title: 'Mock Strategy Guide', emoji: '🎭' },
+      { title: 'CI Integration', emoji: '🔄' },
+    ],
   },
   {
     id: 'systematic-debugging',
@@ -1199,6 +1241,16 @@ export const SKILLS_DATA: Skill[] = [
     repo: 'anthropics/skills',
     skillMdUrl: mdUrl('anthropics', 'skills', 'frontend-design'),
     config: {}, tags: [],
+    editorPick: true,
+    editorNote: 'Anthropic official — the definitive guide to building beautiful interfaces',
+    rating: 4.9,
+    developer: 'Anthropic',
+    version: 'v3.0',
+    showcases: [
+      { title: 'Typography System', emoji: '🔤' },
+      { title: 'Color Palette Builder', emoji: '🎨' },
+      { title: 'Motion & Animation', emoji: '✨' },
+    ],
   },
   {
     id: 'web-design-guidelines',

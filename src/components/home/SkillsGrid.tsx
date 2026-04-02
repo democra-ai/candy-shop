@@ -398,6 +398,14 @@ export function SkillsGrid({
                         </span>
                       </div>
                     )}
+                    {/* Editor's Pick badge */}
+                    {skill.editorPick && !skill.id.startsWith('user-candy-') && (
+                      <div className="px-5 pt-3 pb-0">
+                        <span className="text-[10px] font-semibold bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-full border border-amber-500/20 font-mono flex items-center gap-1 w-fit">
+                          ✦ Editor's Pick
+                        </span>
+                      </div>
+                    )}
                     {/* Card Header */}
                     <div className={cn('p-5', skill.id.startsWith('user-candy-') ? 'pt-2 pb-0' : 'pb-0')}>
                       <div className="flex items-start gap-3.5">
@@ -463,6 +471,23 @@ export function SkillsGrid({
                         </div>
                       )}
                     </div>
+
+                    {/* Showcases (if editor pick or has showcases) */}
+                    {skill.showcases && skill.showcases.length > 0 && (
+                      <div className="px-5 pb-3">
+                        <div className="flex gap-1.5">
+                          {skill.showcases.slice(0, 3).map((sc, i) => (
+                            <div
+                              key={i}
+                              className="flex-1 bg-secondary/40 rounded-lg py-1.5 px-1.5 flex items-center gap-1.5 min-w-0"
+                            >
+                              <span className="text-sm shrink-0">{sc.emoji || '📋'}</span>
+                              <span className="text-[10px] text-foreground-secondary leading-tight truncate">{sc.title}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Actions */}
                     <div className="px-5 pb-4 flex items-center gap-2 mt-auto">
