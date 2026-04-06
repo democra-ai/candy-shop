@@ -32,6 +32,9 @@ export interface Skill {
   showcases?: Array<{ title: string; image?: string; emoji?: string }>;
   editorPick?: boolean;
   editorNote?: string;
+  // Pricing fields
+  price?: number;           // Price in cents (0 = free)
+  pricingModel?: 'free' | 'one_time' | 'per_call' | 'subscription';
 }
 
 // ── Registry types (compact format) ─────────────────────────────────

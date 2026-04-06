@@ -31,6 +31,7 @@ import { type Skill as StoreSkill } from './data/skillsData';
 import type { Craving } from './data/cravingsData';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { useRealtimeNotifications } from './hooks/api/useRealtimeSkills';
+import { usePayment } from './hooks/usePayment';
 
 // ---------------------------------------------------------------------------
 // Error Boundary — prevents blank screen on unhandled errors
@@ -316,6 +317,9 @@ function AppContent() {
   const [cart, setCart] = useState<Set<string>>(() => new Set(storageUtils.getCart()));
   const [executingSkill, setExecutingSkill] = useState<Skill | null>(null);
 
+  // Payment integration
+  const payment = usePayment(user?.id);
+
   const updateCart = useCallback((updater: (prev: Set<string>) => Set<string>) => {
     setCart((prev) => {
       const next = updater(prev);
@@ -364,44 +368,105 @@ function AppContent() {
 
   const handleClearCart = () => updateCart(() => new Set());
 
-  const handlePurchase = () => {
+  const handlePurchase = async () => {
     if (!user) {
       setIsAuthOpen(true);
       return;
     }
 
     const storeSkills = SKILLS_DATA.filter((skill) => cart.has(skill.id));
+    const paidSkills = storeSkills.filter(s => s.price && s.price > 0);
+    const freeSkills = storeSkills.filter(s => !s.price || s.price === 0);
 
-    storeSkills.forEach((storeSkill) => {
-      const existing = storageUtils
-        .getSkills()
-        .find((s) => s.name === storeSkill.name && s.origin === 'store');
+    // Install free skills immediately
+    const installFreeSkills = () => {
+      freeSkills.forEach((storeSkill) => {
+        const existing = storageUtils
+          .getSkills()
+          .find((s) => s.name === storeSkill.name && s.origin === 'store');
 
-      if (!existing) {
-        storageUtils.saveSkill({
-          name: storeSkill.name,
-          description: storeSkill.description,
-          category: storeSkill.category as SkillCategory,
-          icon: storeSkill.icon,
-          color: storeSkill.color,
-          tags: storeSkill.tags || [storeSkill.category],
-          config: {
-            capabilities: [],
-            systemPrompt: '',
-            parameters: storeSkill.config,
-            tools: [],
-          },
-          origin: 'store',
-          status: 'active',
-          sourceFiles: [],
-          installCommand: storeSkill.installCommand,
+        if (!existing) {
+          storageUtils.saveSkill({
+            name: storeSkill.name,
+            description: storeSkill.description,
+            category: storeSkill.category as SkillCategory,
+            icon: storeSkill.icon,
+            color: storeSkill.color,
+            tags: storeSkill.tags || [storeSkill.category],
+            config: {
+              capabilities: [],
+              systemPrompt: '',
+              parameters: storeSkill.config,
+              tools: [],
+            },
+            origin: 'store',
+            status: 'active',
+            sourceFiles: [],
+            installCommand: storeSkill.installCommand,
+          });
+        }
+      });
+    };
+
+    if (paidSkills.length > 0 && payment.providers.stripe) {
+      // Route paid skills through Stripe checkout
+      const result = await payment.startCheckout(paidSkills.map(s => s.id));
+      if (result?.free) {
+        // Server says these are actually free
+        installFreeSkills();
+        updateCart(() => new Set());
+        setIsCartOpen(false);
+        navigate('/skills/library');
+      }
+      // If checkout URL was returned, user is redirected to Stripe.
+      // Free skills are installed immediately; paid skills unlock after webhook.
+      installFreeSkills();
+      // Remove only free skills from cart; paid ones stay until payment completes
+      if (freeSkills.length > 0) {
+        updateCart((prev) => {
+          const next = new Set(prev);
+          freeSkills.forEach(s => next.delete(s.id));
+          return next;
         });
       }
-    });
+    } else {
+      // No paid skills or Stripe not available — install everything locally
+      installFreeSkills();
+      // Also install paid skills locally (demo mode without payment server)
+      paidSkills.forEach((storeSkill) => {
+        const existing = storageUtils
+          .getSkills()
+          .find((s) => s.name === storeSkill.name && s.origin === 'store');
 
-    updateCart(() => new Set());
-    setIsCartOpen(false);
-    navigate('/skills/library');
+        if (!existing) {
+          storageUtils.saveSkill({
+            name: storeSkill.name,
+            description: storeSkill.description,
+            category: storeSkill.category as SkillCategory,
+            icon: storeSkill.icon,
+            color: storeSkill.color,
+            tags: storeSkill.tags || [storeSkill.category],
+            config: {
+              capabilities: [],
+              systemPrompt: '',
+              parameters: storeSkill.config,
+              tools: [],
+            },
+            origin: 'store',
+            status: 'active',
+            sourceFiles: [],
+            installCommand: storeSkill.installCommand,
+          });
+        }
+      });
+
+      updateCart(() => new Set());
+      setIsCartOpen(false);
+      navigate('/skills/library');
+      if (paidSkills.length > 0) {
+        toast.info('Payment server not connected — skills installed in demo mode');
+      }
+    }
   };
 
   const handleRunSkill = (storeSkill: StoreSkill) => {
@@ -606,6 +671,8 @@ function AppContent() {
         onRemove={handleRemoveFromCart}
         onClear={handleClearCart}
         onPurchase={handlePurchase}
+        paymentLoading={payment.loading}
+        stripeAvailable={payment.providers.stripe}
       />
 
       <DocsModal isOpen={isDocsOpen} onClose={() => setIsDocsOpen(false)} />

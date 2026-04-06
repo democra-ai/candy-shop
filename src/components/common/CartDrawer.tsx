@@ -1,6 +1,7 @@
-import { X, Trash2, Download, Copy, Check, Terminal, ShoppingBag, PackageX } from 'lucide-react';
+import { X, Trash2, Download, Copy, Check, Terminal, ShoppingBag, PackageX, CreditCard, Zap, Loader2 } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { SKILLS_DATA } from '../../data/skillsData';
+import { formatPrice } from '../../lib/payment/payment-client';
 import { toast } from 'sonner';
 
 interface CartDrawerProps {
@@ -10,9 +11,22 @@ interface CartDrawerProps {
   onRemove: (id: string) => void;
   onClear: () => void;
   onPurchase: () => void;
+  /** Payment loading state */
+  paymentLoading?: boolean;
+  /** Whether Stripe is available */
+  stripeAvailable?: boolean;
 }
 
-export function CartDrawer({ isOpen, onClose, cartIds, onRemove, onClear, onPurchase }: CartDrawerProps) {
+export function CartDrawer({
+  isOpen,
+  onClose,
+  cartIds,
+  onRemove,
+  onClear,
+  onPurchase,
+  paymentLoading = false,
+  stripeAvailable = false,
+}: CartDrawerProps) {
   const [copied, setCopied] = useState(false);
 
   // Close on Escape key
@@ -30,6 +44,11 @@ export function CartDrawer({ isOpen, onClose, cartIds, onRemove, onClear, onPurc
 
   // Get full skill objects from IDs
   const cartItems = SKILLS_DATA.filter(skill => cartIds.has(skill.id));
+
+  // Separate free and paid items
+  const freeItems = cartItems.filter(item => !item.price || item.price === 0);
+  const paidItems = cartItems.filter(item => item.price && item.price > 0);
+  const totalPrice = paidItems.reduce((sum, item) => sum + (item.price || 0), 0);
 
   // Merge configurations
   const mergedConfig = {
@@ -50,7 +69,7 @@ export function CartDrawer({ isOpen, onClose, cartIds, onRemove, onClear, onPurc
   return (
     <>
       {/* Backdrop */}
-      <div 
+      <div
         className={`fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity z-[100] ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         onClick={onClose}
         aria-hidden="true"
@@ -63,7 +82,7 @@ export function CartDrawer({ isOpen, onClose, cartIds, onRemove, onClear, onPurc
         aria-modal="true"
         aria-label="Shopping bag"
       >
-        
+
         {/* Header */}
         <div className="h-16 border-b border-border flex items-center justify-between px-6 bg-secondary/50">
           <div className="flex items-center gap-3">
@@ -108,25 +127,52 @@ export function CartDrawer({ isOpen, onClose, cartIds, onRemove, onClear, onPurc
                       <h4 className="font-bold text-foreground text-sm truncate">{item.name}</h4>
                       <p className="font-mono text-xs text-foreground-tertiary truncate">{item.id}</p>
                     </div>
-                    <button 
-                      onClick={() => onRemove(item.id)}
-                      className="p-2.5 text-foreground-tertiary hover:text-error hover:bg-error/10 rounded-lg transition-colors duration-200 cursor-pointer min-w-[40px] min-h-[40px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-error/30"
-                      aria-label={`Remove ${item.name} from bag`}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {item.price && item.price > 0 ? (
+                        <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                          {formatPrice(item.price)}
+                        </span>
+                      ) : (
+                        <span className="text-xs font-mono text-foreground-tertiary">Free</span>
+                      )}
+                      <button
+                        onClick={() => onRemove(item.id)}
+                        className="p-2.5 text-foreground-tertiary hover:text-error hover:bg-error/10 rounded-lg transition-colors duration-200 cursor-pointer min-w-[40px] min-h-[40px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-error/30"
+                        aria-label={`Remove ${item.name} from bag`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
 
+              {/* Price Summary */}
+              {paidItems.length > 0 && (
+                <div className="bg-secondary/50 rounded-xl p-4 border border-border space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-foreground-secondary">Free skills ({freeItems.length})</span>
+                    <span className="text-foreground-tertiary">$0.00</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-foreground-secondary">Premium skills ({paidItems.length})</span>
+                    <span className="font-bold text-foreground">{formatPrice(totalPrice)}</span>
+                  </div>
+                  <div className="border-t border-border pt-2 flex justify-between">
+                    <span className="font-bold text-foreground">Total</span>
+                    <span className="font-bold text-lg text-primary">{formatPrice(totalPrice)}</span>
+                  </div>
+                </div>
+              )}
+
               {/* Config Builder Preview */}
-              <div className="bg-zinc-900 rounded-xl overflow-hidden mt-8 shadow-lg">
+              <div className="bg-zinc-900 rounded-xl overflow-hidden mt-4 shadow-lg">
                 <div className="bg-zinc-800 px-4 py-2 flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs text-zinc-400 font-mono">
                     <Terminal className="w-3 h-3" />
                     claude_desktop_config.json
                   </div>
-                  <button 
+                  <button
                     onClick={handleCopy}
                     className="text-xs text-white/80 hover:text-white flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/20"
                     aria-label={copied ? 'Configuration copied' : 'Copy configuration'}
@@ -148,7 +194,8 @@ export function CartDrawer({ isOpen, onClose, cartIds, onRemove, onClear, onPurc
         {/* Footer */}
         {cartItems.length > 0 && (
           <div className="p-6 border-t border-border bg-secondary/50 space-y-3">
-            <button 
+            {/* Copy config button */}
+            <button
               onClick={handleCopy}
               className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-bold font-candy text-lg shadow-lg shadow-primary/20 hover:bg-primary-hover active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50"
               aria-label="Copy merged configuration"
@@ -156,15 +203,43 @@ export function CartDrawer({ isOpen, onClose, cartIds, onRemove, onClear, onPurc
               <Download className="w-5 h-5" />
               checkout --merge
             </button>
-            <button 
+
+            {/* Purchase / Pay button */}
+            <button
               onClick={onPurchase}
-              className="w-full py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-bold font-candy text-lg shadow-lg shadow-green-500/20 hover:from-green-600 hover:to-emerald-600 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-green-500/50"
-              aria-label="Complete purchase"
+              disabled={paymentLoading}
+              className="w-full py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-bold font-candy text-lg shadow-lg shadow-green-500/20 hover:from-green-600 hover:to-emerald-600 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-green-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label={totalPrice > 0 ? `Pay ${formatPrice(totalPrice)}` : 'Complete purchase'}
             >
-              <Check className="w-5 h-5" />
-              Complete Purchase
+              {paymentLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : totalPrice > 0 ? (
+                <CreditCard className="w-5 h-5" />
+              ) : (
+                <Check className="w-5 h-5" />
+              )}
+              {paymentLoading
+                ? 'Processing...'
+                : totalPrice > 0
+                  ? `Pay ${formatPrice(totalPrice)}`
+                  : 'Install Free Skills'}
             </button>
-            <button 
+
+            {/* Payment method indicators */}
+            {totalPrice > 0 && (
+              <div className="flex items-center justify-center gap-4 text-xs text-foreground-tertiary">
+                {stripeAvailable && (
+                  <span className="flex items-center gap-1">
+                    <CreditCard className="w-3 h-3" /> Stripe
+                  </span>
+                )}
+                <span className="flex items-center gap-1">
+                  <Zap className="w-3 h-3" /> x402-ready
+                </span>
+              </div>
+            )}
+
+            <button
               onClick={onClear}
               className="w-full py-2 text-foreground-tertiary text-xs font-mono hover:text-error transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-error/30 rounded-lg"
               aria-label="Clear all items from bag"
