@@ -78,7 +78,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const supabase = db();
-    if (!supabase) return res.status(503).json({ error: 'Database not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in Vercel environment variables.' });
+    if (!supabase) return res.status(503).json({ error: 'Database not configured' });
 
     const { skillId } = req.query;
     const { callerId, callerType = 'user', input = {} } = req.body;
