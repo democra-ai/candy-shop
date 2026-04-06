@@ -1,11 +1,14 @@
 // GET /api/health — Server health check
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { cors } from './_lib/cors';
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
-  if (cors(req, res)) return;
+  // CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(204).end();
 
-  res.json({
+  return res.json({
     status: 'ok',
     providers: {
       stripe: !!process.env.STRIPE_SECRET_KEY,
