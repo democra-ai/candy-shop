@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/api/payment/config",
+      "destination": "/api/health"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "/api/$1"
     },

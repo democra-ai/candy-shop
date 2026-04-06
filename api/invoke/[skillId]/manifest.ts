@@ -30,10 +30,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const supabase = db();
-    if (!supabase) return res.status(503).json({ error: 'Database not configured' });
-
     const { skillId } = req.query;
+    const supabase = db();
+
+    if (!supabase) {
+      return res.json({
+        manifest: {
+          id: skillId,
+          name: null,
+          description: null,
+          source: 'fallback',
+          note: 'Database not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.',
+          paymentOptions: { stripe: isStripeConfigured(), x402: isX402Configured() },
+        },
+      });
+    }
 
     const { data: skill } = await supabase
       .from('skills')
