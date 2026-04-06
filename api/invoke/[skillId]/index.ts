@@ -1,21 +1,91 @@
 // POST /api/invoke/:skillId — Invoke a skill (execution rights gateway)
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { cors } from '../../_lib/cors';
-import { supabaseAdmin } from '../../_lib/supabase';
-import { isStripeConfigured } from '../../_lib/stripe-provider';
-import { isX402Configured, generatePaymentRequirement } from '../../_lib/x402-provider';
+import { createClient } from '@supabase/supabase-js';
+import * as crypto from 'crypto';
 
+// --- Inline Supabase client ---
+let _db: ReturnType<typeof createClient> | null = null;
+function db() {
+  if (!_db) {
+    const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+    if (!url || !key) return null;
+    _db = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
+  }
+  return _db;
+}
+
+// --- Inline config checks ---
+function isStripeConfigured(): boolean {
+  return !!process.env.STRIPE_SECRET_KEY;
+}
+
+function isX402Configured(): boolean {
+  return !!process.env.X402_RECEIVER_ADDRESS;
+}
+
+// --- Inline x402 payment requirement generator ---
+const USDC_CONTRACTS: Record<string, string> = {
+  'base-sepolia': '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
+  'base': '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+  'ethereum': '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+};
+
+interface X402PaymentRequirement {
+  resource: string;
+  scheme: 'exact';
+  network: string;
+  paymentToken: string;
+  maxAmountRequired: string;
+  payTo: string;
+  nonce: string;
+  expiry: number;
+}
+
+function generatePaymentRequirement(params: { skillId: string; amount: number; resource: string }): X402PaymentRequirement {
+  const network = (process.env.X402_NETWORK || 'base-sepolia') as string;
+  const receiverAddress = process.env.X402_RECEIVER_ADDRESS || '';
+  return {
+    resource: params.resource,
+    scheme: 'exact',
+    network,
+    paymentToken: USDC_CONTRACTS[network] || USDC_CONTRACTS['base-sepolia'],
+    maxAmountRequired: params.amount.toString(),
+    payTo: receiverAddress,
+    nonce: crypto.randomUUID(),
+    expiry: Math.floor(Date.now() / 1000) + 300,
+  };
+}
+
+// --- Record invocation helper ---
+async function recordInvocation(skillId: string, callerId: string, callerType: string, provider: string, amount: number): Promise<string> {
+  const supabase = db();
+  if (!supabase) return 'inv-' + Date.now();
+  const { data } = await supabase.rpc('record_invocation', {
+    p_skill_id: skillId, p_caller_id: callerId, p_caller_type: callerType, p_provider: provider, p_amount: amount,
+  });
+  return data || 'inv-' + Date.now();
+}
+
+// --- Handler ---
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (cors(req, res)) return;
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Payment, stripe-signature');
+  if (req.method === 'OPTIONS') return res.status(204).end();
+
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
+    const supabase = db();
+    if (!supabase) return res.status(503).json({ error: 'Database not configured' });
+
     const { skillId } = req.query;
     const { callerId, callerType = 'user', input = {} } = req.body;
 
     if (!callerId) return res.status(400).json({ error: 'callerId is required' });
 
-    const { data: skill } = await supabaseAdmin
+    const { data: skill } = await supabase
       .from('skills')
       .select('id, name, pricing_model, price_amount, price_currency, execution_model, manifest_visibility')
       .eq('id', skillId as string)
@@ -56,7 +126,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Human user: check entitlement
-    const { data: hasEntitlement } = await supabaseAdmin
+    const { data: hasEntitlement } = await supabase
       .rpc('check_entitlement', { p_user_id: callerId, p_skill_id: skillId as string });
 
     if (!hasEntitlement) {
@@ -69,14 +139,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (skill.pricing_model === 'per_call') {
-      const { data: consumed } = await supabaseAdmin
+      const { data: consumed } = await supabase
         .rpc('consume_call', { p_user_id: callerId, p_skill_id: skillId as string });
       if (!consumed) return res.status(402).json({ status: 'payment_required', message: 'No remaining calls.', skillId });
     }
 
     const invocationId = await recordInvocation(skillId as string, callerId, callerType, 'stripe', skill.price_amount);
 
-    const { data: entitlement } = await supabaseAdmin
+    const { data: entitlement } = await supabase
       .from('entitlements')
       .select('remaining_calls, type')
       .eq('user_id', callerId)
@@ -88,11 +158,4 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error('Invocation error:', err);
     res.status(500).json({ error: 'Failed to invoke skill' });
   }
-}
-
-async function recordInvocation(skillId: string, callerId: string, callerType: string, provider: string, amount: number): Promise<string> {
-  const { data } = await supabaseAdmin.rpc('record_invocation', {
-    p_skill_id: skillId, p_caller_id: callerId, p_caller_type: callerType, p_provider: provider, p_amount: amount,
-  });
-  return data || 'inv-' + Date.now();
 }
