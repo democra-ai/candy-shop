@@ -411,7 +411,7 @@ function AppContent() {
     if (paidSkills.length > 0 && payment.providers.stripe) {
       // Route paid skills through Stripe checkout
       const result = await payment.startCheckout(paidSkills.map(s => s.id));
-      if (result?.free) {
+      if (result && 'free' in result && result.free) {
         // Server says these are actually free
         installFreeSkills();
         updateCart(() => new Set());

@@ -9,6 +9,28 @@ export type SkillCategory =
   | 'Mobile'
   | 'Writing';
 
+// ── Lineage & Provenance ────────────────────────────────────
+/** How this skill relates to other skills in the ecosystem */
+export type SkillLineageType = 'original' | 'fork' | 'remix' | 'licensed_derivative';
+
+/** What you're buying: execution rights, not files */
+export type ExecutionModel = 'open' | 'managed' | 'federated';
+
+/** Manifest visibility: what's public vs gated */
+export type ManifestVisibility = 'full' | 'manifest_only' | 'private';
+
+export interface SkillLineage {
+  type: SkillLineageType;
+  /** ID of the original/parent skill (null for originals) */
+  parentId?: string;
+  /** Whether this is the canonical/official version */
+  canonical: boolean;
+  /** License under which derivative was created */
+  license?: string;
+  /** Original author / creator namespace */
+  originalAuthor?: string;
+}
+
 export interface Skill {
   id: string;
   name: string;
@@ -35,6 +57,13 @@ export interface Skill {
   // Pricing fields
   price?: number;           // Price in cents (0 = free)
   pricingModel?: 'free' | 'one_time' | 'per_call' | 'subscription';
+  // ── Lineage & Execution Model (v2) ──────────────────────
+  /** Provenance: original, fork, remix, or licensed derivative */
+  lineage?: SkillLineage;
+  /** Execution model: open (self-host), managed (we run it), federated (creator-hosted) */
+  executionModel?: ExecutionModel;
+  /** What parts of the skill are visible without purchase */
+  manifestVisibility?: ManifestVisibility;
 }
 
 // ── Registry types (compact format) ─────────────────────────────────
@@ -132,6 +161,9 @@ export const SKILLS_DATA: Skill[] = [
       { title: 'Streaming SSR Setup', emoji: '🌊' },
       { title: 'Modern Hooks Guide', emoji: '🪝' },
     ],
+    lineage: { type: 'original', canonical: true, originalAuthor: 'Vercel' },
+    executionModel: 'open',
+    manifestVisibility: 'full',
   },
   {
     id: 'remotion-best-practices',
@@ -155,6 +187,9 @@ export const SKILLS_DATA: Skill[] = [
       { title: 'Audio Visualization', emoji: '🎵' },
       { title: 'Batch Video Rendering', emoji: '📦' },
     ],
+    lineage: { type: 'original', canonical: true, originalAuthor: 'Remotion' },
+    executionModel: 'open',
+    manifestVisibility: 'full',
   },
   {
     id: 'vercel-composition-patterns',
@@ -3257,5 +3292,112 @@ export const SKILLS_DATA: Skill[] = [
     repo: 'firecrawl/cli',
     skillMdUrl: mdUrl('firecrawl', 'cli'),
     config: {}, tags: [],
+    lineage: { type: 'original', canonical: true, originalAuthor: 'Firecrawl' },
+    executionModel: 'open',
+  },
+
+  // ── Premium Skills (Execution Rights Model) ─────────────────
+  {
+    id: 'enterprise-code-review',
+    name: 'Enterprise Code Review',
+    description: 'AI-powered code review with security analysis, OWASP compliance checks, and architectural suggestions. Manifest visible; runtime execution requires entitlement.',
+    category: 'Development',
+    icon: '🛡️',
+    color: 'bg-rose-100 border-rose-200 text-rose-700',
+    installCommand: 'npx skills invoke enterprise-code-review',
+    popularity: 45200,
+    repo: 'candyshop-premium/code-review',
+    skillMdUrl: mdUrl('candyshop-premium', 'code-review'),
+    config: {}, tags: ['Security', 'Code Review', 'Enterprise'],
+    price: 999,
+    pricingModel: 'per_call',
+    lineage: { type: 'original', canonical: true, originalAuthor: 'Candy Shop' },
+    executionModel: 'managed',
+    manifestVisibility: 'manifest_only',
+    rating: 4.9,
+    developer: 'Candy Shop',
+    version: 'v1.0',
+    editorPick: true,
+    editorNote: 'Enterprise-grade code review — pay per invocation, not per download',
+  },
+  {
+    id: 'gpt-researcher-pro',
+    name: 'Deep Research Pro',
+    description: 'Advanced multi-source research agent — deep web analysis, citation generation, and structured reporting. Licensed derivative of GPT Researcher.',
+    category: 'Research',
+    icon: '🔬',
+    color: 'bg-cyan-100 border-cyan-200 text-cyan-700',
+    installCommand: 'npx skills invoke gpt-researcher-pro',
+    popularity: 32100,
+    repo: 'candyshop-premium/deep-research',
+    skillMdUrl: mdUrl('candyshop-premium', 'deep-research'),
+    config: {}, tags: ['Research', 'Analysis', 'Citations'],
+    price: 1499,
+    pricingModel: 'per_call',
+    lineage: { type: 'licensed_derivative', canonical: false, parentId: 'gpt-researcher', originalAuthor: 'assafelovic', license: 'MIT + Commercial' },
+    executionModel: 'managed',
+    manifestVisibility: 'manifest_only',
+    rating: 4.7,
+    developer: 'Candy Shop',
+    version: 'v2.0',
+  },
+  {
+    id: 'react-patterns-remix',
+    name: 'React Patterns Remix',
+    description: 'Community-enhanced fork of Vercel React Best Practices — adds Zustand, TanStack Query, and Tailwind v4 patterns.',
+    category: 'Development',
+    icon: '♻️',
+    color: 'bg-purple-100 border-purple-200 text-purple-700',
+    installCommand: 'npx skills add community/react-patterns-remix',
+    popularity: 18700,
+    repo: 'community/react-patterns-remix',
+    skillMdUrl: mdUrl('community', 'react-patterns-remix'),
+    config: {}, tags: ['React', 'Zustand', 'TanStack'],
+    lineage: { type: 'remix', canonical: false, parentId: 'vercel-react-best-practices', originalAuthor: 'Vercel', license: 'MIT' },
+    executionModel: 'open',
+    manifestVisibility: 'full',
+    rating: 4.5,
+    developer: 'Community',
+    version: 'v1.3',
+  },
+  {
+    id: 'next-auth-fork',
+    name: 'Next Auth Extended',
+    description: 'Community fork of Better Auth skill with additional OAuth providers (Discord, Twitch, GitHub Enterprise) and SSO support.',
+    category: 'Development',
+    icon: '🔑',
+    color: 'bg-teal-100 border-teal-200 text-teal-700',
+    installCommand: 'npx skills add community/next-auth-extended',
+    popularity: 6200,
+    repo: 'community/next-auth-extended',
+    skillMdUrl: mdUrl('community', 'next-auth-extended'),
+    config: {}, tags: ['Auth', 'OAuth', 'SSO'],
+    lineage: { type: 'fork', canonical: false, parentId: 'better-auth-best-practices', originalAuthor: 'better-auth', license: 'MIT' },
+    executionModel: 'open',
+    manifestVisibility: 'full',
+    rating: 4.2,
+    developer: 'Community',
+    version: 'v1.1',
+  },
+  {
+    id: 'compliance-scanner',
+    name: 'Compliance Scanner',
+    description: 'Automated SOC2/HIPAA/GDPR compliance scanning for codebases. Agent-payable via x402 — autonomous agents can invoke and pay per scan.',
+    category: 'Tools',
+    icon: '📋',
+    color: 'bg-amber-100 border-amber-200 text-amber-700',
+    installCommand: 'npx skills invoke compliance-scanner',
+    popularity: 12400,
+    repo: 'candyshop-premium/compliance',
+    skillMdUrl: mdUrl('candyshop-premium', 'compliance'),
+    config: {}, tags: ['Compliance', 'Security', 'Enterprise'],
+    price: 2499,
+    pricingModel: 'per_call',
+    lineage: { type: 'original', canonical: true, originalAuthor: 'Candy Shop' },
+    executionModel: 'managed',
+    manifestVisibility: 'manifest_only',
+    rating: 4.8,
+    developer: 'Candy Shop',
+    version: 'v1.0',
   },
 ];

@@ -132,11 +132,12 @@ export interface PaymentProviderInterface {
   verifyPayment(sessionId: string): Promise<Purchase | null>;
 
   /** Process a webhook event from the provider */
-  handleWebhook(rawBody: string | Buffer, signature: string): Promise<PaymentWebhookEvent>;
+  handleWebhook(rawBody: string | ArrayBuffer, signature: string): Promise<PaymentWebhookEvent>;
 }
 
 // ── Entitlement ─────────────────────────────────────────────
 // What the user/agent is allowed to access after payment
+// Key insight: you buy EXECUTION RIGHTS, not skill files
 
 export interface Entitlement {
   userId: string;
@@ -149,4 +150,49 @@ export interface Entitlement {
   grantedAt: string;
   provider: PaymentProvider;
   purchaseId: string;
+}
+
+// ── Invocation (Execution Rights) ──────────────────────────
+// The atomic unit of paid skill usage
+
+export interface InvocationRequest {
+  skillId: string;
+  /** User or agent requesting execution */
+  callerId: string;
+  callerType: 'user' | 'agent';
+  /** Input to the skill */
+  input: Record<string, unknown>;
+  /** For agents: wallet address for x402 payment */
+  walletAddress?: string;
+}
+
+export interface InvocationResult {
+  invocationId: string;
+  skillId: string;
+  status: 'success' | 'error' | 'payment_required' | 'rate_limited';
+  /** Output from the skill (only if entitled) */
+  output?: Record<string, unknown>;
+  /** Remaining calls after this invocation */
+  remainingCalls?: number;
+  /** Payment details if payment is needed */
+  paymentRequired?: {
+    provider: PaymentProvider;
+    amount: number;
+    currency: Currency;
+  };
+}
+
+// ── Revenue Split (Lineage Economics) ──────────────────────
+// How revenue is distributed based on skill lineage
+
+export interface RevenueAllocation {
+  skillId: string;
+  /** Original author gets a royalty even on derivatives */
+  originalAuthorShare: number;  // 0-100 percentage
+  /** Current skill owner/operator */
+  operatorShare: number;
+  /** Platform fee */
+  platformShare: number;
+  /** Lineage type affects default splits */
+  lineageType: 'original' | 'fork' | 'remix' | 'licensed_derivative';
 }

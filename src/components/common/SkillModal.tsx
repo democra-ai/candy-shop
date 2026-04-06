@@ -1,6 +1,7 @@
-import { X, Copy, Check, Terminal, Play, Github, ExternalLink, FileText, Star, Users, Code2, ChevronDown, ChevronUp, Share2 } from 'lucide-react';
+import { X, Copy, Check, Terminal, Play, Github, ExternalLink, FileText, Star, Users, Code2, ChevronDown, ChevronUp, Share2, Zap, Shield } from 'lucide-react';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Skill } from '../../data/skillsData';
+import { LineageBadge, PricingBadge, ExecutionModelBadge, ManifestVisibilityBadge } from './LineageBadge';
 import { toast } from 'sonner';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { getCandyEmoji } from '../../utils/candy';
@@ -249,6 +250,16 @@ export function SkillModal({ skill, onClose, onRun }: SkillModalProps) {
               <span className="text-[10px] text-foreground-tertiary">Open Source</span>
             </div>
           </div>
+
+          {/* Lineage & Execution Model Bar */}
+          {(skill.lineage || skill.executionModel || skill.pricingModel) && (
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+              <LineageBadge lineage={skill.lineage} size="sm" />
+              <PricingBadge pricingModel={skill.pricingModel} price={skill.price} size="sm" />
+              <ExecutionModelBadge model={skill.executionModel} size="sm" />
+              <ManifestVisibilityBadge visibility={skill.manifestVisibility} size="sm" />
+            </div>
+          )}
         </div>
 
         {/* Content */}
@@ -308,11 +319,32 @@ export function SkillModal({ skill, onClose, onRun }: SkillModalProps) {
             </div>
           )}
 
-          {/* Install Command */}
+          {/* Execution Rights Notice (for managed/paid skills) */}
+          {skill.executionModel === 'managed' && (
+            <div className="mb-6 p-4 bg-amber-500/5 rounded-lg border border-amber-500/20">
+              <div className="flex items-start gap-3">
+                <Shield className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
+                <div>
+                  <h3 className="text-sm font-bold text-foreground mb-1">Execution Rights Model</h3>
+                  <p className="text-xs text-foreground-secondary leading-relaxed">
+                    This skill sells <strong>execution rights</strong>, not source files. The manifest (description, API schema, capabilities) is visible, but the runtime logic and policy core are gated behind entitlement.
+                    {skill.pricingModel === 'per_call' && ' You pay per invocation — both humans (Stripe) and agents (x402) can invoke.'}
+                  </p>
+                  {skill.lineage?.type === 'licensed_derivative' && skill.lineage.originalAuthor && (
+                    <p className="text-xs text-foreground-tertiary mt-2">
+                      Derived from work by <strong>{skill.lineage.originalAuthor}</strong> — revenue is shared with the original creator.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Install / Invoke Command */}
           <div className="mb-6">
             <h3 className="text-sm font-bold text-foreground mb-2 flex items-center gap-2">
-              <Terminal className="w-4 h-4" />
-              Quick Install
+              {skill.executionModel === 'managed' ? <Zap className="w-4 h-4" /> : <Terminal className="w-4 h-4" />}
+              {skill.executionModel === 'managed' ? 'Invoke Command' : 'Quick Install'}
             </h3>
             <div className="bg-zinc-900 text-zinc-100 p-4 rounded-lg font-mono text-sm overflow-x-auto flex items-center justify-between group">
               <code className="break-all">{skill.installCommand}</code>
@@ -472,11 +504,16 @@ export function SkillModal({ skill, onClose, onRun }: SkillModalProps) {
                   onClose();
                 }
               }}
-              className="px-6 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary-hover transition-colors duration-200 shadow-lg shadow-primary/20 flex items-center gap-2 cursor-pointer min-h-[40px] focus:outline-none focus:ring-2 focus:ring-primary/50"
-              aria-label={`Run ${skill.name}`}
+              className={cn(
+                'px-6 py-2.5 rounded-lg font-medium transition-colors duration-200 shadow-lg flex items-center gap-2 cursor-pointer min-h-[40px] focus:outline-none focus:ring-2',
+                skill.executionModel === 'managed'
+                  ? 'bg-amber-500 text-white hover:bg-amber-600 shadow-amber-500/20 focus:ring-amber-500/50'
+                  : 'bg-primary text-primary-foreground hover:bg-primary-hover shadow-primary/20 focus:ring-primary/50'
+              )}
+              aria-label={`${skill.executionModel === 'managed' ? 'Invoke' : 'Run'} ${skill.name}`}
             >
-              <Play className="w-4 h-4" />
-              Run Skill
+              {skill.executionModel === 'managed' ? <Zap className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              {skill.executionModel === 'managed' ? (skill.price ? `Invoke ($${(skill.price / 100).toFixed(2)})` : 'Invoke') : 'Run Skill'}
             </button>
           </div>
         </div>

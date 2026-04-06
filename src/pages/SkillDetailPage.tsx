@@ -1,10 +1,11 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Star, Download, Play, Copy, Check, ExternalLink, Tag, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Star, Download, Play, Copy, Check, ExternalLink, Tag, MessageSquare, Zap, Shield, GitFork } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { StarRating } from '../components/ui/StarRating';
+import { LineageBadge, PricingBadge, ExecutionModelBadge, ManifestVisibilityBadge } from '../components/common/LineageBadge';
 import { SKILLS_DATA } from '../data/skillsData';
 import type { Skill as StoreSkill } from '../data/skillsData';
 import { useStars } from '../hooks/api/useStars';
@@ -98,6 +99,40 @@ export function SkillDetailPage({ cart, onToggleCart, onRunSkill, userId }: Skil
               </div>
             </div>
           </div>
+
+          {/* Lineage & Provenance */}
+          {(skill.lineage || skill.executionModel || skill.pricingModel) && (
+            <div className="flex flex-wrap items-center gap-2">
+              <LineageBadge lineage={skill.lineage} />
+              <PricingBadge pricingModel={skill.pricingModel} price={skill.price} />
+              <ExecutionModelBadge model={skill.executionModel} />
+              <ManifestVisibilityBadge visibility={skill.manifestVisibility} />
+            </div>
+          )}
+
+          {/* Execution Rights Notice */}
+          {skill.executionModel === 'managed' && (
+            <Card className="border-amber-500/20 bg-amber-500/5">
+              <CardContent className="pt-4 pb-4">
+                <div className="flex items-start gap-3">
+                  <Shield className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
+                  <div>
+                    <h3 className="text-sm font-semibold mb-1">Execution Rights Model</h3>
+                    <p className="text-xs text-foreground-secondary leading-relaxed">
+                      This skill sells <strong>execution rights</strong>, not source files. The manifest is visible, but runtime execution requires an active entitlement.
+                      Supports both Stripe (human) and x402 protocol (agent) payments.
+                    </p>
+                    {skill.lineage?.originalAuthor && skill.lineage.type !== 'original' && (
+                      <p className="text-xs text-foreground-tertiary mt-1.5 flex items-center gap-1">
+                        <GitFork className="w-3 h-3" />
+                        Derived from <strong>{skill.lineage.originalAuthor}</strong> — revenue shared with original creator
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Tabs */}
           <div className="flex items-center gap-1 border-b border-border">
@@ -233,9 +268,14 @@ export function SkillDetailPage({ cart, onToggleCart, onRunSkill, userId }: Skil
           {/* Actions */}
           <Card>
             <CardContent className="pt-6 space-y-3">
-              <Button className="w-full" onClick={() => onRunSkill(skill)}>
-                <Play className="w-4 h-4" />
-                Run Skill
+              <Button
+                className={skill.executionModel === 'managed' ? 'w-full bg-amber-500 hover:bg-amber-600 text-white' : 'w-full'}
+                onClick={() => onRunSkill(skill)}
+              >
+                {skill.executionModel === 'managed' ? <Zap className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                {skill.executionModel === 'managed'
+                  ? (skill.price ? `Invoke ($${(skill.price / 100).toFixed(2)}/call)` : 'Invoke Skill')
+                  : 'Run Skill'}
               </Button>
               <Button
                 variant={inCart ? 'secondary' : 'outline'}
@@ -278,6 +318,32 @@ export function SkillDetailPage({ cart, onToggleCart, onRunSkill, userId }: Skil
                   <span className="text-foreground-secondary">Installs</span>
                   <span className="font-medium">{(skill.popularity ?? 0).toLocaleString()}</span>
                 </div>
+                {skill.lineage && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-foreground-secondary">Lineage</span>
+                    <LineageBadge lineage={skill.lineage} size="xs" showCanonical={false} />
+                  </div>
+                )}
+                {skill.lineage?.canonical && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-foreground-secondary">Status</span>
+                    <Badge variant="secondary" size="sm" className="bg-rose-500/10 text-rose-500 border-rose-500/20">★ Canonical</Badge>
+                  </div>
+                )}
+                {skill.executionModel && skill.executionModel !== 'open' && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-foreground-secondary">Execution</span>
+                    <span className="text-xs font-medium">{skill.executionModel === 'managed' ? '☁ Managed' : '🔗 Federated'}</span>
+                  </div>
+                )}
+                {skill.pricingModel && skill.pricingModel !== 'free' && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-foreground-secondary">Pricing</span>
+                    <span className="text-xs font-medium text-amber-500">
+                      {skill.price ? `$${(skill.price / 100).toFixed(2)}` : ''} / {skill.pricingModel === 'per_call' ? 'call' : skill.pricingModel}
+                    </span>
+                  </div>
+                )}
                 {skill.repo && (
                   <a
                     href={`https://github.com/${skill.repo}`}

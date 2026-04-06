@@ -124,3 +124,52 @@ export function requiresPayment(pricing?: SkillPricing): boolean {
   if (!pricing) return false;
   return pricing.model !== 'free' && pricing.amount > 0;
 }
+
+// ── Skill Invocation (Execution Rights) ────────────────────
+
+export interface InvokeParams {
+  skillId: string;
+  callerId: string;
+  callerType?: 'user' | 'agent';
+  input?: Record<string, unknown>;
+}
+
+export interface InvokeResult {
+  invocationId: string;
+  skillId: string;
+  status: 'success' | 'payment_required' | 'error';
+  message: string;
+  remainingCalls?: number | null;
+  paymentOptions?: { stripe: boolean; x402: boolean };
+}
+
+/** Invoke a skill — checks entitlement and consumes a call */
+export async function invokeSkill(params: InvokeParams): Promise<InvokeResult> {
+  try {
+    const { data } = await client.post(`/invoke/${params.skillId}`, params);
+    return data;
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response?.status === 402) {
+      return {
+        invocationId: '',
+        skillId: params.skillId,
+        status: 'payment_required',
+        message: err.response.data?.message || 'Payment required',
+        paymentOptions: err.response.data?.paymentOptions,
+      };
+    }
+    throw err;
+  }
+}
+
+/** Get the public manifest for a skill (always visible) */
+export async function getSkillManifest(skillId: string): Promise<Record<string, unknown>> {
+  const { data } = await client.get(`/invoke/${skillId}/manifest`);
+  return data.manifest;
+}
+
+/** Get invocation stats for a skill */
+export async function getInvocationStats(skillId: string): Promise<{ totalInvocations: number }> {
+  const { data } = await client.get(`/invoke/${skillId}/stats`);
+  return data;
+}

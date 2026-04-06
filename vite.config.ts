@@ -36,8 +36,10 @@ export default defineConfig({
   base: process.env.TAURI_ENV_PLATFORM || process.env.VERCEL || process.env.SPACE_ID ? '/' : '/candy-shop/',
 
   build: {
-    // Tauri uses WebKit on macOS
-    target: process.env.TAURI_ENV_PLATFORM === 'windows' ? 'chrome105' : 'safari13',
+    // Tauri uses WebKit on macOS; Vercel/web uses modern targets
+    target: process.env.TAURI_ENV_PLATFORM === 'windows' ? 'chrome105'
+      : process.env.TAURI_ENV_PLATFORM ? 'safari13'
+      : 'es2020',
     minify: process.env.TAURI_ENV_DEBUG ? false : 'esbuild',
     sourcemap: !!process.env.TAURI_ENV_DEBUG,
     rollupOptions: {

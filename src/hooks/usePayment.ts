@@ -74,7 +74,7 @@ export function usePayment(userId?: string) {
       if (result.sessionId === 'free') {
         // All skills are free — no payment needed
         setState({ loading: false, error: null, checkoutUrl: null, sessionId: 'free' });
-        return { free: true };
+        return { free: true as const, ...result };
       }
 
       setState({

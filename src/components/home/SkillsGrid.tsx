@@ -1,7 +1,8 @@
-import { Search, ShoppingBag, Check, X, Heart, Play, Star, ChevronLeft, ChevronRight, Plus, Database, ExternalLink, Download, Users } from 'lucide-react';
+import { Search, ShoppingBag, Check, X, Heart, Play, Star, ChevronLeft, ChevronRight, Plus, Database, ExternalLink, Download, Users, Zap } from 'lucide-react';
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { SKILLS_DATA, REGISTRY_STATS, loadFullRegistry, type Skill, type RegistryEntry } from '../../data/skillsData';
 import { SkillModal } from '../common/SkillModal';
+import { LineageBadge, PricingBadge, ExecutionModelBadge } from '../common/LineageBadge';
 import { storageUtils } from '../../utils/storage';
 import { cn } from '../../utils/cn';
 import { toast } from 'sonner';
@@ -406,6 +407,14 @@ export function SkillsGrid({
                         </span>
                       </div>
                     )}
+                    {/* Lineage & Pricing badges */}
+                    {(skill.lineage || skill.pricingModel) && !skill.id.startsWith('user-candy-') && (
+                      <div className="px-5 pt-2 pb-0 flex flex-wrap items-center gap-1.5">
+                        <LineageBadge lineage={skill.lineage} size="xs" />
+                        <PricingBadge pricingModel={skill.pricingModel} price={skill.price} size="xs" />
+                        <ExecutionModelBadge model={skill.executionModel} size="xs" />
+                      </div>
+                    )}
                     {/* Card Header */}
                     <div className={cn('p-5', skill.id.startsWith('user-candy-') ? 'pt-2 pb-0' : 'pb-0')}>
                       <div className="flex items-start gap-3.5">
@@ -493,10 +502,15 @@ export function SkillsGrid({
                     <div className="px-5 pb-4 flex items-center gap-2 mt-auto">
                       <button
                         onClick={(e) => { e.stopPropagation(); onRunSkill(skill); }}
-                        className="flex-1 flex items-center justify-center gap-2 h-9 rounded-lg bg-primary/10 text-primary text-sm font-body font-medium hover:bg-primary hover:text-primary-foreground transition-all duration-200 btn-press"
+                        className={cn(
+                          'flex-1 flex items-center justify-center gap-2 h-9 rounded-lg text-sm font-body font-medium transition-all duration-200 btn-press',
+                          skill.executionModel === 'managed'
+                            ? 'bg-amber-500/10 text-amber-600 hover:bg-amber-500 hover:text-white'
+                            : 'bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground'
+                        )}
                       >
-                        <Play className="w-3.5 h-3.5 fill-current" />
-                        {t('skills.runSkill')}
+                        {skill.executionModel === 'managed' ? <Zap className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+                        {skill.executionModel === 'managed' ? 'Invoke' : t('skills.runSkill')}
                       </button>
                       {onMatchCraving && (
                         <button

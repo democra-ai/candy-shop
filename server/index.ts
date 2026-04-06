@@ -8,6 +8,7 @@ import cors from 'cors';
 import { paymentRouter } from './routes/payment.js';
 import { x402Router } from './routes/x402.js';
 import { webhookRouter } from './routes/webhook.js';
+import { invokeRouter } from './routes/invoke.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -42,6 +43,9 @@ app.use('/api/payment', paymentRouter);
 
 // x402 protocol routes
 app.use('/api/x402', x402Router);
+
+// Skill invocation routes (execution rights gateway)
+app.use('/api/invoke', invokeRouter);
 
 app.listen(PORT, () => {
   console.log(`🍬 Candy Shop Payment Server running on port ${PORT}`);
