@@ -9,7 +9,7 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(204).end();
 
   return res.json({
-    status: 'ok',
+    status: 'ok', version: '1.0.1',
     providers: {
       stripe: !!process.env.STRIPE_SECRET_KEY,
       x402: !!process.env.X402_RECEIVER_ADDRESS,
