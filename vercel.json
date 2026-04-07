@@ -5,6 +5,10 @@
       "destination": "/api/health"
     },
     {
+      "source": "/api/invoke/:skillId/stats",
+      "destination": "/api/invoke/:skillId/manifest"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "/api/$1"
     },
