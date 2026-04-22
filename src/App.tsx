@@ -32,6 +32,7 @@ import type { Craving } from './data/cravingsData';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { useRealtimeNotifications } from './hooks/api/useRealtimeSkills';
 import { usePayment } from './hooks/usePayment';
+import { usePaymentRedirect } from './hooks/usePaymentRedirect';
 
 // ---------------------------------------------------------------------------
 // Error Boundary — prevents blank screen on unhandled errors
@@ -327,6 +328,12 @@ function AppContent() {
       return next;
     });
   }, []);
+
+  // Handle Stripe redirect back: verify session, install skills, clear cart.
+  usePaymentRedirect({
+    payment,
+    onClearCart: () => updateCart(() => new Set()),
+  });
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }: { data: { session: { user: User } | null } }) => {

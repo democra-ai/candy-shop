@@ -59,11 +59,16 @@ export async function createStripeCheckout(params: CreateCheckoutParams) {
     quantity: 1,
   }));
 
+  // Preserve any existing query string on successUrl (e.g. ?payment=success).
+  // Stripe substitutes {CHECKOUT_SESSION_ID}; join with & when ? is already there.
+  const successSep = successUrl.includes('?') ? '&' : '?';
+  const finalSuccessUrl = `${successUrl}${successSep}session_id={CHECKOUT_SESSION_ID}`;
+
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
     payment_method_types: ['card'],
     line_items: lineItems,
-    success_url: `${successUrl}?session_id={CHECKOUT_SESSION_ID}`,
+    success_url: finalSuccessUrl,
     cancel_url: cancelUrl,
     metadata: {
       userId,

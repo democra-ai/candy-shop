@@ -79,11 +79,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }));
 
     const origin = req.headers.origin || 'https://candy-shop.democra.ai';
+
+    // Compose success URL preserving any existing query params
+    // (Stripe substitutes {CHECKOUT_SESSION_ID}; we must use & if ? already present)
+    const baseSuccessUrl = successUrl || `${origin}/skills/library?payment=success`;
+    const successSep = baseSuccessUrl.includes('?') ? '&' : '?';
+    const finalSuccessUrl = `${baseSuccessUrl}${successSep}session_id={CHECKOUT_SESSION_ID}`;
+
     const session = await stripe()!.checkout.sessions.create({
       mode: 'payment',
       payment_method_types: ['card'],
       line_items: lineItems,
-      success_url: `${successUrl || `${origin}/skills/library?payment=success`}?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: finalSuccessUrl,
       cancel_url: cancelUrl || `${origin}/?payment=cancelled`,
       metadata: {
         userId,
