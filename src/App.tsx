@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useSyncExternalStore, Component, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, useSyncExternalStore, Component, Suspense, lazy, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, Navigate, useLocation, useSearchParams } from 'react-router-dom';
 import { Toaster, toast } from 'sonner';
 import type { User } from '@supabase/supabase-js';
@@ -19,7 +19,14 @@ import { CartDrawer } from './components/common/CartDrawer';
 import { DocsModal } from './components/common/DocsModal';
 import { SkillCreationPage } from './pages/SkillCreationPage';
 import { MySkillsLibrary } from './components/skill-creator/MySkillsLibrary';
-import { SkillExecutor } from './components/skill-creator/SkillExecutor';
+// SkillExecutor is lazy-loaded so that @opencode-ai/sdk (which ships with a
+// default client pointing at http://localhost:4096) is not pulled into the
+// initial bundle. That default singleton, when present at page load,
+// causes Safari to prompt for Local Network Access permission even on
+// visitors who never run a skill. See commit history for full diagnosis.
+const SkillExecutor = lazy(() =>
+  import('./components/skill-creator/SkillExecutor').then(m => ({ default: m.SkillExecutor }))
+);
 import { SkillDetailPage } from './pages/SkillDetailPage';
 import { CravingDetailPage } from './pages/CravingDetailPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -685,7 +692,9 @@ function AppContent() {
       <DocsModal isOpen={isDocsOpen} onClose={() => setIsDocsOpen(false)} />
 
       {executingSkill && (
-        <SkillExecutor skill={executingSkill} onClose={() => setExecutingSkill(null)} />
+        <Suspense fallback={null}>
+          <SkillExecutor skill={executingSkill} onClose={() => setExecutingSkill(null)} />
+        </Suspense>
       )}
     </>
   );

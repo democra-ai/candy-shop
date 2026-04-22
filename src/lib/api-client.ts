@@ -7,7 +7,11 @@ import type {
   SkillFilter 
 } from '../types/skill-creator';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/v1';
+// Default to same-origin `/api` so the bundle never ships a hardcoded
+// `http://localhost:3000` — that triggers Safari's "Access other apps and
+// services on this device" (Local Network Access) prompt in production.
+// Override with VITE_API_BASE_URL if the skill-creator API lives elsewhere.
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
 class ApiClient {
   private client: AxiosInstance;
