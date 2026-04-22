@@ -4,8 +4,8 @@
   "type": "module",
   "description": "Candy Shop payment API server — Stripe + x402",
   "scripts": {
-    "dev": "tsx watch index.ts",
-    "start": "node --loader tsx index.ts",
+    "dev": "node --env-file=.env --import tsx --watch index.ts",
+    "start": "node --env-file=.env --import tsx index.ts",
     "test": "tsx test/payment.test.ts"
   },
   "dependencies": {

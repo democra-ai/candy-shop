@@ -33,3 +33,7 @@ src-tauri/Cargo.lock
 src-tauri/icons/icon.svg
 .vercel
 .env*.local
+
+# Supabase CLI local state (no secrets, just project ref/versions)
+supabase/.temp/
+supabase/.branches/
