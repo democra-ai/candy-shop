@@ -32,8 +32,11 @@ export default defineConfig({
 
   envPrefix: ['VITE_', 'TAURI_ENV_*'],
 
-  // Tauri builds use '/', Vercel/HF Spaces use '/', GitHub Pages uses '/candy-shop/'
-  base: process.env.TAURI_ENV_PLATFORM || process.env.VERCEL || process.env.SPACE_ID ? '/' : '/candy-shop/',
+  // Default base is '/' — Tauri, Vercel, HF Spaces, Cloudflare Pages all
+  // serve assets at root. Only GitHub Pages (project page at
+  // user.github.io/candy-shop) needs the /candy-shop/ prefix, opt in with
+  // GITHUB_PAGES=1 pnpm build.
+  base: process.env.GITHUB_PAGES ? '/candy-shop/' : '/',
 
   build: {
     // Tauri uses WebKit on macOS; Vercel/web uses modern targets

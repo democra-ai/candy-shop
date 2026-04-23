@@ -1,0 +1,25 @@
+name = "candy-shop-api"
+main = "src/index.ts"
+compatibility_date = "2025-04-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Workers.dev default domain
+workers_dev = true
+
+# D1 binding — the database id is filled in after
+# `wrangler d1 create candy-shop-db`.
+[[d1_databases]]
+binding = "DB"
+database_name = "candy-shop-db"
+database_id = "cad9f8ca-9ea7-4f17-92c4-e015ed58142e"
+migrations_dir = "migrations"
+
+# Non-secret env vars. Secrets (Stripe keys, webhook secret) are set via
+#   wrangler secret put STRIPE_SECRET_KEY
+#   wrangler secret put STRIPE_WEBHOOK_SECRET
+[vars]
+# Leave empty by default; checkout route falls back to request origin.
+PUBLIC_APP_ORIGIN = ""
+
+[observability]
+enabled = true
