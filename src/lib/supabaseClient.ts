@@ -18,9 +18,12 @@
 // so the caller never throws.
 // ============================================================
 
+// By convention in this repo VITE_PAYMENT_API_URL already includes the
+// `/api` suffix (e.g. https://worker.workers.dev/api). When unset we
+// fall back to same-origin `/api` so dev proxy + serverless both work.
 const API_BASE =
   (import.meta.env.VITE_PAYMENT_API_URL as string | undefined)?.replace(/\/+$/, '') ||
-  '';
+  '/api';
 
 type Json = Record<string, unknown>;
 
@@ -34,7 +37,7 @@ let currentSession: Session | null = null;
 
 async function loadSession(): Promise<Session | null> {
   try {
-    const r = await fetch(`${API_BASE}/api/auth/session`, { credentials: 'include' });
+    const r = await fetch(`${API_BASE}/auth/session`, { credentials: 'include' });
     if (!r.ok) return null;
     const j = await r.json() as { user: User | null };
     return j.user ? { user: j.user } : null;
@@ -84,13 +87,13 @@ const auth = {
     try {
       if (provider === 'github') {
         const redirect = options?.redirectTo || window.location.origin;
-        window.location.href = `${API_BASE}/api/auth/github/start?redirect=${encodeURIComponent(redirect)}`;
+        window.location.href = `${API_BASE}/auth/github/start?redirect=${encodeURIComponent(redirect)}`;
         return { error: null };
       }
       // All other providers fall through to guest sign-in (demo mode).
       // This keeps existing "Sign in with Google/Apple" buttons functional
       // without configuring a real OAuth provider for each.
-      const r = await fetch(`${API_BASE}/api/auth/guest`, {
+      const r = await fetch(`${API_BASE}/auth/guest`, {
         method: 'POST',
         credentials: 'include',
       });
@@ -109,7 +112,7 @@ const auth = {
 
   async signOut() {
     try {
-      await fetch(`${API_BASE}/api/auth/logout`, { method: 'POST', credentials: 'include' });
+      await fetch(`${API_BASE}/auth/logout`, { method: 'POST', credentials: 'include' });
     } catch { /* ignore */ }
     currentSession = null;
     for (const cb of authListeners) cb('SIGNED_OUT', null);
@@ -215,7 +218,7 @@ class Query<T = unknown> implements PromiseLike<QueryResult<T>> {
       if (!skillId) throw new Error('stars query requires skill_id filter');
       if (this.op === 'select') {
         if (userId) qs.set('user_id', userId);
-        const r = await fetch(`${API_BASE}/api/skills/${skillId}/stars?${qs}`, { credentials: 'include' });
+        const r = await fetch(`${API_BASE}/skills/${skillId}/stars?${qs}`, { credentials: 'include' });
         const j = await r.json() as { count: number; starred: boolean };
         // Shape response so that both "is starred?" and "count" queries work:
         // if caller asked for count, they expect {count, data: []}
@@ -226,14 +229,14 @@ class Query<T = unknown> implements PromiseLike<QueryResult<T>> {
         });
       }
       if (this.op === 'insert') {
-        return fetch(`${API_BASE}/api/skills/${skillId}/stars`, {
+        return fetch(`${API_BASE}/skills/${skillId}/stars`, {
           method: 'POST', credentials: 'include',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({}),
         });
       }
       if (this.op === 'delete') {
-        return fetch(`${API_BASE}/api/skills/${skillId}/stars`, {
+        return fetch(`${API_BASE}/skills/${skillId}/stars`, {
           method: 'DELETE', credentials: 'include',
         });
       }
@@ -242,12 +245,12 @@ class Query<T = unknown> implements PromiseLike<QueryResult<T>> {
     // ── ratings ──
     if (t === 'ratings') {
       if (this.op === 'select' && skillId) {
-        return fetch(`${API_BASE}/api/skills/${skillId}/ratings`, { credentials: 'include' });
+        return fetch(`${API_BASE}/skills/${skillId}/ratings`, { credentials: 'include' });
       }
       if ((this.op === 'upsert' || this.op === 'insert') && this.body) {
         const row = Array.isArray(this.body) ? this.body[0] : this.body;
         const sid = row?.skill_id as string;
-        return fetch(`${API_BASE}/api/skills/${sid}/ratings`, {
+        return fetch(`${API_BASE}/skills/${sid}/ratings`, {
           method: 'POST', credentials: 'include',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ score: row.score, comment: row.comment ?? '' }),
@@ -258,18 +261,18 @@ class Query<T = unknown> implements PromiseLike<QueryResult<T>> {
     // ── skills ──
     if (t === 'skills') {
       if (this.op === 'select') {
-        if (id) return fetch(`${API_BASE}/api/skills/${id}`, { credentials: 'include' });
+        if (id) return fetch(`${API_BASE}/skills/${id}`, { credentials: 'include' });
         if (this.limit_) qs.set('limit', String(this.limit_));
         const cat = this.findFilter('category') as string | undefined;
         if (cat) qs.set('category', cat);
-        return fetch(`${API_BASE}/api/skills?${qs}`, { credentials: 'include' });
+        return fetch(`${API_BASE}/skills?${qs}`, { credentials: 'include' });
       }
       if (this.op === 'insert' && this.body) {
         const rows = Array.isArray(this.body) ? this.body : [this.body];
         // Worker POST /api/skills only handles one row at a time; loop.
         const results = [];
         for (const row of rows) {
-          const r = await fetch(`${API_BASE}/api/skills`, {
+          const r = await fetch(`${API_BASE}/skills`, {
             method: 'POST', credentials: 'include',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify(row),
@@ -300,11 +303,11 @@ class Query<T = unknown> implements PromiseLike<QueryResult<T>> {
           const m = this.orFilter_.match(/ilike\.%([^%,]+)%/);
           if (m) qs.set('search', m[1]);
         }
-        return fetch(`${API_BASE}/api/cravings?${qs}`, { credentials: 'include' });
+        return fetch(`${API_BASE}/cravings?${qs}`, { credentials: 'include' });
       }
       if (this.op === 'insert' && this.body) {
         const row = Array.isArray(this.body) ? this.body[0] : this.body;
-        return fetch(`${API_BASE}/api/cravings`, {
+        return fetch(`${API_BASE}/cravings`, {
           method: 'POST', credentials: 'include',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify(row),
@@ -317,10 +320,10 @@ class Query<T = unknown> implements PromiseLike<QueryResult<T>> {
       const uid = id || userId;
       if (!uid) throw new Error('user_profiles query requires id filter');
       if (this.op === 'select') {
-        return fetch(`${API_BASE}/api/profiles/${uid}`, { credentials: 'include' });
+        return fetch(`${API_BASE}/profiles/${uid}`, { credentials: 'include' });
       }
       if (this.op === 'update' && this.body) {
-        return fetch(`${API_BASE}/api/profiles/${uid}`, {
+        return fetch(`${API_BASE}/profiles/${uid}`, {
           method: 'PATCH', credentials: 'include',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify(this.body),
@@ -361,7 +364,7 @@ async function rpc<T = unknown>(fn: string, args?: Json): Promise<QueryResult<T>
   if (fn === 'increment_download' && args && 'p_skill_id' in args) {
     const sid = args.p_skill_id as string;
     try {
-      await fetch(`${API_BASE}/api/skills/${sid}/download`, {
+      await fetch(`${API_BASE}/skills/${sid}/download`, {
         method: 'POST', credentials: 'include',
       });
     } catch { /* ignore */ }

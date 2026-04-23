@@ -7,9 +7,12 @@
 // toggle — no tool use, no file/shell access, no persistent session.
 // ============================================================
 
+// By convention in this repo VITE_PAYMENT_API_URL already includes the
+// `/api` suffix (e.g. https://worker.workers.dev/api). When unset we
+// fall back to same-origin `/api` so dev proxy + Vercel both work.
 const API_BASE =
   (import.meta.env.VITE_PAYMENT_API_URL as string | undefined)?.replace(/\/+$/, '') ||
-  '';
+  '/api';
 
 export interface CFChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -34,7 +37,7 @@ export interface CFBudget {
 /** Fetch current daily budget state (no mutation). */
 export async function getCFBudget(): Promise<CFBudget | null> {
   try {
-    const r = await fetch(`${API_BASE}/api/ai/budget`, { credentials: 'include' });
+    const r = await fetch(`${API_BASE}/ai/budget`, { credentials: 'include' });
     if (!r.ok) return null;
     return await r.json() as CFBudget;
   } catch {
@@ -44,7 +47,7 @@ export async function getCFBudget(): Promise<CFBudget | null> {
 
 /** Non-streaming chat. One request in, one assistant message out. */
 export async function sendCFChat(messages: CFChatMessage[]): Promise<CFChatReply> {
-  const r = await fetch(`${API_BASE}/api/ai/chat`, {
+  const r = await fetch(`${API_BASE}/ai/chat`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
