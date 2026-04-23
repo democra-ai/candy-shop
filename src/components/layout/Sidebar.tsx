@@ -20,7 +20,7 @@ import {
   Heart,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
+import type { User as SupabaseUser } from '../../lib/supabaseClient';
 import { supabase } from '../../lib/supabaseClient';
 import { cn } from '../../utils/cn';
 import { useLanguage } from '../../contexts/LanguageContext';

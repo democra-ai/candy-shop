@@ -14,6 +14,11 @@ database_name = "candy-shop-db"
 database_id = "cad9f8ca-9ea7-4f17-92c4-e015ed58142e"
 migrations_dir = "migrations"
 
+# KV for session cookies (guest + OAuth sessions)
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "70babb51799549da94b179a457c43bf8"
+
 # Non-secret env vars. Secrets (Stripe keys, webhook secret) are set via
 #   wrangler secret put STRIPE_SECRET_KEY
 #   wrangler secret put STRIPE_WEBHOOK_SECRET

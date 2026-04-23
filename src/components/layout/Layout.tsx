@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { User } from '@supabase/supabase-js';
+import type { User } from '../../lib/supabaseClient';
 import { Sidebar } from './Sidebar';
 import { useLanguage } from '../../contexts/LanguageContext';
 

@@ -16,7 +16,7 @@ export function useRealtimeNotifications() {
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'skills' },
-        (payload) => {
+        (payload: { new?: Record<string, unknown> }) => {
           const name = (payload.new as { name?: string })?.name || 'New skill';
           toast.info(`New candy just dropped: ${name}`, {
             duration: 4000,
@@ -26,7 +26,7 @@ export function useRealtimeNotifications() {
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'cravings' },
-        (payload) => {
+        (payload: { new?: Record<string, unknown> }) => {
           const title = (payload.new as { title?: string })?.title || 'New craving';
           toast.info(`New craving posted: ${title}`, {
             duration: 4000,

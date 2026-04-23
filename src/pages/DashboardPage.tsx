@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, Heart, Star, Package, Plus, ArrowRight } from 'lucide-react';
-import type { User } from '@supabase/supabase-js';
+import type { User } from '../lib/supabaseClient';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';

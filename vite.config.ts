@@ -50,7 +50,6 @@ export default defineConfig({
         manualChunks: {
           'vendor-react': ['react', 'react-dom', 'react-router-dom'],
           'vendor-ui': ['lucide-react', 'react-markdown', 'remark-gfm'],
-          'vendor-supabase': ['@supabase/supabase-js'],
           'skills-data': ['./src/data/skillsData.ts'],
         },
       },

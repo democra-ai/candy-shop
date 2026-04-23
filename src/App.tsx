@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useSyncExternalStore, Component, Suspense, lazy, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, Navigate, useLocation, useSearchParams } from 'react-router-dom';
 import { Toaster, toast } from 'sonner';
-import type { User } from '@supabase/supabase-js';
+import type { User } from './lib/supabaseClient';
 import { supabase } from './lib/supabaseClient';
 import { Layout } from './components/layout/Layout';
 import { Hero, type MarketplaceTab } from './components/home/Hero';

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { ShoppingBag, User as UserIcon, LogOut, Plus, Library, Menu, X, Moon, Sun, Check, Settings, Globe } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import type { User } from '@supabase/supabase-js';
+import type { User } from '../../lib/supabaseClient';
 import { supabase } from '../../lib/supabaseClient';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { cn } from '../../utils/cn';
