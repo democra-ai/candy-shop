@@ -53,6 +53,7 @@ import {
   type QuestionEvent,
   type FileAttachment,
 } from '../../lib/opencode-client';
+import { sendCFChat, getCFBudget, type CFBudget } from '../../lib/cfChatClient';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -867,8 +868,19 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
     fileName: string;
   }>>([]);
 
-  // Fixed model – only GLM-4.5 on zhipuai-coding-plan provider works
+  // Fixed OpenCode model – GLM-4.5 on zhipuai-coding-plan provider
   const selectedModel: ModelConfig = { providerID: 'zhipuai-coding-plan', modelID: 'glm-4.5' };
+
+  // "Use Cloudflare Workers AI" toggle — runs a simple Llama 3.1 8B chat
+  // on Cloudflare's free-tier GPU pool, bypassing the OpenCode agent entirely.
+  // Intended strictly as a test/demo of the CF-native option; no tool use,
+  // no file/shell access. Daily request cap enforced on the Worker side
+  // (see worker/src/index.ts → AI_DAILY_REQUEST_CAP).
+  const [useCFMode, setUseCFMode] = useState(false);
+  const [cfBudget, setCfBudget] = useState<CFBudget | null>(null);
+  useEffect(() => {
+    if (useCFMode) getCFBudget().then(setCfBudget);
+  }, [useCFMode]);
 
   // Skill loading state
   const [skillInstructions, setSkillInstructions] = useState<string | null>(null);
@@ -1187,6 +1199,67 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
   const handleSend = useCallback(async () => {
     const text = input.trim();
     if ((!text && attachedFiles.length === 0) || isRunning) return;
+
+    // ── Cloudflare Workers AI branch ────────────────────────────────────
+    // When the CF toggle is on we skip the OpenCode agent entirely and
+    // just hit our Worker's /api/ai/chat. This is a simple chat, not an
+    // agent — no tool use, no streaming of tool/reasoning parts.
+    if (useCFMode) {
+      setInput('');
+      setAttachedFiles([]);
+      setIsRunning(true);
+      setConnectionError(null);
+
+      const userEntry: UserEntry = { type: 'user', text, time: Date.now() };
+      setEntries(prev => [...prev, userEntry]);
+
+      try {
+        // Build message history from existing entries (last 6 turns)
+        const history: { role: 'user' | 'assistant'; content: string }[] = [];
+        for (const e of entries.slice(-12)) {
+          if (e.type === 'user') {
+            history.push({ role: 'user', content: e.text });
+          } else if (e.type === 'assistant') {
+            const textPart = e.parts.find(p => p.type === 'text') as TextPart | undefined;
+            if (textPart?.text) history.push({ role: 'assistant', content: textPart.text });
+          }
+        }
+        history.push({ role: 'user', content: text });
+
+        const systemPrompt = skillInstructions
+          ? `You are helping with the skill "${skill.name}". Stay on-topic.\n\n${skillInstructions.slice(0, 800)}`
+          : `You are a concise AI assistant.`;
+
+        const reply = await sendCFChat([
+          { role: 'system', content: systemPrompt },
+          ...history,
+        ]);
+
+        const msgId = `cf-${Date.now()}`;
+        const assistantEntry: AssistantEntry = {
+          type: 'assistant',
+          messageId: msgId,
+          parts: [{
+            id: `cf-part-${Date.now()}`,
+            sessionID: 'cf',
+            messageID: msgId,
+            type: 'text',
+            text: reply.content,
+          } as TextPart],
+          isComplete: true,
+        };
+        setEntries(prev => [...prev, assistantEntry]);
+        setCfBudget(b => b ? { ...b, used: reply.budget.used, remaining: Math.max(0, b.limit - reply.budget.used) } : b);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setConnectionError(msg);
+        setTimeout(() => setConnectionError(null), 8000);
+      } finally {
+        setIsRunning(false);
+      }
+      return;
+    }
+
     // If not connected yet, wait briefly for connection to establish
     if (!connected) {
       setConnectionError('Still connecting to server, please try again in a moment.');
@@ -1586,7 +1659,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       polling = false;
       window.clearInterval(pollTimer);
     }
-  }, [input, attachedFiles, isRunning, connected, currentSessionId, createNewSession, selectedModel, skill.id, skill.name, skill.description, skillInstructions, skill.config.systemPrompt]);
+  }, [input, attachedFiles, isRunning, connected, currentSessionId, createNewSession, selectedModel, skill.id, skill.name, skill.description, skillInstructions, skill.config.systemPrompt, useCFMode, entries]);
 
   // ── Abort ───────────────────────────────────────────────────────────────
 
@@ -2297,14 +2370,42 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                   )}
                 </div>
               </div>
-              <div className="flex justify-between items-center mt-2.5 px-1 max-w-4xl mx-auto">
+              <div className="flex justify-between items-center mt-2.5 px-1 max-w-4xl mx-auto gap-3">
                 <span className="text-[11px] text-foreground-muted font-body">
                   Enter to send · Shift+Enter for new line
                 </span>
+
+                {/* Model toggle: OpenCode agent ↔ Cloudflare Workers AI */}
+                <label
+                  className={`text-[11px] px-2 py-1 rounded-md border cursor-pointer transition-colors flex items-center gap-1.5 ${
+                    useCFMode
+                      ? 'bg-orange-500/15 border-orange-500/40 text-orange-600 dark:text-orange-300'
+                      : 'bg-background-secondary border-border text-foreground-secondary hover:text-foreground'
+                  }`}
+                  title={useCFMode
+                    ? 'Cloudflare Workers AI (Llama 3.1 8B, simple chat, free tier)'
+                    : 'OpenCode agent (full tool use via GLM-4.5)'}
+                >
+                  <input
+                    type="checkbox"
+                    className="sr-only"
+                    checked={useCFMode}
+                    onChange={(e) => setUseCFMode(e.target.checked)}
+                  />
+                  <span className="font-semibold">
+                    {useCFMode ? '☁️ Cloudflare AI' : '🤖 OpenCode Agent'}
+                  </span>
+                  {useCFMode && cfBudget && (
+                    <span className="opacity-80">
+                      {cfBudget.remaining}/{cfBudget.limit} left today
+                    </span>
+                  )}
+                </label>
+
                 {isRunning && (
                   <span className="text-[11px] text-primary/80 flex items-center gap-1.5">
                     <Loader2 className="w-3 h-3 animate-spin" />
-                    Agent is working...
+                    {useCFMode ? 'Thinking...' : 'Agent is working...'}
                   </span>
                 )}
               </div>

@@ -14,6 +14,8 @@ import Stripe from 'stripe';
 type Bindings = {
   DB: D1Database;
   SESSIONS: KVNamespace;
+  AI_BUDGET: KVNamespace;
+  AI: Ai;
   STRIPE_SECRET_KEY: string;
   STRIPE_WEBHOOK_SECRET: string;
   PUBLIC_APP_ORIGIN?: string;
@@ -601,6 +603,105 @@ app.post('/api/webhook/stripe', async (c) => {
     `UPDATE checkout_sessions SET status = 'completed' WHERE stripe_session_id = ?`
   ).bind(session.id).run();
   return c.json({ processed: true, skillIds, userId });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Workers AI — hard-capped to daily free allocation
+// ═══════════════════════════════════════════════════════════════
+//
+// Free tier: 10,000 Neurons/day (resets at 00:00 UTC).
+// Llama 3.1 8B Fast is ~2,800 Neurons / 1M input tok — so in practice
+// a single short chat (~300 tok in + ~300 tok out) ≈ ~5 Neurons.
+// We still cap REQUESTS per day per session to protect the pool.
+//
+// Hard limits enforced here:
+//   • 40 requests / day / session  (chat UX testing allowance)
+//   • 256 input tokens per request
+//   • 512 output tokens per request
+// Budget counter lives in AI_BUDGET KV with TTL aligned to UTC midnight.
+
+const AI_DAILY_REQUEST_CAP = 40;
+const AI_MODEL = '@cf/meta/llama-3.1-8b-instruct-fast';
+
+function todayKey(prefix: string) {
+  const d = new Date();
+  const k = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+  return `${prefix}:${k}`;
+}
+function secondsUntilUtcMidnight() {
+  const now = new Date();
+  const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0));
+  return Math.max(60, Math.floor((tomorrow.getTime() - now.getTime()) / 1000));
+}
+
+app.get('/api/ai/budget', async (c) => {
+  const sess = await readSession(c);
+  const key = todayKey(`budget:${sess?.sub ?? 'anon'}`);
+  const used = parseInt((await c.env.AI_BUDGET.get(key)) ?? '0', 10);
+  return c.json({
+    date: todayKey('').split(':')[1],
+    used,
+    limit: AI_DAILY_REQUEST_CAP,
+    remaining: Math.max(0, AI_DAILY_REQUEST_CAP - used),
+    model: AI_MODEL,
+    resets_in_seconds: secondsUntilUtcMidnight(),
+  });
+});
+
+app.post('/api/ai/chat', async (c) => {
+  const sess = await readSession(c);
+  const budgetKey = todayKey(`budget:${sess?.sub ?? c.req.header('cf-connecting-ip') ?? 'anon'}`);
+
+  const used = parseInt((await c.env.AI_BUDGET.get(budgetKey)) ?? '0', 10);
+  if (used >= AI_DAILY_REQUEST_CAP) {
+    return c.json({
+      error: 'daily_limit_reached',
+      message: `Free-tier test limit reached (${AI_DAILY_REQUEST_CAP} chats/day). Resets at 00:00 UTC.`,
+      used, limit: AI_DAILY_REQUEST_CAP,
+    }, 429);
+  }
+
+  const body = await c.req.json().catch(() => null) as {
+    messages?: { role: 'system' | 'user' | 'assistant'; content: string }[];
+    stream?: boolean;
+  } | null;
+
+  if (!body?.messages?.length) return c.json({ error: 'messages required' }, 400);
+
+  // Trim input to stay inside free allocation
+  const messages = body.messages.slice(-8).map(m => ({
+    role: m.role,
+    content: (m.content ?? '').slice(0, 1024),
+  }));
+
+  await c.env.AI_BUDGET.put(budgetKey, String(used + 1), {
+    expirationTtl: secondsUntilUtcMidnight(),
+  });
+
+  if (body.stream) {
+    const stream = (await c.env.AI.run(AI_MODEL, {
+      messages,
+      max_tokens: 512,
+      stream: true,
+    })) as unknown as ReadableStream;
+    return new Response(stream, {
+      headers: {
+        'content-type': 'text/event-stream',
+        'cache-control': 'no-cache',
+        'x-ai-model': AI_MODEL,
+        'x-ai-requests-used': String(used + 1),
+        'x-ai-requests-limit': String(AI_DAILY_REQUEST_CAP),
+      },
+    });
+  }
+
+  const result = await c.env.AI.run(AI_MODEL, { messages, max_tokens: 512 }) as { response?: string };
+  return c.json({
+    role: 'assistant',
+    content: result.response ?? '',
+    model: AI_MODEL,
+    budget: { used: used + 1, limit: AI_DAILY_REQUEST_CAP },
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════

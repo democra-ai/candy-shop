@@ -19,6 +19,17 @@ migrations_dir = "migrations"
 binding = "SESSIONS"
 id = "70babb51799549da94b179a457c43bf8"
 
+# KV for daily Workers AI budget counter (hard-caps free tier)
+[[kv_namespaces]]
+binding = "AI_BUDGET"
+id = "a853343d47534ca48349ba37b959950e"
+
+# Workers AI binding — inference on Cloudflare's hosted models.
+# The Worker hard-caps daily Neurons to stay inside the free allocation
+# (see POST /api/ai/chat). Free tier = 10,000 Neurons/day.
+[ai]
+binding = "AI"
+
 # Non-secret env vars. Secrets (Stripe keys, webhook secret) are set via
 #   wrangler secret put STRIPE_SECRET_KEY
 #   wrangler secret put STRIPE_WEBHOOK_SECRET
