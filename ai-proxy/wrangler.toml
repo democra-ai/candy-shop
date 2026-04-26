@@ -1,0 +1,22 @@
+name = "candy-shop-ai-proxy"
+main = "src/index.ts"
+compatibility_date = "2025-04-01"
+
+# This Worker is deployed to the `workers-paid` Cloudflare account. Its only
+# purpose is to expose `env.AI.run(...)` so that our main Worker
+# (candy-shop-api on the `main` account) can route Workers AI inference
+# through the *paid* account's allocation — same 10k Neurons/day free, but
+# paid overage instead of a hard cutoff.
+
+workers_dev = true
+
+[ai]
+binding = "AI"
+
+# Pin to an empty assets dir so wrangler 4.85's auto-detection doesn't
+# walk up and try to upload the SPA's node_modules.
+[assets]
+directory = "./.empty-assets"
+
+[observability]
+enabled = true

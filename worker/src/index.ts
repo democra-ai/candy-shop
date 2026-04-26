@@ -21,6 +21,12 @@ type Bindings = {
   PUBLIC_APP_ORIGIN?: string;
   GITHUB_CLIENT_ID?: string;
   GITHUB_CLIENT_SECRET?: string;
+  // Optional: when both are set, /api/ai/chat is routed to a Worker on the
+  // user's `workers-paid` Cloudflare account instead of using this Worker's
+  // env.AI binding. That Worker's account has Workers Paid plan, so AI usage
+  // exceeds the free 10k Neurons/day instead of being hard-cut.
+  AI_PROXY_URL?: string;
+  AI_PROXY_SECRET?: string;
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
@@ -620,7 +626,11 @@ app.post('/api/webhook/stripe', async (c) => {
 //   • 512 output tokens per request
 // Budget counter lives in AI_BUDGET KV with TTL aligned to UTC midnight.
 
-const AI_DAILY_REQUEST_CAP = 40;
+// Higher cap (200) when forwarding to the workers-paid proxy: that account
+// has Paid plan so we're not racing the 10k Neurons/day free hard cutoff.
+// Falls back to a tighter 40/day when running on local env.AI (Free plan).
+const AI_DAILY_REQUEST_CAP_LOCAL = 40;
+const AI_DAILY_REQUEST_CAP_PAID = 200;
 const AI_MODEL = '@cf/meta/llama-3.1-8b-instruct-fast';
 
 function todayKey(prefix: string) {
@@ -634,16 +644,27 @@ function secondsUntilUtcMidnight() {
   return Math.max(60, Math.floor((tomorrow.getTime() - now.getTime()) / 1000));
 }
 
+function aiDailyCap(env: Bindings): number {
+  return env.AI_PROXY_URL && env.AI_PROXY_SECRET
+    ? AI_DAILY_REQUEST_CAP_PAID
+    : AI_DAILY_REQUEST_CAP_LOCAL;
+}
+function aiBackend(env: Bindings): 'workers-paid' | 'local-free' {
+  return env.AI_PROXY_URL && env.AI_PROXY_SECRET ? 'workers-paid' : 'local-free';
+}
+
 app.get('/api/ai/budget', async (c) => {
   const sess = await readSession(c);
   const key = todayKey(`budget:${sess?.sub ?? 'anon'}`);
   const used = parseInt((await c.env.AI_BUDGET.get(key)) ?? '0', 10);
+  const limit = aiDailyCap(c.env);
   return c.json({
     date: todayKey('').split(':')[1],
     used,
-    limit: AI_DAILY_REQUEST_CAP,
-    remaining: Math.max(0, AI_DAILY_REQUEST_CAP - used),
+    limit,
+    remaining: Math.max(0, limit - used),
     model: AI_MODEL,
+    backend: aiBackend(c.env),
     resets_in_seconds: secondsUntilUtcMidnight(),
   });
 });
@@ -651,24 +672,24 @@ app.get('/api/ai/budget', async (c) => {
 app.post('/api/ai/chat', async (c) => {
   const sess = await readSession(c);
   const budgetKey = todayKey(`budget:${sess?.sub ?? c.req.header('cf-connecting-ip') ?? 'anon'}`);
+  const limit = aiDailyCap(c.env);
 
   const used = parseInt((await c.env.AI_BUDGET.get(budgetKey)) ?? '0', 10);
-  if (used >= AI_DAILY_REQUEST_CAP) {
+  if (used >= limit) {
     return c.json({
       error: 'daily_limit_reached',
-      message: `Free-tier test limit reached (${AI_DAILY_REQUEST_CAP} chats/day). Resets at 00:00 UTC.`,
-      used, limit: AI_DAILY_REQUEST_CAP,
+      message: `Daily test limit reached (${limit} chats/day). Resets at 00:00 UTC.`,
+      used, limit,
     }, 429);
   }
 
   const body = await c.req.json().catch(() => null) as {
     messages?: { role: 'system' | 'user' | 'assistant'; content: string }[];
-    stream?: boolean;
   } | null;
 
   if (!body?.messages?.length) return c.json({ error: 'messages required' }, 400);
 
-  // Trim input to stay inside free allocation
+  // Trim to keep request small regardless of which backend serves it.
   const messages = body.messages.slice(-8).map(m => ({
     role: m.role,
     content: (m.content ?? '').slice(0, 1024),
@@ -678,29 +699,40 @@ app.post('/api/ai/chat', async (c) => {
     expirationTtl: secondsUntilUtcMidnight(),
   });
 
-  if (body.stream) {
-    const stream = (await c.env.AI.run(AI_MODEL, {
-      messages,
-      max_tokens: 512,
-      stream: true,
-    })) as unknown as ReadableStream;
-    return new Response(stream, {
+  const backend = aiBackend(c.env);
+
+  if (backend === 'workers-paid') {
+    // Forward to the Worker on the workers-paid account.
+    const upstream = await fetch(`${c.env.AI_PROXY_URL!.replace(/\/+$/, '')}/chat`, {
+      method: 'POST',
       headers: {
-        'content-type': 'text/event-stream',
-        'cache-control': 'no-cache',
-        'x-ai-model': AI_MODEL,
-        'x-ai-requests-used': String(used + 1),
-        'x-ai-requests-limit': String(AI_DAILY_REQUEST_CAP),
+        'Content-Type': 'application/json',
+        'x-shared-secret': c.env.AI_PROXY_SECRET!,
       },
+      body: JSON.stringify({ model: AI_MODEL, messages, max_tokens: 512 }),
+    });
+    if (!upstream.ok) {
+      const err = await upstream.text().catch(() => '');
+      return c.json({ error: `proxy ${upstream.status}: ${err.slice(0, 200)}` }, 502);
+    }
+    const j = await upstream.json() as { response?: string; usage?: unknown };
+    return c.json({
+      role: 'assistant',
+      content: j.response ?? '',
+      model: AI_MODEL,
+      backend,
+      budget: { used: used + 1, limit },
     });
   }
 
+  // Local fallback: use this Worker's own env.AI (main account, free plan).
   const result = await c.env.AI.run(AI_MODEL, { messages, max_tokens: 512 }) as { response?: string };
   return c.json({
     role: 'assistant',
     content: result.response ?? '',
     model: AI_MODEL,
-    budget: { used: used + 1, limit: AI_DAILY_REQUEST_CAP },
+    backend,
+    budget: { used: used + 1, limit },
   });
 });
 
