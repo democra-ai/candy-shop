@@ -54,6 +54,12 @@ import {
   type FileAttachment,
 } from '../../lib/opencode-client';
 import { sendCFChat, getCFBudget, type CFBudget } from '../../lib/cfChatClient';
+import {
+  streamClaudeCodeRun,
+  getCCBudget,
+  deriveRepoUrlFromSkillMd,
+  type CCBudget,
+} from '../../lib/cfClaudeCodeClient';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -871,16 +877,27 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
   // Fixed OpenCode model – GLM-4.5 on zhipuai-coding-plan provider
   const selectedModel: ModelConfig = { providerID: 'zhipuai-coding-plan', modelID: 'glm-4.5' };
 
-  // "Use Cloudflare Workers AI" toggle — runs a simple Llama 3.1 8B chat
-  // on Cloudflare's free-tier GPU pool, bypassing the OpenCode agent entirely.
-  // Intended strictly as a test/demo of the CF-native option; no tool use,
-  // no file/shell access. Daily request cap enforced on the Worker side
-  // (see worker/src/index.ts → AI_DAILY_REQUEST_CAP).
-  const [useCFMode, setUseCFMode] = useState(false);
+  // Runtime picker — 3 options:
+  //   opencode → existing OpenCode agent on HF Space (full tool use, GLM-4.5)
+  //   cf-ai    → Cloudflare Workers AI Llama 3.1 8B (single-shot chat,
+  //              free-tier hard-capped, no tool use)
+  //   cf-cc    → Cloudflare Sandbox running Claude Code CLI (real tool use:
+  //              shell/file ops in a clones git repo, ~30-90s per run)
+  type RuntimeMode = 'opencode' | 'cf-ai' | 'cf-cc';
+  const [runtimeMode, setRuntimeMode] = useState<RuntimeMode>('opencode');
   const [cfBudget, setCfBudget] = useState<CFBudget | null>(null);
+  const [ccBudget, setCcBudget] = useState<CCBudget | null>(null);
+  // For Claude Code Sandbox mode: the repo it should clone before running.
+  // Default to the repo derived from the current skill's skillMdUrl.
+  const [ccRepo, setCcRepo] = useState<string>(
+    () => deriveRepoUrlFromSkillMd(skill.skillMdUrl) || 'https://github.com/anthropics/claude-code',
+  );
+  // Coarse-grained "what is the sandbox doing" indicator for cf-cc mode
+  const [ccPhase, setCcPhase] = useState<string | null>(null);
   useEffect(() => {
-    if (useCFMode) getCFBudget().then(setCfBudget);
-  }, [useCFMode]);
+    if (runtimeMode === 'cf-ai') getCFBudget().then(setCfBudget);
+    if (runtimeMode === 'cf-cc') getCCBudget().then(setCcBudget);
+  }, [runtimeMode]);
 
   // Skill loading state
   const [skillInstructions, setSkillInstructions] = useState<string | null>(null);
@@ -1200,11 +1217,8 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
     const text = input.trim();
     if ((!text && attachedFiles.length === 0) || isRunning) return;
 
-    // ── Cloudflare Workers AI branch ────────────────────────────────────
-    // When the CF toggle is on we skip the OpenCode agent entirely and
-    // just hit our Worker's /api/ai/chat. This is a simple chat, not an
-    // agent — no tool use, no streaming of tool/reasoning parts.
-    if (useCFMode) {
+    // ── Cloudflare Workers AI branch (single-shot chat) ─────────────────
+    if (runtimeMode === 'cf-ai') {
       setInput('');
       setAttachedFiles([]);
       setIsRunning(true);
@@ -1256,6 +1270,68 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
         setTimeout(() => setConnectionError(null), 8000);
       } finally {
         setIsRunning(false);
+      }
+      return;
+    }
+
+    // ── Cloudflare Sandbox / Claude Code branch (real agent in a CF container) ──
+    if (runtimeMode === 'cf-cc') {
+      if (!ccRepo) {
+        setConnectionError('Set a repo URL — Claude Code clones it before running.');
+        setTimeout(() => setConnectionError(null), 5000);
+        return;
+      }
+      setInput('');
+      setAttachedFiles([]);
+      setIsRunning(true);
+      setConnectionError(null);
+      setCcPhase('starting');
+
+      const userEntry: UserEntry = { type: 'user', text, time: Date.now() };
+      const msgId = `cc-${Date.now()}`;
+      const partId = `cc-part-${Date.now()}`;
+      const placeholder: AssistantEntry = {
+        type: 'assistant',
+        messageId: msgId,
+        parts: [{
+          id: partId, sessionID: 'cc', messageID: msgId, type: 'text', text: '',
+        } as TextPart],
+        isComplete: false,
+      };
+      setEntries(prev => [...prev, userEntry, placeholder]);
+
+      let assembled = '';
+      try {
+        await streamClaudeCodeRun(
+          { repo: ccRepo, task: text },
+          {
+            onPhase: (phase) => setCcPhase(phase),
+            onTextDelta: (delta) => {
+              assembled += delta;
+              setEntries(prev => prev.map(e => {
+                if (e.type !== 'assistant' || e.messageId !== msgId) return e;
+                return {
+                  ...e,
+                  parts: [{ ...(e.parts[0] as TextPart), text: assembled }],
+                };
+              }));
+            },
+            onDone: () => {
+              setEntries(prev => prev.map(e =>
+                e.type === 'assistant' && e.messageId === msgId
+                  ? { ...e, isComplete: true } : e));
+            },
+            onError: (err) => {
+              setConnectionError(err.message);
+              setTimeout(() => setConnectionError(null), 8000);
+            },
+          },
+        );
+        // Refresh budget counter (best-effort)
+        getCCBudget().then(setCcBudget);
+      } finally {
+        setIsRunning(false);
+        setCcPhase(null);
       }
       return;
     }
@@ -1659,7 +1735,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       polling = false;
       window.clearInterval(pollTimer);
     }
-  }, [input, attachedFiles, isRunning, connected, currentSessionId, createNewSession, selectedModel, skill.id, skill.name, skill.description, skillInstructions, skill.config.systemPrompt, useCFMode, entries]);
+  }, [input, attachedFiles, isRunning, connected, currentSessionId, createNewSession, selectedModel, skill.id, skill.name, skill.description, skillInstructions, skill.config.systemPrompt, runtimeMode, ccRepo, entries]);
 
   // ── Abort ───────────────────────────────────────────────────────────────
 
@@ -2370,44 +2446,75 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                   )}
                 </div>
               </div>
-              <div className="flex justify-between items-center mt-2.5 px-1 max-w-4xl mx-auto gap-3">
-                <span className="text-[11px] text-foreground-muted font-body">
-                  Enter to send · Shift+Enter for new line
-                </span>
+              <div className="flex flex-col gap-2 mt-2.5 px-1 max-w-4xl mx-auto">
+                {/* Repo input — only when Claude Code Sandbox mode is selected */}
+                {runtimeMode === 'cf-cc' && (
+                  <div className="flex items-center gap-2 text-[11px]">
+                    <span className="text-foreground-secondary shrink-0">Repo to clone:</span>
+                    <input
+                      type="text"
+                      value={ccRepo}
+                      onChange={(e) => setCcRepo(e.target.value)}
+                      placeholder="https://github.com/owner/repo"
+                      className="flex-1 px-2 py-1 rounded border border-border bg-background-secondary text-foreground font-mono text-[11px]"
+                    />
+                  </div>
+                )}
 
-                {/* Model toggle: OpenCode agent ↔ Cloudflare Workers AI */}
-                <label
-                  className={`text-[11px] px-2 py-1 rounded-md border cursor-pointer transition-colors flex items-center gap-1.5 ${
-                    useCFMode
-                      ? 'bg-orange-500/15 border-orange-500/40 text-orange-600 dark:text-orange-300'
-                      : 'bg-background-secondary border-border text-foreground-secondary hover:text-foreground'
-                  }`}
-                  title={useCFMode
-                    ? 'Cloudflare Workers AI (Llama 3.1 8B, simple chat, free tier)'
-                    : 'OpenCode agent (full tool use via GLM-4.5)'}
-                >
-                  <input
-                    type="checkbox"
-                    className="sr-only"
-                    checked={useCFMode}
-                    onChange={(e) => setUseCFMode(e.target.checked)}
-                  />
-                  <span className="font-semibold">
-                    {useCFMode ? '☁️ Cloudflare AI' : '🤖 OpenCode Agent'}
+                <div className="flex justify-between items-center gap-3 flex-wrap">
+                  <span className="text-[11px] text-foreground-muted font-body">
+                    Enter to send · Shift+Enter for new line
                   </span>
-                  {useCFMode && cfBudget && (
-                    <span className="opacity-80">
-                      {cfBudget.remaining}/{cfBudget.limit} left today
+
+                  {/* 3-way runtime picker */}
+                  <div className="flex items-center gap-1 text-[11px] rounded-md border border-border bg-background-secondary p-0.5">
+                    {([
+                      { id: 'opencode', label: '🤖 OpenCode',
+                        title: 'OpenCode agent on HF Space (full tool use, GLM-4.5)' },
+                      { id: 'cf-ai', label: '☁️ CF AI',
+                        title: 'Cloudflare Workers AI Llama 3.1 8B (simple chat, free tier)' },
+                      { id: 'cf-cc', label: '🔬 Claude Code',
+                        title: 'Cloudflare Sandbox running Claude Code CLI (real agent, clones a repo, ~30-90s/run)' },
+                    ] as const).map(opt => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setRuntimeMode(opt.id)}
+                        title={opt.title}
+                        className={`px-2 py-1 rounded transition-colors ${
+                          runtimeMode === opt.id
+                            ? 'bg-primary text-white font-semibold'
+                            : 'text-foreground-secondary hover:text-foreground'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Budget chip — different content per mode */}
+                  {runtimeMode === 'cf-ai' && cfBudget && (
+                    <span className="text-[11px] text-foreground-secondary">
+                      {cfBudget.remaining}/{cfBudget.limit} chats left today
                     </span>
                   )}
-                </label>
+                  {runtimeMode === 'cf-cc' && ccBudget && (
+                    <span className="text-[11px] text-foreground-secondary">
+                      {ccBudget.remaining}/{ccBudget.limit} runs left today
+                    </span>
+                  )}
 
-                {isRunning && (
-                  <span className="text-[11px] text-primary/80 flex items-center gap-1.5">
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    {useCFMode ? 'Thinking...' : 'Agent is working...'}
-                  </span>
-                )}
+                  {isRunning && (
+                    <span className="text-[11px] text-primary/80 flex items-center gap-1.5">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      {runtimeMode === 'cf-ai'
+                        ? 'Thinking...'
+                        : runtimeMode === 'cf-cc'
+                          ? `Sandbox: ${ccPhase || 'starting'}…`
+                          : 'Agent is working...'}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>

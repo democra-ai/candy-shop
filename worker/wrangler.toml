@@ -6,6 +6,12 @@ compatibility_flags = ["nodejs_compat"]
 # Workers.dev default domain
 workers_dev = true
 
+# Pin to an empty assets dir; without this Wrangler 4.82 auto-detects
+# the SPA's `../dist/` parent and tries to upload all of node_modules
+# as static assets, blowing up on 25 MiB-per-file limits.
+[assets]
+directory = "/Users/tao.shen/democra-ai/candy-shop/worker/.empty-assets"
+
 # D1 binding — the database id is filled in after
 # `wrangler d1 create candy-shop-db`.
 [[d1_databases]]

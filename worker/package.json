@@ -5,11 +5,11 @@
   "description": "Candy Shop backend on Cloudflare Workers (Hono + D1)",
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
-    "d1:migrate": "wrangler d1 migrations apply candy-shop-db --remote",
-    "d1:migrate:local": "wrangler d1 migrations apply candy-shop-db --local",
-    "types": "wrangler types"
+    "dev": "wrangler dev --config ./wrangler.toml",
+    "deploy": "wrangler deploy --config ./wrangler.toml",
+    "d1:migrate": "wrangler d1 migrations apply candy-shop-db --remote --config ./wrangler.toml",
+    "d1:migrate:local": "wrangler d1 migrations apply candy-shop-db --local --config ./wrangler.toml",
+    "types": "wrangler types --config ./wrangler.toml"
   },
   "dependencies": {
     "hono": "^4.6.14",

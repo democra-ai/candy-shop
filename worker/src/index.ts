@@ -705,6 +705,84 @@ app.post('/api/ai/chat', async (c) => {
 });
 
 // ═══════════════════════════════════════════════════════════════
+// Claude Code Sandbox proxy
+// ═══════════════════════════════════════════════════════════════
+//
+// Proxies POST /api/cc/run → cc-sandbox.candy-shop.workers.dev
+// - cc-sandbox itself doesn't set CORS headers, so the browser cannot
+//   call it directly from candy.democra.ai. We forward and stream back
+//   the SSE response with our own CORS already applied via Hono.
+// - Hard cap: 8 runs / session / day in AI_BUDGET KV. Each Claude Code
+//   run can take 30-90s of compute on the upstream sandbox, so we keep
+//   the budget very tight.
+
+const CC_SANDBOX_URL = 'https://cc-sandbox.candy-shop.workers.dev/';
+const CC_DAILY_RUN_CAP = 8;
+
+app.get('/api/cc/budget', async (c) => {
+  const sess = await readSession(c);
+  const key = todayKey(`cc:${sess?.sub ?? c.req.header('cf-connecting-ip') ?? 'anon'}`);
+  const used = parseInt((await c.env.AI_BUDGET.get(key)) ?? '0', 10);
+  return c.json({
+    date: todayKey('').split(':')[1],
+    used,
+    limit: CC_DAILY_RUN_CAP,
+    remaining: Math.max(0, CC_DAILY_RUN_CAP - used),
+    upstream: CC_SANDBOX_URL,
+    resets_in_seconds: secondsUntilUtcMidnight(),
+  });
+});
+
+app.post('/api/cc/run', async (c) => {
+  const sess = await readSession(c);
+  const budgetKey = todayKey(`cc:${sess?.sub ?? c.req.header('cf-connecting-ip') ?? 'anon'}`);
+
+  const used = parseInt((await c.env.AI_BUDGET.get(budgetKey)) ?? '0', 10);
+  if (used >= CC_DAILY_RUN_CAP) {
+    return c.json({
+      error: 'daily_limit_reached',
+      message: `Claude Code Sandbox daily run cap reached (${CC_DAILY_RUN_CAP}/day). Resets at 00:00 UTC.`,
+      used, limit: CC_DAILY_RUN_CAP,
+    }, 429);
+  }
+
+  const body = await c.req.json().catch(() => null) as {
+    repo?: string;
+    task?: string;
+  } | null;
+  if (!body?.repo || !body?.task) {
+    return c.json({ error: 'repo and task required' }, 400);
+  }
+
+  // Increment the daily counter BEFORE upstream call so a hung sandbox
+  // still costs a slot. Better safe than runaway.
+  await c.env.AI_BUDGET.put(budgetKey, String(used + 1), {
+    expirationTtl: secondsUntilUtcMidnight(),
+  });
+
+  const upstream = await fetch(CC_SANDBOX_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ repo: body.repo, task: body.task }),
+  });
+
+  if (!upstream.ok || !upstream.body) {
+    const err = await upstream.text().catch(() => '');
+    return c.json({ error: `upstream ${upstream.status}: ${err.slice(0, 200)}` }, 502);
+  }
+
+  return new Response(upstream.body, {
+    status: 200,
+    headers: {
+      'content-type': upstream.headers.get('content-type') || 'text/event-stream',
+      'cache-control': 'no-cache',
+      'x-cc-runs-used': String(used + 1),
+      'x-cc-runs-limit': String(CC_DAILY_RUN_CAP),
+    },
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
 // Fallback
 // ═══════════════════════════════════════════════════════════════
 app.all('*', (c) => c.json({ error: 'Not found', path: c.req.path }, 404));
