@@ -1281,12 +1281,12 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       return;
     }
 
-    // ── OpenCode on Cloudflare Sandbox (oc-sandbox.candy-shop.workers.dev) ──
-    // Single-shot agent: clone repo → run OpenCode CLI → stream text/tool
-    // events back. Replaces the old HF Space-hosted multi-turn OpenCode.
-    if (runtimeMode === 'opencode') {
+    // ── Sandbox modes (OpenCode / Claude Code on Cloudflare) ─────────────
+    // Both modes render every sandbox event as a line in a live "terminal
+    // log" markdown — phases, tool calls, thinking, streamed text, results.
+    if (runtimeMode === 'opencode' || runtimeMode === 'cf-cc') {
       if (!sandboxRepo) {
-        setConnectionError('Set a repo URL — OpenCode clones it before running.');
+        setConnectionError('Set a repo URL — the sandbox clones it before running.');
         setTimeout(() => setConnectionError(null), 5000);
         return;
       }
@@ -1297,117 +1297,172 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       setSandboxPhase('starting');
 
       const userEntry: UserEntry = { type: 'user', text, time: Date.now() };
-      const msgId = `oc-${Date.now()}`;
-      const partId = `oc-part-${Date.now()}`;
+      const kind = runtimeMode === 'cf-cc' ? 'cc' : 'oc';
+      const msgId = `${kind}-${Date.now()}`;
+      const partId = `${kind}-part-${Date.now()}`;
       const placeholder: AssistantEntry = {
         type: 'assistant',
         messageId: msgId,
         parts: [{
-          id: partId, sessionID: 'oc', messageID: msgId, type: 'text', text: '',
+          id: partId, sessionID: kind, messageID: msgId, type: 'text', text: '',
         } as TextPart],
         isComplete: false,
       };
       setEntries(prev => [...prev, userEntry, placeholder]);
 
-      let assembled = '';
-      try {
-        await streamOpenCodeRun(
-          { repo: sandboxRepo, task: text },
-          {
-            onPhase: (phase) => setSandboxPhase(phase),
-            onText: (chunk) => {
-              assembled += chunk;
-              setEntries(prev => prev.map(e => {
-                if (e.type !== 'assistant' || e.messageId !== msgId) return e;
-                return {
-                  ...e,
-                  parts: [{ ...(e.parts[0] as TextPart), text: assembled }],
-                };
-              }));
-            },
-            onToolUse: (tool, summary) => {
-              // Append a small inline tag so the user sees what tool ran.
-              const tag = `\n_(tool: ${tool}${summary ? ' — ' + summary : ''})_\n`;
-              assembled += tag;
-              setEntries(prev => prev.map(e =>
-                e.type === 'assistant' && e.messageId === msgId
-                  ? { ...e, parts: [{ ...(e.parts[0] as TextPart), text: assembled }] }
-                  : e));
-            },
-            onDone: () => {
-              setEntries(prev => prev.map(e =>
-                e.type === 'assistant' && e.messageId === msgId
-                  ? { ...e, isComplete: true } : e));
-            },
-            onError: (err) => {
-              setConnectionError(err.message);
-              setTimeout(() => setConnectionError(null), 8000);
-            },
-          },
-        );
-        getOCBudget().then(setOcBudget);
-      } finally {
-        setIsRunning(false);
-        setSandboxPhase(null);
-      }
-      return;
-    }
+      // Live log buffer: keep building markdown as events stream.
+      let log = '';
+      // Track current open block(s) so we can format streaming deltas correctly.
+      const openBlocks = new Map<number, { type: 'text' | 'thinking' | 'tool_use'; tool?: string; inputJson?: string }>();
+      let pushedSection: string | null = null;
 
-    // ── Cloudflare Sandbox / Claude Code branch (real agent in a CF container) ──
-    if (runtimeMode === 'cf-cc') {
-      if (!sandboxRepo) {
-        setConnectionError('Set a repo URL — Claude Code clones it before running.');
-        setTimeout(() => setConnectionError(null), 5000);
-        return;
-      }
-      setInput('');
-      setAttachedFiles([]);
-      setIsRunning(true);
-      setConnectionError(null);
-      setSandboxPhase('starting');
-
-      const userEntry: UserEntry = { type: 'user', text, time: Date.now() };
-      const msgId = `cc-${Date.now()}`;
-      const partId = `cc-part-${Date.now()}`;
-      const placeholder: AssistantEntry = {
-        type: 'assistant',
-        messageId: msgId,
-        parts: [{
-          id: partId, sessionID: 'cc', messageID: msgId, type: 'text', text: '',
-        } as TextPart],
-        isComplete: false,
+      const flushLog = () => {
+        setEntries(prev => prev.map(e => {
+          if (e.type !== 'assistant' || e.messageId !== msgId) return e;
+          return { ...e, parts: [{ ...(e.parts[0] as TextPart), text: log }] };
+        }));
       };
-      setEntries(prev => [...prev, userEntry, placeholder]);
 
-      let assembled = '';
+      const startSection = (label: string) => {
+        if (pushedSection !== label) {
+          if (log && !log.endsWith('\n')) log += '\n';
+          log += `\n**[${label}]**\n`;
+          pushedSection = label;
+        }
+      };
+
+      const startedAt = Date.now();
       try {
-        await streamClaudeCodeRun(
-          { repo: sandboxRepo, task: text },
-          {
-            onPhase: (phase) => setSandboxPhase(phase),
-            onTextDelta: (delta) => {
-              assembled += delta;
-              setEntries(prev => prev.map(e => {
-                if (e.type !== 'assistant' || e.messageId !== msgId) return e;
-                return {
-                  ...e,
-                  parts: [{ ...(e.parts[0] as TextPart), text: assembled }],
-                };
-              }));
+        if (runtimeMode === 'cf-cc') {
+          await streamClaudeCodeRun(
+            { repo: sandboxRepo, task: text },
+            {
+              onPhase: (phase) => {
+                setSandboxPhase(phase);
+                startSection(phase);
+                flushLog();
+              },
+              onSandboxEvent: (ev, data) => {
+                if (ev === 'restore') log += `✓ container ready (${data.ms ?? '?'}ms)\n`;
+                else if (ev === 'setup') log += `✓ ${data.tail || 'cloned'}\n`;
+                else if (ev === 'done') log += `\n✓ done\n`;
+                flushLog();
+              },
+              onSystemInit: (info) => {
+                if (info.model) log += `model: \`${info.model}\`\n`;
+                if (info.cwd) log += `cwd: \`${info.cwd}\`\n`;
+                if (info.tools?.length) log += `tools: ${info.tools.map(t => `\`${t}\``).join(' · ')}\n`;
+                flushLog();
+              },
+              onBlockStart: (b) => {
+                openBlocks.set(b.index, { type: b.type, tool: b.tool?.name, inputJson: '' });
+                if (b.type === 'thinking') {
+                  log += `\n🤔 _thinking…_\n\n> `;
+                } else if (b.type === 'tool_use') {
+                  log += `\n🔧 **${b.tool?.name ?? 'tool'}** \`\``;  // double-tick so input_json_delta below appends inside backticks
+                } else if (b.type === 'text') {
+                  log += `\n💬 `;
+                }
+                flushLog();
+              },
+              onTextDelta: (d) => { log += d; flushLog(); },
+              onThinkingDelta: (d) => { log += d.replace(/\n/g, '\n> '); flushLog(); },
+              onToolInputDelta: (d, idx) => {
+                const blk = openBlocks.get(idx);
+                if (blk) blk.inputJson = (blk.inputJson || '') + d;
+                // Append visibly so the user sees args appear live
+                log += d;
+                flushLog();
+              },
+              onBlockStop: (idx) => {
+                const blk = openBlocks.get(idx);
+                if (blk?.type === 'tool_use') log += `\`\n`;
+                else if (blk?.type === 'thinking') log += `\n`;
+                else if (blk?.type === 'text') log += `\n`;
+                openBlocks.delete(idx);
+                flushLog();
+              },
+              onToolResult: (r) => {
+                const trimmed = r.content.length > 600
+                  ? r.content.slice(0, 600) + `\n…(+${r.content.length - 600} chars)`
+                  : r.content;
+                log += `${r.isError ? '❌' : '↪'} ${'```'}\n${trimmed}\n${'```'}\n`;
+                flushLog();
+              },
+              onAssistantFinal: () => { /* already streamed via deltas */ },
+              onResult: (res) => {
+                const dur = res.durationMs != null ? `${(res.durationMs / 1000).toFixed(1)}s` : `${((Date.now() - startedAt) / 1000).toFixed(1)}s`;
+                log += `\n✓ **finished** in ${dur}\n`;
+                flushLog();
+              },
+              onError: (err) => {
+                setConnectionError(err.message);
+                setTimeout(() => setConnectionError(null), 8000);
+              },
             },
-            onDone: () => {
-              setEntries(prev => prev.map(e =>
-                e.type === 'assistant' && e.messageId === msgId
-                  ? { ...e, isComplete: true } : e));
+          );
+          getCCBudget().then(setCcBudget);
+        } else {
+          // OpenCode mode — full text per part, plus tool_use with state.input/output
+          await streamOpenCodeRun(
+            { repo: sandboxRepo, task: text },
+            {
+              onPhase: (phase) => {
+                setSandboxPhase(phase);
+                startSection(phase);
+                flushLog();
+              },
+              onSandboxEvent: (ev, data) => {
+                if (ev === 'restore') log += `✓ container ready (${data.ms ?? '?'}ms)\n`;
+                else if (ev === 'setup') log += `✓ ${data.tail || 'cloned'}\n`;
+                flushLog();
+              },
+              onStderr: (line) => {
+                log += `\`${line.replace(/\n/g, ' ')}\`\n`;
+                flushLog();
+              },
+              onStepStart: () => {
+                log += `\n▶ _step_\n`;
+                flushLog();
+              },
+              onText: (t) => {
+                log += `\n💬 ${t}\n`;
+                flushLog();
+              },
+              onToolUse: (info) => {
+                const args = info.input
+                  ? Object.entries(info.input)
+                      .map(([k, v]) => `${k}=${typeof v === 'string' ? v.slice(0, 120) : JSON.stringify(v).slice(0, 120)}`)
+                      .join(', ')
+                  : '';
+                log += `\n🔧 **${info.tool}** \`${args}\`\n`;
+                if (info.output) {
+                  const out = info.output.length > 500
+                    ? info.output.slice(0, 500) + `\n…(+${info.output.length - 500} chars)`
+                    : info.output;
+                  log += `${info.isError ? '❌' : '↪'} \`\`\`\n${out}\n\`\`\`\n`;
+                }
+                flushLog();
+              },
+              onStepFinish: (info) => {
+                const tk = info.tokens;
+                log += `_step finished — reason: ${info.reason}${tk?.total ? `, ${tk.total} tokens` : ''}_\n`;
+                flushLog();
+              },
+              onError: (err) => {
+                setConnectionError(err.message);
+                setTimeout(() => setConnectionError(null), 8000);
+              },
             },
-            onError: (err) => {
-              setConnectionError(err.message);
-              setTimeout(() => setConnectionError(null), 8000);
-            },
-          },
-        );
-        // Refresh budget counter (best-effort)
-        getCCBudget().then(setCcBudget);
+          );
+          const dur = ((Date.now() - startedAt) / 1000).toFixed(1);
+          log += `\n✓ **finished** in ${dur}s\n`;
+          flushLog();
+          getOCBudget().then(setOcBudget);
+        }
+        setEntries(prev => prev.map(e =>
+          e.type === 'assistant' && e.messageId === msgId
+            ? { ...e, isComplete: true } : e));
       } finally {
         setIsRunning(false);
         setSandboxPhase(null);

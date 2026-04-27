@@ -1,23 +1,18 @@
 // ============================================================
-// Cloudflare Sandbox-hosted OpenCode client.
+// Cloudflare Sandbox-hosted OpenCode client (verbose terminal mode).
 // ============================================================
-// Mirrors cfClaudeCodeClient.ts but for the OpenCode CLI sandbox
-// (oc-sandbox), proxied through our Worker at /api/oc/run.
+// POSTs {repo, task} to /api/oc/run, which proxies oc-sandbox.
 //
-// The outer SSE envelope is the same as cc-sandbox:
-//   event: phase     {phase: "restore" | "setup" | "opencode"}
-//   event: restore   {ok, ms, id}
-//   event: setup     {ok, ms, exitCode, tail}
-//   event: stderr    "<line>"
-//   event: stdout    {type, ...}   ← OpenCode parts
+// Outer envelope:    phase / restore / setup / stdout
+// stdout payloads (OpenCode part format — full text per part, no token deltas):
+//   step_start                 — assistant turn begins (new step)
+//   text       part:{type:text, text:"..."}    — full text of this turn
+//   tool_use   part:{type:tool, tool:"read"|"bash"|..., state:{input,output,...}}
+//   step_finish part:{reason:"tool-calls"|"stop"|"end_turn", tokens:{...}, cost}
 //
-// The "stdout" payload differs from Claude Code's stream-events:
-//   {type: "step_start"}
-//   {type: "text",     part: {type: "text", text: "...the response..."}}
-//   {type: "tool_use", part: {type: "tool", tool: "read", state: {...}}}
-//   {type: "step_finish", part: {tokens, snapshot, ...}}
-// OpenCode emits FULL text per part (not deltas) — multiple text parts
-// per session represent successive assistant turns.
+// OpenCode does NOT stream tokens — it emits full segments per part. So
+// "live" UX comes from showing each part as it arrives (read this file,
+// then read that file, then a paragraph of text, then end).
 // ============================================================
 
 const API_BASE =
@@ -27,24 +22,39 @@ const API_BASE =
 export interface OCBudget {
   date: string;
   used: number;
-  limit: number;
-  remaining: number;
+  limit: number | null;
+  remaining: number | null;
   upstream: string;
   resets_in_seconds: number;
 }
 
 export interface OCStreamCallbacks {
-  /** "restore" | "setup" | "opencode" — coarse-grained sandbox progress. */
   onPhase?: (phase: string) => void;
-  /** Called once per text part with full text — append to running output. */
+  onSandboxEvent?: (event: 'restore' | 'setup', data: Record<string, unknown>) => void;
+  /** Stderr line from the sandbox (e.g. db migration messages). */
+  onStderr?: (line: string) => void;
+  /** A new agent step begins. */
+  onStepStart?: (info: { sessionID: string; messageID: string }) => void;
+  /** A whole text segment (full content of one assistant turn). */
   onText?: (text: string) => void;
-  /** Called when a tool_use part appears (tool name, brief description). */
-  onToolUse?: (tool: string, summary: string) => void;
-  /** Raw event passthrough for debug / advanced UI. */
+  /** A tool call with full state (input + output, both already known). */
+  onToolUse?: (info: {
+    tool: string;
+    callId: string;
+    input?: Record<string, unknown>;
+    output?: string;
+    title?: string;
+    status?: string;
+    isError?: boolean;
+  }) => void;
+  /** Step ended (with token usage + reason). */
+  onStepFinish?: (info: {
+    reason: string;
+    tokens?: { input?: number; output?: number; total?: number };
+    cost?: number;
+  }) => void;
+  /** Generic raw event (debug). */
   onEvent?: (event: string, data: unknown) => void;
-  /** Called when the upstream sends a final completion signal. */
-  onDone?: (result: { success: boolean; durationMs?: number }) => void;
-  /** Called on any I/O failure. */
   onError?: (err: Error) => void;
 }
 
@@ -53,16 +63,13 @@ export async function getOCBudget(): Promise<OCBudget | null> {
     const r = await fetch(`${API_BASE}/oc/budget`, { credentials: 'include' });
     if (!r.ok) return null;
     return await r.json() as OCBudget;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
-/** Streams an OpenCode Sandbox run; returns the assembled assistant text. */
 export async function streamOpenCodeRun(
   params: { repo: string; task: string },
   cb: OCStreamCallbacks = {},
-): Promise<string> {
+): Promise<void> {
   const r = await fetch(`${API_BASE}/oc/run`, {
     method: 'POST',
     credentials: 'include',
@@ -70,12 +77,6 @@ export async function streamOpenCodeRun(
     body: JSON.stringify(params),
   });
 
-  if (r.status === 429) {
-    const j = await r.json().catch(() => ({})) as { message?: string };
-    const e = new Error(j.message || 'Daily OpenCode Sandbox limit reached.');
-    cb.onError?.(e);
-    throw e;
-  }
   if (!r.ok || !r.body) {
     const body = await r.text().catch(() => '');
     const e = new Error(`OpenCode Sandbox failed (${r.status}): ${body.slice(0, 200)}`);
@@ -86,7 +87,6 @@ export async function streamOpenCodeRun(
   const reader = r.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
-  let collected = '';
 
   while (true) {
     const { done, value } = await reader.read();
@@ -99,47 +99,75 @@ export async function streamOpenCodeRun(
       buffer = buffer.slice(sep + 2);
 
       let event = 'message';
-      let data = '';
+      let dataStr = '';
       for (const line of block.split('\n')) {
         if (line.startsWith('event: ')) event = line.slice(7).trim();
-        else if (line.startsWith('data: ')) data = data ? data + '\n' + line.slice(6) : line.slice(6);
+        else if (line.startsWith('data: ')) dataStr = dataStr ? dataStr + '\n' + line.slice(6) : line.slice(6);
       }
+      if (!dataStr) continue;
 
-      let parsed: any = data;
-      try { parsed = JSON.parse(data); } catch { /* keep as string */ }
+      let parsed: any = dataStr;
+      try { parsed = JSON.parse(dataStr); } catch { /* raw */ }
       cb.onEvent?.(event, parsed);
 
       if (event === 'phase' && parsed?.phase) {
         cb.onPhase?.(parsed.phase);
         continue;
       }
+      if (event === 'restore' || event === 'setup') {
+        cb.onSandboxEvent?.(event as 'restore' | 'setup', parsed ?? {});
+        continue;
+      }
+      if (event === 'stderr') {
+        // stderr arrives as raw string in `dataStr`, parsed as same string
+        const line = typeof parsed === 'string' ? parsed : dataStr;
+        if (line.trim()) cb.onStderr?.(line);
+        continue;
+      }
+      if (event !== 'stdout') continue;
 
-      if (event !== 'stdout' || !parsed) continue;
+      const t = parsed?.type;
+      const part = parsed?.part;
 
-      const t = parsed.type;
-      if (t === 'text' && parsed.part?.text) {
-        collected += parsed.part.text;
-        cb.onText?.(parsed.part.text);
-      } else if (t === 'tool_use' && parsed.part?.tool) {
-        const tool = parsed.part.tool;
-        const input = parsed.part.state?.input;
-        const summary = input
-          ? Object.entries(input).slice(0, 1).map(([k, v]) =>
-              `${k}=${typeof v === 'string' ? v.slice(0, 80) : JSON.stringify(v).slice(0, 80)}`).join(', ')
-          : '';
-        cb.onToolUse?.(tool, summary);
-      } else if (t === 'step_finish' && parsed.part?.reason === 'end_turn') {
-        // OpenCode signals end of assistant turn here; treat as done.
-        cb.onDone?.({ success: true });
+      if (t === 'step_start') {
+        cb.onStepStart?.({
+          sessionID: parsed.sessionID ?? '',
+          messageID: parsed.part?.messageID ?? '',
+        });
+        continue;
+      }
+
+      if (t === 'text' && part?.text != null) {
+        cb.onText?.(part.text);
+        continue;
+      }
+
+      if (t === 'tool_use' && part) {
+        const state = part.state || {};
+        cb.onToolUse?.({
+          tool: part.tool ?? 'unknown',
+          callId: part.callID ?? '',
+          input: state.input,
+          output: state.output,
+          title: part.title,
+          status: state.status,
+          isError: state.status === 'error' || state.error != null,
+        });
+        continue;
+      }
+
+      if (t === 'step_finish' && part) {
+        cb.onStepFinish?.({
+          reason: part.reason ?? '',
+          tokens: part.tokens,
+          cost: part.cost,
+        });
+        continue;
       }
     }
   }
-
-  cb.onDone?.({ success: true });
-  return collected;
 }
 
-/** Same heuristic as the CC client: derive a github clone URL from a skill md URL. */
 export function deriveRepoUrlFromSkillMd(skillMdUrl: string | undefined): string | null {
   if (!skillMdUrl) return null;
   const m = skillMdUrl.match(/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\//);

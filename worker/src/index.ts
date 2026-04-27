@@ -750,24 +750,14 @@ app.post('/api/ai/chat', async (c) => {
 
 const CC_SANDBOX_URL = 'https://cc-sandbox.candy-shop.workers.dev/';
 const OC_SANDBOX_URL = 'https://oc-sandbox.candy-shop.workers.dev/';
-const CC_DAILY_RUN_CAP = 8;
-const OC_DAILY_RUN_CAP = 8;
 
-/** Generic Sandbox proxy — used for both /api/cc/run and /api/oc/run. */
+/** Generic Sandbox proxy — used for both /api/cc/run and /api/oc/run.
+ *  No hard cap — billing protection is the user's CF account spending limit.
+ *  We still maintain a daily counter for transparency / observability. */
 async function sandboxProxy(c: any, kind: 'cc' | 'oc') {
   const sess = await readSession(c);
   const upstream = kind === 'cc' ? CC_SANDBOX_URL : OC_SANDBOX_URL;
-  const cap = kind === 'cc' ? CC_DAILY_RUN_CAP : OC_DAILY_RUN_CAP;
   const budgetKey = todayKey(`${kind}:${sess?.sub ?? c.req.header('cf-connecting-ip') ?? 'anon'}`);
-
-  const used = parseInt((await c.env.AI_BUDGET.get(budgetKey)) ?? '0', 10);
-  if (used >= cap) {
-    return c.json({
-      error: 'daily_limit_reached',
-      message: `${kind === 'cc' ? 'Claude Code' : 'OpenCode'} Sandbox daily run cap reached (${cap}/day). Resets at 00:00 UTC.`,
-      used, limit: cap,
-    }, 429);
-  }
 
   const body = await c.req.json().catch(() => null) as {
     repo?: string;
@@ -777,10 +767,16 @@ async function sandboxProxy(c: any, kind: 'cc' | 'oc') {
     return c.json({ error: 'repo and task required' }, 400);
   }
 
+  // Track usage (no cap, just a counter)
+  const used = parseInt((await c.env.AI_BUDGET.get(budgetKey)) ?? '0', 10);
   await c.env.AI_BUDGET.put(budgetKey, String(used + 1), {
     expirationTtl: secondsUntilUtcMidnight(),
   });
 
+  // Forward streaming SSE upstream. Important: we want the browser to see
+  // chunks as they arrive, so the response body is passed through unchanged
+  // and `cache-control: no-store` + `x-accel-buffering: no` discourage any
+  // intermediate from buffering whole-response.
   const upRes = await fetch(upstream, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -796,33 +792,34 @@ async function sandboxProxy(c: any, kind: 'cc' | 'oc') {
     status: 200,
     headers: {
       'content-type': upRes.headers.get('content-type') || 'text/event-stream',
-      'cache-control': 'no-cache',
-      [`x-${kind}-runs-used`]: String(used + 1),
-      [`x-${kind}-runs-limit`]: String(cap),
+      'cache-control': 'no-store, no-transform',
+      'x-accel-buffering': 'no',
+      [`x-${kind}-runs-used-today`]: String(used + 1),
     },
   });
 }
 
-function sandboxBudget(kind: 'cc' | 'oc', cap: number, upstream: string) {
+function sandboxBudget(kind: 'cc' | 'oc', upstream: string) {
   return async (c: any) => {
     const sess = await readSession(c);
     const key = todayKey(`${kind}:${sess?.sub ?? c.req.header('cf-connecting-ip') ?? 'anon'}`);
     const used = parseInt((await c.env.AI_BUDGET.get(key)) ?? '0', 10);
+    // No cap — `limit: null` signals "unlimited" to the frontend.
     return c.json({
       date: todayKey('').split(':')[1],
       used,
-      limit: cap,
-      remaining: Math.max(0, cap - used),
+      limit: null,
+      remaining: null,
       upstream,
       resets_in_seconds: secondsUntilUtcMidnight(),
     });
   };
 }
 
-app.get('/api/cc/budget', sandboxBudget('cc', CC_DAILY_RUN_CAP, CC_SANDBOX_URL));
+app.get('/api/cc/budget', sandboxBudget('cc', CC_SANDBOX_URL));
 app.post('/api/cc/run', (c) => sandboxProxy(c, 'cc'));
 
-app.get('/api/oc/budget', sandboxBudget('oc', OC_DAILY_RUN_CAP, OC_SANDBOX_URL));
+app.get('/api/oc/budget', sandboxBudget('oc', OC_SANDBOX_URL));
 app.post('/api/oc/run', (c) => sandboxProxy(c, 'oc'));
 
 // ═══════════════════════════════════════════════════════════════
