@@ -749,32 +749,23 @@ app.post('/api/ai/chat', async (c) => {
 //   the budget very tight.
 
 const CC_SANDBOX_URL = 'https://cc-sandbox.candy-shop.workers.dev/';
+const OC_SANDBOX_URL = 'https://oc-sandbox.candy-shop.workers.dev/';
 const CC_DAILY_RUN_CAP = 8;
+const OC_DAILY_RUN_CAP = 8;
 
-app.get('/api/cc/budget', async (c) => {
+/** Generic Sandbox proxy — used for both /api/cc/run and /api/oc/run. */
+async function sandboxProxy(c: any, kind: 'cc' | 'oc') {
   const sess = await readSession(c);
-  const key = todayKey(`cc:${sess?.sub ?? c.req.header('cf-connecting-ip') ?? 'anon'}`);
-  const used = parseInt((await c.env.AI_BUDGET.get(key)) ?? '0', 10);
-  return c.json({
-    date: todayKey('').split(':')[1],
-    used,
-    limit: CC_DAILY_RUN_CAP,
-    remaining: Math.max(0, CC_DAILY_RUN_CAP - used),
-    upstream: CC_SANDBOX_URL,
-    resets_in_seconds: secondsUntilUtcMidnight(),
-  });
-});
-
-app.post('/api/cc/run', async (c) => {
-  const sess = await readSession(c);
-  const budgetKey = todayKey(`cc:${sess?.sub ?? c.req.header('cf-connecting-ip') ?? 'anon'}`);
+  const upstream = kind === 'cc' ? CC_SANDBOX_URL : OC_SANDBOX_URL;
+  const cap = kind === 'cc' ? CC_DAILY_RUN_CAP : OC_DAILY_RUN_CAP;
+  const budgetKey = todayKey(`${kind}:${sess?.sub ?? c.req.header('cf-connecting-ip') ?? 'anon'}`);
 
   const used = parseInt((await c.env.AI_BUDGET.get(budgetKey)) ?? '0', 10);
-  if (used >= CC_DAILY_RUN_CAP) {
+  if (used >= cap) {
     return c.json({
       error: 'daily_limit_reached',
-      message: `Claude Code Sandbox daily run cap reached (${CC_DAILY_RUN_CAP}/day). Resets at 00:00 UTC.`,
-      used, limit: CC_DAILY_RUN_CAP,
+      message: `${kind === 'cc' ? 'Claude Code' : 'OpenCode'} Sandbox daily run cap reached (${cap}/day). Resets at 00:00 UTC.`,
+      used, limit: cap,
     }, 429);
   }
 
@@ -786,33 +777,53 @@ app.post('/api/cc/run', async (c) => {
     return c.json({ error: 'repo and task required' }, 400);
   }
 
-  // Increment the daily counter BEFORE upstream call so a hung sandbox
-  // still costs a slot. Better safe than runaway.
   await c.env.AI_BUDGET.put(budgetKey, String(used + 1), {
     expirationTtl: secondsUntilUtcMidnight(),
   });
 
-  const upstream = await fetch(CC_SANDBOX_URL, {
+  const upRes = await fetch(upstream, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ repo: body.repo, task: body.task }),
   });
 
-  if (!upstream.ok || !upstream.body) {
-    const err = await upstream.text().catch(() => '');
-    return c.json({ error: `upstream ${upstream.status}: ${err.slice(0, 200)}` }, 502);
+  if (!upRes.ok || !upRes.body) {
+    const err = await upRes.text().catch(() => '');
+    return c.json({ error: `upstream ${upRes.status}: ${err.slice(0, 200)}` }, 502);
   }
 
-  return new Response(upstream.body, {
+  return new Response(upRes.body, {
     status: 200,
     headers: {
-      'content-type': upstream.headers.get('content-type') || 'text/event-stream',
+      'content-type': upRes.headers.get('content-type') || 'text/event-stream',
       'cache-control': 'no-cache',
-      'x-cc-runs-used': String(used + 1),
-      'x-cc-runs-limit': String(CC_DAILY_RUN_CAP),
+      [`x-${kind}-runs-used`]: String(used + 1),
+      [`x-${kind}-runs-limit`]: String(cap),
     },
   });
-});
+}
+
+function sandboxBudget(kind: 'cc' | 'oc', cap: number, upstream: string) {
+  return async (c: any) => {
+    const sess = await readSession(c);
+    const key = todayKey(`${kind}:${sess?.sub ?? c.req.header('cf-connecting-ip') ?? 'anon'}`);
+    const used = parseInt((await c.env.AI_BUDGET.get(key)) ?? '0', 10);
+    return c.json({
+      date: todayKey('').split(':')[1],
+      used,
+      limit: cap,
+      remaining: Math.max(0, cap - used),
+      upstream,
+      resets_in_seconds: secondsUntilUtcMidnight(),
+    });
+  };
+}
+
+app.get('/api/cc/budget', sandboxBudget('cc', CC_DAILY_RUN_CAP, CC_SANDBOX_URL));
+app.post('/api/cc/run', (c) => sandboxProxy(c, 'cc'));
+
+app.get('/api/oc/budget', sandboxBudget('oc', OC_DAILY_RUN_CAP, OC_SANDBOX_URL));
+app.post('/api/oc/run', (c) => sandboxProxy(c, 'oc'));
 
 // ═══════════════════════════════════════════════════════════════
 // Fallback

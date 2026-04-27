@@ -60,6 +60,11 @@ import {
   deriveRepoUrlFromSkillMd,
   type CCBudget,
 } from '../../lib/cfClaudeCodeClient';
+import {
+  streamOpenCodeRun,
+  getOCBudget,
+  type OCBudget,
+} from '../../lib/cfOpenCodeClient';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -877,26 +882,28 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
   // Fixed OpenCode model – GLM-4.5 on zhipuai-coding-plan provider
   const selectedModel: ModelConfig = { providerID: 'zhipuai-coding-plan', modelID: 'glm-4.5' };
 
-  // Runtime picker — 3 options:
-  //   opencode → existing OpenCode agent on HF Space (full tool use, GLM-4.5)
-  //   cf-ai    → Cloudflare Workers AI Llama 3.1 8B (single-shot chat,
-  //              free-tier hard-capped, no tool use)
-  //   cf-cc    → Cloudflare Sandbox running Claude Code CLI (real tool use:
-  //              shell/file ops in a clones git repo, ~30-90s per run)
+  // Runtime picker — all 3 options live on Cloudflare:
+  //   opencode → oc-sandbox.candy-shop.workers.dev (OpenCode CLI in a CF
+  //              container; clones a repo, runs single-shot, ~30-60s/run)
+  //   cf-ai    → Workers AI Llama 3.1 8B via workers-paid account
+  //              (single-shot chat, no tools, paid plan = no hard cutoff)
+  //   cf-cc    → cc-sandbox.candy-shop.workers.dev (Claude Code CLI in
+  //              the same kind of CF container; same UX as opencode)
   type RuntimeMode = 'opencode' | 'cf-ai' | 'cf-cc';
   const [runtimeMode, setRuntimeMode] = useState<RuntimeMode>('opencode');
   const [cfBudget, setCfBudget] = useState<CFBudget | null>(null);
   const [ccBudget, setCcBudget] = useState<CCBudget | null>(null);
-  // For Claude Code Sandbox mode: the repo it should clone before running.
-  // Default to the repo derived from the current skill's skillMdUrl.
-  const [ccRepo, setCcRepo] = useState<string>(
+  const [ocBudget, setOcBudget] = useState<OCBudget | null>(null);
+  // Both opencode and cf-cc modes need a repo to clone — share one input.
+  const [sandboxRepo, setSandboxRepo] = useState<string>(
     () => deriveRepoUrlFromSkillMd(skill.skillMdUrl) || 'https://github.com/anthropics/claude-code',
   );
-  // Coarse-grained "what is the sandbox doing" indicator for cf-cc mode
-  const [ccPhase, setCcPhase] = useState<string | null>(null);
+  // Coarse-grained "what is the sandbox doing" indicator (sandbox modes)
+  const [sandboxPhase, setSandboxPhase] = useState<string | null>(null);
   useEffect(() => {
     if (runtimeMode === 'cf-ai') getCFBudget().then(setCfBudget);
     if (runtimeMode === 'cf-cc') getCCBudget().then(setCcBudget);
+    if (runtimeMode === 'opencode') getOCBudget().then(setOcBudget);
   }, [runtimeMode]);
 
   // Skill loading state
@@ -1274,9 +1281,81 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       return;
     }
 
+    // ── OpenCode on Cloudflare Sandbox (oc-sandbox.candy-shop.workers.dev) ──
+    // Single-shot agent: clone repo → run OpenCode CLI → stream text/tool
+    // events back. Replaces the old HF Space-hosted multi-turn OpenCode.
+    if (runtimeMode === 'opencode') {
+      if (!sandboxRepo) {
+        setConnectionError('Set a repo URL — OpenCode clones it before running.');
+        setTimeout(() => setConnectionError(null), 5000);
+        return;
+      }
+      setInput('');
+      setAttachedFiles([]);
+      setIsRunning(true);
+      setConnectionError(null);
+      setSandboxPhase('starting');
+
+      const userEntry: UserEntry = { type: 'user', text, time: Date.now() };
+      const msgId = `oc-${Date.now()}`;
+      const partId = `oc-part-${Date.now()}`;
+      const placeholder: AssistantEntry = {
+        type: 'assistant',
+        messageId: msgId,
+        parts: [{
+          id: partId, sessionID: 'oc', messageID: msgId, type: 'text', text: '',
+        } as TextPart],
+        isComplete: false,
+      };
+      setEntries(prev => [...prev, userEntry, placeholder]);
+
+      let assembled = '';
+      try {
+        await streamOpenCodeRun(
+          { repo: sandboxRepo, task: text },
+          {
+            onPhase: (phase) => setSandboxPhase(phase),
+            onText: (chunk) => {
+              assembled += chunk;
+              setEntries(prev => prev.map(e => {
+                if (e.type !== 'assistant' || e.messageId !== msgId) return e;
+                return {
+                  ...e,
+                  parts: [{ ...(e.parts[0] as TextPart), text: assembled }],
+                };
+              }));
+            },
+            onToolUse: (tool, summary) => {
+              // Append a small inline tag so the user sees what tool ran.
+              const tag = `\n_(tool: ${tool}${summary ? ' — ' + summary : ''})_\n`;
+              assembled += tag;
+              setEntries(prev => prev.map(e =>
+                e.type === 'assistant' && e.messageId === msgId
+                  ? { ...e, parts: [{ ...(e.parts[0] as TextPart), text: assembled }] }
+                  : e));
+            },
+            onDone: () => {
+              setEntries(prev => prev.map(e =>
+                e.type === 'assistant' && e.messageId === msgId
+                  ? { ...e, isComplete: true } : e));
+            },
+            onError: (err) => {
+              setConnectionError(err.message);
+              setTimeout(() => setConnectionError(null), 8000);
+            },
+          },
+        );
+        getOCBudget().then(setOcBudget);
+      } finally {
+        setIsRunning(false);
+        setSandboxPhase(null);
+      }
+      return;
+    }
+
     // ── Cloudflare Sandbox / Claude Code branch (real agent in a CF container) ──
     if (runtimeMode === 'cf-cc') {
-      if (!ccRepo) {
+      if (!sandboxRepo) {
         setConnectionError('Set a repo URL — Claude Code clones it before running.');
         setTimeout(() => setConnectionError(null), 5000);
         return;
@@ -1285,7 +1364,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       setAttachedFiles([]);
       setIsRunning(true);
       setConnectionError(null);
-      setCcPhase('starting');
+      setSandboxPhase('starting');
 
       const userEntry: UserEntry = { type: 'user', text, time: Date.now() };
       const msgId = `cc-${Date.now()}`;
@@ -1303,9 +1382,9 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       let assembled = '';
       try {
         await streamClaudeCodeRun(
-          { repo: ccRepo, task: text },
+          { repo: sandboxRepo, task: text },
           {
-            onPhase: (phase) => setCcPhase(phase),
+            onPhase: (phase) => setSandboxPhase(phase),
             onTextDelta: (delta) => {
               assembled += delta;
               setEntries(prev => prev.map(e => {
@@ -1331,7 +1410,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
         getCCBudget().then(setCcBudget);
       } finally {
         setIsRunning(false);
-        setCcPhase(null);
+        setSandboxPhase(null);
       }
       return;
     }
@@ -1735,7 +1814,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       polling = false;
       window.clearInterval(pollTimer);
     }
-  }, [input, attachedFiles, isRunning, connected, currentSessionId, createNewSession, selectedModel, skill.id, skill.name, skill.description, skillInstructions, skill.config.systemPrompt, runtimeMode, ccRepo, entries]);
+  }, [input, attachedFiles, isRunning, connected, currentSessionId, createNewSession, selectedModel, skill.id, skill.name, skill.description, skillInstructions, skill.config.systemPrompt, runtimeMode, sandboxRepo, entries]);
 
   // ── Abort ───────────────────────────────────────────────────────────────
 
@@ -2447,14 +2526,14 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                 </div>
               </div>
               <div className="flex flex-col gap-2 mt-2.5 px-1 max-w-4xl mx-auto">
-                {/* Repo input — only when Claude Code Sandbox mode is selected */}
-                {runtimeMode === 'cf-cc' && (
+                {/* Repo input — shown for both sandbox modes (opencode & cf-cc) */}
+                {(runtimeMode === 'opencode' || runtimeMode === 'cf-cc') && (
                   <div className="flex items-center gap-2 text-[11px]">
                     <span className="text-foreground-secondary shrink-0">Repo to clone:</span>
                     <input
                       type="text"
-                      value={ccRepo}
-                      onChange={(e) => setCcRepo(e.target.value)}
+                      value={sandboxRepo}
+                      onChange={(e) => setSandboxRepo(e.target.value)}
                       placeholder="https://github.com/owner/repo"
                       className="flex-1 px-2 py-1 rounded border border-border bg-background-secondary text-foreground font-mono text-[11px]"
                     />
@@ -2466,15 +2545,15 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                     Enter to send · Shift+Enter for new line
                   </span>
 
-                  {/* 3-way runtime picker */}
+                  {/* 3-way runtime picker — all three options run on Cloudflare */}
                   <div className="flex items-center gap-1 text-[11px] rounded-md border border-border bg-background-secondary p-0.5">
                     {([
                       { id: 'opencode', label: '🤖 OpenCode',
-                        title: 'OpenCode agent on HF Space (full tool use, GLM-4.5)' },
+                        title: 'OpenCode CLI in CF Sandbox (oc-sandbox) — single-shot, clones a repo, runs ~30-60s' },
                       { id: 'cf-ai', label: '☁️ CF AI',
-                        title: 'Cloudflare Workers AI Llama 3.1 8B (simple chat, free tier)' },
+                        title: 'Workers AI Llama 3.1 8B via workers-paid account — single-shot chat, no tools' },
                       { id: 'cf-cc', label: '🔬 Claude Code',
-                        title: 'Cloudflare Sandbox running Claude Code CLI (real agent, clones a repo, ~30-90s/run)' },
+                        title: 'Claude Code CLI in CF Sandbox (cc-sandbox) — single-shot, clones a repo, runs ~30-90s' },
                     ] as const).map(opt => (
                       <button
                         key={opt.id}
@@ -2492,7 +2571,12 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                     ))}
                   </div>
 
-                  {/* Budget chip — different content per mode */}
+                  {/* Budget chip — per mode */}
+                  {runtimeMode === 'opencode' && ocBudget && (
+                    <span className="text-[11px] text-foreground-secondary">
+                      {ocBudget.remaining}/{ocBudget.limit} runs left today
+                    </span>
+                  )}
                   {runtimeMode === 'cf-ai' && cfBudget && (
                     <span className="text-[11px] text-foreground-secondary">
                       {cfBudget.remaining}/{cfBudget.limit} chats left today
@@ -2509,9 +2593,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                       <Loader2 className="w-3 h-3 animate-spin" />
                       {runtimeMode === 'cf-ai'
                         ? 'Thinking...'
-                        : runtimeMode === 'cf-cc'
-                          ? `Sandbox: ${ccPhase || 'starting'}…`
-                          : 'Agent is working...'}
+                        : `Sandbox: ${sandboxPhase || 'starting'}…`}
                     </span>
                   )}
                 </div>
