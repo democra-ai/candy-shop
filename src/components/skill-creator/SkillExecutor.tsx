@@ -1357,7 +1357,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       try {
         if (runtimeMode === 'cf-cc') {
           await streamClaudeCodeRun(
-            { repo: sandboxRepo, task: text },
+            { repo: sandboxRepo, task: text, skillMd: skillInstructions ?? undefined },
             {
               onPhase: (phase) => {
                 setSandboxPhase(phase);
@@ -1435,7 +1435,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
         } else {
           // OpenCode mode — full text per part, plus tool_use with state.input/output
           await streamOpenCodeRun(
-            { repo: sandboxRepo, task: text },
+            { repo: sandboxRepo, task: text, skillMd: skillInstructions ?? undefined },
             {
               onPhase: (phase) => {
                 setSandboxPhase(phase);

@@ -67,7 +67,7 @@ export async function getOCBudget(): Promise<OCBudget | null> {
 }
 
 export async function streamOpenCodeRun(
-  params: { repo: string; task: string },
+  params: { repo: string; task: string; skillMd?: string; model?: string; fresh?: boolean },
   cb: OCStreamCallbacks = {},
 ): Promise<void> {
   const r = await fetch(`${API_BASE}/oc/run`, {

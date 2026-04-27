@@ -762,6 +762,9 @@ async function sandboxProxy(c: any, kind: 'cc' | 'oc') {
   const body = await c.req.json().catch(() => null) as {
     repo?: string;
     task?: string;
+    model?: string;
+    skillMd?: string;
+    fresh?: boolean;
   } | null;
   if (!body?.repo || !body?.task) {
     return c.json({ error: 'repo and task required' }, 400);
@@ -773,14 +776,17 @@ async function sandboxProxy(c: any, kind: 'cc' | 'oc') {
     expirationTtl: secondsUntilUtcMidnight(),
   });
 
-  // Forward streaming SSE upstream. Important: we want the browser to see
-  // chunks as they arrive, so the response body is passed through unchanged
-  // and `cache-control: no-store` + `x-accel-buffering: no` discourage any
-  // intermediate from buffering whole-response.
+  // Forward streaming SSE upstream. Pass through the optional fields too
+  // so the sandbox can load skill context, switch models per request, etc.
+  const forwardBody: Record<string, unknown> = { repo: body.repo, task: body.task };
+  if (body.model) forwardBody.model = body.model;
+  if (body.skillMd) forwardBody.skillMd = body.skillMd;
+  if (body.fresh) forwardBody.fresh = body.fresh;
+
   const upRes = await fetch(upstream, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ repo: body.repo, task: body.task }),
+    body: JSON.stringify(forwardBody),
   });
 
   if (!upRes.ok || !upRes.body) {
