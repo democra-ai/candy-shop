@@ -1316,11 +1316,33 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       const openBlocks = new Map<number, { type: 'text' | 'thinking' | 'tool_use'; tool?: string; inputJson?: string }>();
       let pushedSection: string | null = null;
 
+      // ─ render throttle ─────────────────────────────────────────
+      // Token-level events fire dozens of times per second; re-parsing the
+      // full markdown on each one tanks perceived perf. We coalesce into
+      // one setEntries per animation frame (~16ms / 60fps).
+      let rafScheduled = false;
+      let runDone = false;  // once result/success arrives, stop updating UI
       const flushLog = () => {
+        if (rafScheduled || runDone) return;
+        rafScheduled = true;
+        requestAnimationFrame(() => {
+          rafScheduled = false;
+          setEntries(prev => prev.map(e => {
+            if (e.type !== 'assistant' || e.messageId !== msgId) return e;
+            return { ...e, parts: [{ ...(e.parts[0] as TextPart), text: log }] };
+          }));
+        });
+      };
+      const finishImmediately = (extraLine?: string) => {
+        if (extraLine) log += extraLine;
+        runDone = true;
+        // One last synchronous flush so the final text + ✓ is visible
         setEntries(prev => prev.map(e => {
           if (e.type !== 'assistant' || e.messageId !== msgId) return e;
-          return { ...e, parts: [{ ...(e.parts[0] as TextPart), text: log }] };
+          return { ...e, parts: [{ ...(e.parts[0] as TextPart), text: log }], isComplete: true };
         }));
+        setIsRunning(false);
+        setSandboxPhase(null);
       };
 
       const startSection = (label: string) => {
@@ -1391,9 +1413,13 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
               },
               onAssistantFinal: () => { /* already streamed via deltas */ },
               onResult: (res) => {
-                const dur = res.durationMs != null ? `${(res.durationMs / 1000).toFixed(1)}s` : `${((Date.now() - startedAt) / 1000).toFixed(1)}s`;
-                log += `\n✓ **finished** in ${dur}\n`;
-                flushLog();
+                // Cut the user-perceived wait short: snapshot/diff/done
+                // events still arrive after this but they're just the
+                // sandbox saving state to R2 for the next warm run.
+                const dur = res.durationMs != null
+                  ? `${(res.durationMs / 1000).toFixed(1)}s`
+                  : `${((Date.now() - startedAt) / 1000).toFixed(1)}s`;
+                finishImmediately(`\n✓ **finished** in ${dur}\n`);
               },
               onError: (err) => {
                 setConnectionError(err.message);
@@ -1401,7 +1427,11 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
               },
             },
           );
-          getCCBudget().then(setCcBudget);
+          // Fallback if result/success never came (network drop, etc.)
+          if (!runDone) {
+            const dur = ((Date.now() - startedAt) / 1000).toFixed(1);
+            finishImmediately(`\n✓ **finished** in ${dur}s\n`);
+          }
         } else {
           // OpenCode mode — full text per part, plus tool_use with state.input/output
           await streamOpenCodeRun(
@@ -1447,7 +1477,16 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
               onStepFinish: (info) => {
                 const tk = info.tokens;
                 log += `_step finished — reason: ${info.reason}${tk?.total ? `, ${tk.total} tokens` : ''}_\n`;
-                flushLog();
+                // Cut UX wait short: when OpenCode reports the agent's
+                // final stop reason, we're done. The sandbox still emits
+                // opencode_ms/diff/snapshot/done over the next ~2s but
+                // those are post-processing — user already has the answer.
+                if (info.reason === 'stop' || info.reason === 'end_turn') {
+                  const dur = ((Date.now() - startedAt) / 1000).toFixed(1);
+                  finishImmediately(`\n✓ **finished** in ${dur}s\n`);
+                } else {
+                  flushLog();
+                }
               },
               onError: (err) => {
                 setConnectionError(err.message);
@@ -1455,14 +1494,12 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
               },
             },
           );
-          const dur = ((Date.now() - startedAt) / 1000).toFixed(1);
-          log += `\n✓ **finished** in ${dur}s\n`;
-          flushLog();
-          getOCBudget().then(setOcBudget);
+          // If step_finish/stop never came (timeout, error path), finalize anyway
+          if (!runDone) {
+            const dur = ((Date.now() - startedAt) / 1000).toFixed(1);
+            finishImmediately(`\n✓ **finished** in ${dur}s\n`);
+          }
         }
-        setEntries(prev => prev.map(e =>
-          e.type === 'assistant' && e.messageId === msgId
-            ? { ...e, isComplete: true } : e));
       } finally {
         setIsRunning(false);
         setSandboxPhase(null);
