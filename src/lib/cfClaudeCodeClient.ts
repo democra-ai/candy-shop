@@ -82,7 +82,7 @@ export async function getCCBudget(): Promise<CCBudget | null> {
 }
 
 export async function streamClaudeCodeRun(
-  params: { repo: string; task: string; skillMd?: string; model?: string; fresh?: boolean },
+  params: { task: string; repo?: string; skillMd?: string; model?: string; fresh?: boolean },
   cb: CCStreamCallbacks = {},
 ): Promise<void> {
   const r = await fetch(`${API_BASE}/cc/run`, {

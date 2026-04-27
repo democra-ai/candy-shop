@@ -57,7 +57,7 @@ import { sendCFChat, getCFBudget, type CFBudget } from '../../lib/cfChatClient';
 import {
   streamClaudeCodeRun,
   getCCBudget,
-  deriveRepoUrlFromSkillMd,
+  // deriveRepoUrlFromSkillMd, // unused now that scratch is the default
   type CCBudget,
 } from '../../lib/cfClaudeCodeClient';
 import {
@@ -894,10 +894,10 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
   const [cfBudget, setCfBudget] = useState<CFBudget | null>(null);
   const [ccBudget, setCcBudget] = useState<CCBudget | null>(null);
   const [ocBudget, setOcBudget] = useState<OCBudget | null>(null);
-  // Both opencode and cf-cc modes need a repo to clone — share one input.
-  const [sandboxRepo, setSandboxRepo] = useState<string>(
-    () => deriveRepoUrlFromSkillMd(skill.skillMdUrl) || 'https://github.com/anthropics/claude-code',
-  );
+  // Repo to clone in the sandbox (optional). Empty means "use the
+  // pre-baked scratch workspace" — much faster for skill execution
+  // since the SKILL.md is delivered via system prompt anyway.
+  const [sandboxRepo, setSandboxRepo] = useState<string>('');
   // Coarse-grained "what is the sandbox doing" indicator (sandbox modes)
   const [sandboxPhase, setSandboxPhase] = useState<string | null>(null);
   useEffect(() => {
@@ -1285,11 +1285,10 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
     // Both modes render every sandbox event as a line in a live "terminal
     // log" markdown — phases, tool calls, thinking, streamed text, results.
     if (runtimeMode === 'opencode' || runtimeMode === 'cf-cc') {
-      if (!sandboxRepo) {
-        setConnectionError('Set a repo URL — the sandbox clones it before running.');
-        setTimeout(() => setConnectionError(null), 5000);
-        return;
-      }
+      // Empty repo means "use the sandbox's pre-baked scratch workspace" —
+      // no clone, no R2 restore, fastest TTFR. The skill itself is sent
+      // via skillMd → system prompt, so the agent doesn't need files
+      // from a specific repo for most skill executions.
       setInput('');
       setAttachedFiles([]);
       setIsRunning(true);
@@ -1357,7 +1356,11 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       try {
         if (runtimeMode === 'cf-cc') {
           await streamClaudeCodeRun(
-            { repo: sandboxRepo, task: text, skillMd: skillInstructions ?? undefined },
+            {
+              repo: sandboxRepo || undefined,  // empty → sandbox uses scratch
+              task: text,
+              skillMd: skillInstructions ?? undefined,
+            },
             {
               onPhase: (phase) => {
                 setSandboxPhase(phase);
@@ -1435,7 +1438,11 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
         } else {
           // OpenCode mode — full text per part, plus tool_use with state.input/output
           await streamOpenCodeRun(
-            { repo: sandboxRepo, task: text, skillMd: skillInstructions ?? undefined },
+            {
+              repo: sandboxRepo || undefined,
+              task: text,
+              skillMd: skillInstructions ?? undefined,
+            },
             {
               onPhase: (phase) => {
                 setSandboxPhase(phase);
@@ -2618,15 +2625,17 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                 </div>
               </div>
               <div className="flex flex-col gap-2 mt-2.5 px-1 max-w-4xl mx-auto">
-                {/* Repo input — shown for both sandbox modes (opencode & cf-cc) */}
+                {/* Optional repo input — empty uses the sandbox's scratch dir */}
                 {(runtimeMode === 'opencode' || runtimeMode === 'cf-cc') && (
                   <div className="flex items-center gap-2 text-[11px]">
-                    <span className="text-foreground-secondary shrink-0">Repo to clone:</span>
+                    <span className="text-foreground-secondary shrink-0">
+                      Repo (optional):
+                    </span>
                     <input
                       type="text"
                       value={sandboxRepo}
                       onChange={(e) => setSandboxRepo(e.target.value)}
-                      placeholder="https://github.com/owner/repo"
+                      placeholder="leave empty for fastest TTFR (uses scratch dir)"
                       className="flex-1 px-2 py-1 rounded border border-border bg-background-secondary text-foreground font-mono text-[11px]"
                     />
                   </div>

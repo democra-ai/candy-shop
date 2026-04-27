@@ -766,8 +766,8 @@ async function sandboxProxy(c: any, kind: 'cc' | 'oc') {
     skillMd?: string;
     fresh?: boolean;
   } | null;
-  if (!body?.repo || !body?.task) {
-    return c.json({ error: 'repo and task required' }, 400);
+  if (!body?.task) {
+    return c.json({ error: 'task required (repo optional — empty uses sandbox scratch dir)' }, 400);
   }
 
   // Track usage (no cap, just a counter)
@@ -778,7 +778,8 @@ async function sandboxProxy(c: any, kind: 'cc' | 'oc') {
 
   // Forward streaming SSE upstream. Pass through the optional fields too
   // so the sandbox can load skill context, switch models per request, etc.
-  const forwardBody: Record<string, unknown> = { repo: body.repo, task: body.task };
+  const forwardBody: Record<string, unknown> = { task: body.task };
+  if (body.repo) forwardBody.repo = body.repo;
   if (body.model) forwardBody.model = body.model;
   if (body.skillMd) forwardBody.skillMd = body.skillMd;
   if (body.fresh) forwardBody.fresh = body.fresh;
