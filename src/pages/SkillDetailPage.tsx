@@ -5,7 +5,8 @@ import { Button } from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { StarRating } from '../components/ui/StarRating';
-import { LineageBadge, PricingBadge, ExecutionModelBadge, ManifestVisibilityBadge } from '../components/common/LineageBadge';
+import { LineageBadge, PricingBadge, ExecutionModelBadge, ManifestVisibilityBadge, TeeVerifiedBadge } from '../components/common/LineageBadge';
+import { RunSkillPanel } from '../components/skill-creator/RunSkillPanel';
 import { SKILLS_DATA } from '../data/skillsData';
 import type { Skill as StoreSkill } from '../data/skillsData';
 import { useStars } from '../hooks/api/useStars';
@@ -107,6 +108,7 @@ export function SkillDetailPage({ cart, onToggleCart, onRunSkill, userId }: Skil
               <PricingBadge pricingModel={skill.pricingModel} price={skill.price} />
               <ExecutionModelBadge model={skill.executionModel} />
               <ManifestVisibilityBadge visibility={skill.manifestVisibility} />
+              {skill.executionModel === 'tee' && <TeeVerifiedBadge tee={skill.tee} size="md" />}
             </div>
           )}
 
@@ -161,6 +163,13 @@ export function SkillDetailPage({ cart, onToggleCart, onRunSkill, userId }: Skil
 
           {activeTab === 'about' && (
             <>
+              {/* Run panel — fast LLM invocation (Tier 0/1/2 dispatch) */}
+              <RunSkillPanel
+                skillId={skill.id}
+                skillName={skill.name}
+                executionModel={skill.executionModel as 'open' | 'managed' | 'tee' | undefined}
+              />
+
               {/* Description */}
               <Card>
                 <CardContent className="pt-6">

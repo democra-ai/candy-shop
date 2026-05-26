@@ -1,0 +1,4 @@
+- [User role](user_role.md) — Yufan, KU Leuven, builds Candy Shop; senior full-stack; replies in Chinese.
+- [Project: Candy Shop](project_candy_shop.md) — 3-tier privacy AI skill marketplace on Cloudflare; Worker+D1 is the new home.
+- [Agent architecture](agent_architecture.md) — low-latency rebuild: persistent warm WebSocket Claude Agent session in-sandbox; HMAC ticket auth; deploy needs Docker + 2 shared secrets.
+- [Design system](design_system.md) — "Candy Atelier" full redesign: token cascade + sticker/candy-gloss/gumdrop surfaces; Hero/Header/cards done; per-page color cascade ongoing.

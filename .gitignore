@@ -39,3 +39,5 @@ src-tauri/icons/icon.svg
 # Supabase CLI local state (no secrets, just project ref/versions)
 supabase/.temp/
 supabase/.branches/
+worker/.dev.vars
+.gstack/

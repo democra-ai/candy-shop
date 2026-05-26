@@ -24,6 +24,9 @@ import { MySkillsLibrary } from './components/skill-creator/MySkillsLibrary';
 // initial bundle. That default singleton, when present at page load,
 // causes Safari to prompt for Local Network Access permission even on
 // visitors who never run a skill. See commit history for full diagnosis.
+const TweakManager = lazy(() =>
+  import('./components/tweaks/TweakManager').then(m => ({ default: m.TweakManager }))
+);
 const SkillExecutor = lazy(() =>
   import('./components/skill-creator/SkillExecutor').then(m => ({ default: m.SkillExecutor }))
 );
@@ -316,6 +319,16 @@ function AppContent() {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [location.pathname]);
+
+  // Boot the Tweak runtime once: loads + starts every enabled tweak
+  // (community modules pulled from GitHub via jsDelivr at runtime).
+  useEffect(() => {
+    import('./lib/tweaks/runtime')
+      .then((m) => m.tweakRuntime.boot())
+      .catch(() => {
+        /* tweak runtime is best-effort; never block the app */
+      });
+  }, []);
 
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -667,6 +680,18 @@ function AppContent() {
                 onUseSkill={(skill) => setExecutingSkill(skill)}
                 onBack={() => navigate('/')}
               />
+            </Layout>
+          }
+        />
+
+        {/* Tweaks — codex-plusplus-style community modification manager */}
+        <Route
+          path="/tweaks"
+          element={
+            <Layout {...sharedLayoutProps}>
+              <Suspense fallback={null}>
+                <TweakManager onClose={() => navigate('/')} />
+              </Suspense>
             </Layout>
           }
         />

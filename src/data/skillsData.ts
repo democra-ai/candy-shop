@@ -14,7 +14,23 @@ export type SkillCategory =
 export type SkillLineageType = 'original' | 'fork' | 'remix' | 'licensed_derivative';
 
 /** What you're buying: execution rights, not files */
-export type ExecutionModel = 'open' | 'managed' | 'federated';
+export type ExecutionModel = 'open' | 'managed' | 'tee' | 'federated';
+
+/** TEE attestation metadata for Tier-2 skills */
+export type TeeProvider = 'phala' | 'aws-nitro' | 'gcp-cs' | 'azure-cc' | 'oasis';
+
+export interface TeeAttestation {
+  provider: TeeProvider;
+  codeHash: string;
+  attestationUrl?: string;
+  lastVerifiedAt?: string;
+  latestAttestation?: {
+    id: string;
+    codeHash: string;
+    provider: string;
+    verifiedAt: string;
+  } | null;
+}
 
 /** Manifest visibility: what's public vs gated */
 export type ManifestVisibility = 'full' | 'manifest_only' | 'private';
@@ -60,10 +76,23 @@ export interface Skill {
   // ── Lineage & Execution Model (v2) ──────────────────────
   /** Provenance: original, fork, remix, or licensed derivative */
   lineage?: SkillLineage;
-  /** Execution model: open (self-host), managed (we run it), federated (creator-hosted) */
+  /** Execution model: open (self-host), managed (we run it), tee (confidential), federated (creator-hosted) */
   executionModel?: ExecutionModel;
   /** What parts of the skill are visible without purchase */
   manifestVisibility?: ManifestVisibility;
+  /** TEE attestation metadata (only present when executionModel === 'tee') */
+  tee?: TeeAttestation;
+
+  // ── skill-crawler enrichment (when sourced from /api/skills) ──
+  /** Audit summary from skills.sh (Gen / Socket / Snyk aggregated counts) */
+  auditSummary?: {
+    pass: number;
+    warn: number;
+    fail: number;
+    max_risk: 'NONE' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | null;
+  };
+  /** Author avatar URL (rendered next to icon for crawler-sourced skills) */
+  authorAvatarUrl?: string;
 }
 
 // ── Registry types (compact format) ─────────────────────────────────
@@ -118,6 +147,55 @@ export function registryEntryToSkill(entry: RegistryEntry): Skill {
     skillMdUrl: `https://raw.githubusercontent.com/${owner}/${repo}/main/${name}/SKILL.md`,
     config: {},
   };
+}
+
+// ── skill-crawler adapter ──────────────────────────────────────────
+// Convert a skill-crawler API row into our UI Skill type so the
+// existing components (SkillsGrid, SkillModal, ...) keep working.
+import type { CrawlerSkill } from '../lib/skillCrawlerClient';
+
+function titlecase(s: string): string {
+  return s.replace(/[-_]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+export function crawlerSkillToSkill(c: CrawlerSkill): Skill {
+  const slug = c.skill_name || (c.path.match(/(?:^|\/)([^/]+)\/SKILL\.md$/i)?.[1] ?? c.repo);
+  return {
+    id: c.id,
+    name: titlecase(slug),
+    description: c.description ?? `${c.owner}/${c.repo}`,
+    category: (c.category as SkillCategory) || 'Tools',
+    icon: c.author_avatar_url ? '' : '🍬',
+    color: 'bg-violet-500/10 border-violet-500/20 text-violet-300',
+    installCommand: `npx skills add ${c.owner}/${c.repo}`,
+    tags: c.topics_json ? safeJsonArray(c.topics_json) : [],
+    popularity: c.stars,
+    repo: `${c.owner}/${c.repo}`,
+    skillMdUrl: c.raw_url,
+    config: {},
+    editorPick: c.editors_choice === 1,
+    editorNote: c.editors_choice_reason ?? undefined,
+    rating: undefined,
+    users: undefined,
+    developer: c.author_login ?? undefined,
+    openSource: true,
+    // Extra fields stitched in for badge rendering (typed via index access)
+    ...(c.audit_summary
+      ? ({ auditSummary: c.audit_summary } as Partial<Skill>)
+      : {}),
+    ...(c.author_avatar_url
+      ? ({ authorAvatarUrl: c.author_avatar_url } as Partial<Skill>)
+      : {}),
+  } as Skill;
+}
+
+function safeJsonArray(s: string): string[] {
+  try {
+    const v = JSON.parse(s);
+    return Array.isArray(v) ? v.map((x) => String(x)) : [];
+  } catch {
+    return [];
+  }
 }
 
 // Helper to build raw GitHub URL for SKILL.md

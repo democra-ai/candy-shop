@@ -57,6 +57,7 @@ import { sendCFChat, getCFBudget, type CFBudget } from '../../lib/cfChatClient';
 import {
   streamClaudeCodeRun,
   getCCBudget,
+  warmClaudeAgent,
   // deriveRepoUrlFromSkillMd, // unused now that scratch is the default
   type CCBudget,
 } from '../../lib/cfClaudeCodeClient';
@@ -882,15 +883,15 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
   // Fixed OpenCode model – GLM-4.5 on zhipuai-coding-plan provider
   const selectedModel: ModelConfig = { providerID: 'zhipuai-coding-plan', modelID: 'glm-4.5' };
 
-  // Runtime picker — all 3 options live on Cloudflare:
-  //   opencode → oc-sandbox.candy-shop.workers.dev (OpenCode CLI in a CF
-  //              container; clones a repo, runs single-shot, ~30-60s/run)
-  //   cf-ai    → Workers AI Llama 3.1 8B via workers-paid account
-  //              (single-shot chat, no tools, paid plan = no hard cutoff)
-  //   cf-cc    → cc-sandbox.candy-shop.workers.dev (Claude Code CLI in
-  //              the same kind of CF container; same UX as opencode)
+  // Runtime picker. `cf-cc` is the primary, production path: a PERSISTENT
+  // warm Claude Code session over WebSocket (no per-turn cold start) —
+  // this is what makes the web UX feel like using Claude Code directly,
+  // so it is the default.
+  //   cf-cc    → persistent warm Claude Code agent (cc-sandbox). DEFAULT.
+  //   cf-ai    → Workers AI Llama 3.1 8B (single-shot chat, no tools)
+  //   opencode → legacy local OpenCode SDK path (kept as a fallback)
   type RuntimeMode = 'opencode' | 'cf-ai' | 'cf-cc';
-  const [runtimeMode, setRuntimeMode] = useState<RuntimeMode>('opencode');
+  const [runtimeMode, setRuntimeMode] = useState<RuntimeMode>('cf-cc');
   const [cfBudget, setCfBudget] = useState<CFBudget | null>(null);
   const [ccBudget, setCcBudget] = useState<CCBudget | null>(null);
   const [ocBudget, setOcBudget] = useState<OCBudget | null>(null);
@@ -900,9 +901,29 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
   const [sandboxRepo, setSandboxRepo] = useState<string>('');
   // Coarse-grained "what is the sandbox doing" indicator (sandbox modes)
   const [sandboxPhase, setSandboxPhase] = useState<string | null>(null);
+  // Elapsed-time ticker during a sandbox run, so the user sees
+  // "Sandbox: opencode… (24s)" instead of a frozen-looking spinner
+  // when z.ai's TTFT is being slow.
+  const [sandboxElapsed, setSandboxElapsed] = useState(0);
+  useEffect(() => {
+    if (!sandboxPhase) {
+      setSandboxElapsed(0);
+      return;
+    }
+    const startedAt = Date.now();
+    setSandboxElapsed(0);
+    const id = window.setInterval(() => {
+      setSandboxElapsed(Math.floor((Date.now() - startedAt) / 1000));
+    }, 500);
+    return () => window.clearInterval(id);
+  }, [sandboxPhase]);
   useEffect(() => {
     if (runtimeMode === 'cf-ai') getCFBudget().then(setCfBudget);
-    if (runtimeMode === 'cf-cc') getCCBudget().then(setCcBudget);
+    if (runtimeMode === 'cf-cc') {
+      getCCBudget().then(setCcBudget);
+      // Pre-boot the warm container so the first turn has no cold start.
+      warmClaudeAgent();
+    }
     if (runtimeMode === 'opencode') getOCBudget().then(setOcBudget);
   }, [runtimeMode]);
 
@@ -1224,6 +1245,23 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
     const text = input.trim();
     if ((!text && attachedFiles.length === 0) || isRunning) return;
 
+    // Defensive: if the skill markdown isn't loaded yet but we *have* a URL,
+    // fetch it inline so the request never goes out without instructions.
+    // This is a safety net in addition to the input-disable while loading.
+    let resolvedSkillInstructions = skillInstructions;
+    if (!resolvedSkillInstructions && skill.skillMdUrl) {
+      try {
+        const parsed = await fetchSkillMd(skill.skillMdUrl);
+        resolvedSkillInstructions = parsed.instructions;
+        // Cache for subsequent sends in this window
+        setSkillInstructions(parsed.instructions);
+        setSkillLoadStatus('loaded');
+      } catch {
+        // Fall back to systemPrompt/description; better than nothing
+        resolvedSkillInstructions = skill.config.systemPrompt || skill.description || null;
+      }
+    }
+
     // ── Cloudflare Workers AI branch (single-shot chat) ─────────────────
     if (runtimeMode === 'cf-ai') {
       setInput('');
@@ -1247,8 +1285,8 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
         }
         history.push({ role: 'user', content: text });
 
-        const systemPrompt = skillInstructions
-          ? `You are helping with the skill "${skill.name}". Stay on-topic.\n\n${skillInstructions.slice(0, 800)}`
+        const systemPrompt = resolvedSkillInstructions
+          ? `You are helping with the skill "${skill.name}". Stay on-topic.\n\n${resolvedSkillInstructions.slice(0, 800)}`
           : `You are a concise AI assistant.`;
 
         const reply = await sendCFChat([
@@ -1359,39 +1397,43 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
             {
               repo: sandboxRepo || undefined,  // empty → sandbox uses scratch
               task: text,
-              skillMd: skillInstructions ?? undefined,
+              skillMd: resolvedSkillInstructions ?? undefined,
             },
             {
+              // Phases drive ONLY the status pill — not the transcript.
+              // (Build-log spam like [restore]/[setup]/[claude] is what made
+              // this feel un-Claude-Code-like.)
               onPhase: (phase) => {
                 setSandboxPhase(phase);
-                startSection(phase);
-                flushLog();
               },
               onSandboxEvent: (ev, data) => {
-                if (ev === 'restore') log += `✓ container ready (${data.ms ?? '?'}ms)\n`;
-                else if (ev === 'setup') log += `✓ ${data.tail || 'cloned'}\n`;
-                else if (ev === 'done') log += `\n✓ done\n`;
-                flushLog();
+                // Surface only real problems in the transcript. Everything
+                // else (restore/setup/ttfo/done) stays in the status pill.
+                if (ev === 'stall-warning') {
+                  const msg = (data as { message?: string }).message ?? 'model stalled';
+                  log += `\n> ⚠ ${msg}\n`;
+                  flushLog();
+                }
               },
-              onSystemInit: (info) => {
-                if (info.model) log += `model: \`${info.model}\`\n`;
-                if (info.cwd) log += `cwd: \`${info.cwd}\`\n`;
-                if (info.tools?.length) log += `tools: ${info.tools.map(t => `\`${t}\``).join(' · ')}\n`;
-                flushLog();
-              },
+              // Don't dump model/cwd/tool-list into the transcript.
+              onSystemInit: () => {},
               onBlockStart: (b) => {
                 openBlocks.set(b.index, { type: b.type, tool: b.tool?.name, inputJson: '' });
                 if (b.type === 'thinking') {
-                  log += `\n🤔 _thinking…_\n\n> `;
+                  // Quiet, collapsed-feeling reasoning line.
+                  log += `\n_🤔 thinking…_\n`;
                 } else if (b.type === 'tool_use') {
-                  log += `\n🔧 **${b.tool?.name ?? 'tool'}** \`\``;  // double-tick so input_json_delta below appends inside backticks
+                  // Tidy tool-call chip: "→ Read(" … args … ")"
+                  log += `\n\`→ ${b.tool?.name ?? 'tool'}(\``;
                 } else if (b.type === 'text') {
-                  log += `\n💬 `;
+                  // Assistant text is the star — no emoji prefix, just a break.
+                  if (log && !log.endsWith('\n\n')) log += '\n\n';
                 }
                 flushLog();
               },
               onTextDelta: (d) => { log += d; flushLog(); },
-              onThinkingDelta: (d) => { log += d.replace(/\n/g, '\n> '); flushLog(); },
+              // Thinking streams but stays de-emphasized (italic, no blockquote wall).
+              onThinkingDelta: () => { /* suppressed — only the "thinking…" marker shows */ },
               onToolInputDelta: (d, idx) => {
                 const blk = openBlocks.get(idx);
                 if (blk) blk.inputJson = (blk.inputJson || '') + d;
@@ -1401,17 +1443,18 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
               },
               onBlockStop: (idx) => {
                 const blk = openBlocks.get(idx);
-                if (blk?.type === 'tool_use') log += `\`\n`;
+                if (blk?.type === 'tool_use') log += `)\`\n`;   // close → Tool(args)
                 else if (blk?.type === 'thinking') log += `\n`;
                 else if (blk?.type === 'text') log += `\n`;
                 openBlocks.delete(idx);
                 flushLog();
               },
               onToolResult: (r) => {
-                const trimmed = r.content.length > 600
-                  ? r.content.slice(0, 600) + `\n…(+${r.content.length - 600} chars)`
+                // Compact tool result — short ones inline, long ones trimmed.
+                const trimmed = r.content.length > 400
+                  ? r.content.slice(0, 400) + `\n…(+${r.content.length - 400} chars)`
                   : r.content;
-                log += `${r.isError ? '❌' : '↪'} ${'```'}\n${trimmed}\n${'```'}\n`;
+                log += `${r.isError ? '❌ ' : ''}${'```'}\n${trimmed.trim()}\n${'```'}\n`;
                 flushLog();
               },
               onAssistantFinal: () => { /* already streamed via deltas */ },
@@ -1441,7 +1484,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
             {
               repo: sandboxRepo || undefined,
               task: text,
-              skillMd: skillInstructions ?? undefined,
+              skillMd: resolvedSkillInstructions ?? undefined,
             },
             {
               onPhase: (phase) => {
@@ -1450,8 +1493,31 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                 flushLog();
               },
               onSandboxEvent: (ev, data) => {
-                if (ev === 'restore') log += `✓ container ready (${data.ms ?? '?'}ms)\n`;
-                else if (ev === 'setup') log += `✓ ${data.tail || 'cloned'}\n`;
+                if (ev === 'restore') {
+                  const skipped = (data as { skipped?: boolean }).skipped;
+                  log += skipped
+                    ? `✓ _restore skipped (warm scratch)_\n`
+                    : `✓ container ready (${data.ms ?? '?'}ms)\n`;
+                }
+                else if (ev === 'setup') {
+                  const skipped = (data as { skipped?: boolean }).skipped;
+                  const tail = (data as { tail?: string }).tail;
+                  log += `✓ ${skipped ? '_skipped (warm scratch)_' : (tail || 'cloned')}\n`;
+                }
+                else if (ev === 'server') {
+                  const state = (data as { state?: string }).state;
+                  if (state === 'spawning') log += `… spawning opencode server\n`;
+                  else if (state === 'force-restart') log += `↻ restarting opencode server\n`;
+                  else if (state === 'unhealthy') log += `↻ opencode server unhealthy — restarting\n`;
+                  else if (state === 'ready') log += `✓ opencode server ready (${(data as { ms?: number }).ms ?? '?'}ms)\n`;
+                }
+                else if (ev === 'opencode-submit') {
+                  const ok = (data as { ok?: boolean }).ok;
+                  if (!ok) log += `❌ submit failed: ${(data as { status?: string }).status ?? '?'}\n`;
+                }
+                else if (ev === 'stall-diagnostics') {
+                  log += `\n⚠ **agent stalled** — no events from upstream\n`;
+                }
                 flushLog();
               },
               onStderr: (line) => {
@@ -1889,7 +1955,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
     systemParts.push(
       `You are the skill "${skill.name}". ${skill.description} When the user asks what skill you are, what skill is active, or "你是什么 skill", answer clearly that you are the "${skill.name}" skill.`
     );
-    const instructions = skillInstructions || skill.config.systemPrompt;
+    const instructions = resolvedSkillInstructions || skill.config.systemPrompt;
     if (instructions) {
       systemParts.push('\n\n--- Skill instructions ---\n\n');
       systemParts.push(instructions);
@@ -1995,12 +2061,14 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[110] backdrop-blur-md">
-      <div className="bg-background rounded-2xl w-full max-w-7xl h-[92vh] mx-4 overflow-hidden flex flex-col border border-border/50 shadow-candy-lg">
+      <div className="relative bg-background rounded-2xl w-full max-w-7xl h-[92vh] mx-4 overflow-hidden flex flex-col border border-border/50 shadow-candy-lg">
+        {/* candy-wrapper hairline */}
+        <div className="absolute inset-x-0 top-0 h-[3px] bg-candy-gradient z-10" />
         {/* ── Header ─────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/50 glass-strong shrink-0">
           <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-xl border border-primary/20">
-              <span>{skill.icon || '🤖'}</span>
+            <div className="grid place-items-center w-10 h-10 rounded-xl bg-candy-gradient candy-gloss text-xl shadow-candy">
+              <span>{skill.icon || '🍭'}</span>
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -2031,9 +2099,9 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                     Disconnected
                   </span>
                 ) : (
-                  <span className="flex items-center gap-1.5 text-success">
-                    <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-                    Connected
+                  <span className="gumdrop inline-flex items-center gap-1.5 px-2 py-0.5 text-[11px] font-mono font-bold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white/90 animate-pulse" />
+                    {runtimeMode === 'cf-cc' ? 'Warm · ready' : 'Connected'}
                   </span>
                 )}
                 {serverVersion && (
@@ -2577,9 +2645,15 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder={activeQuestion ? "Type your answer here..." : "What should the agent do?"}
+                  placeholder={
+                    activeQuestion
+                      ? "Type your answer here..."
+                      : skillLoadStatus === 'loading'
+                        ? "Loading skill instructions… one moment"
+                        : "What should the agent do?"
+                  }
                   rows={2}
-                  disabled={isRunning}
+                  disabled={isRunning || skillLoadStatus === 'loading'}
                   className="w-full pl-4 pr-28 py-3.5 bg-input border border-input-border rounded-xl
                     text-sm text-foreground placeholder-foreground-tertiary font-body
                     focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/30
@@ -2613,7 +2687,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                   ) : (
                     <button
                       onClick={handleSend}
-                      disabled={!input.trim() && attachedFiles.length === 0}
+                      disabled={(!input.trim() && attachedFiles.length === 0) || skillLoadStatus === 'loading'}
                         className="p-2.5 bg-gradient-to-r from-primary to-primary-hover text-primary-foreground rounded-lg hover:shadow-candy
                         disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer min-w-[38px] min-h-[38px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-primary/50 shadow-candy disabled:shadow-none btn-press"
                       title="Send (Enter)"
@@ -2646,15 +2720,16 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                     Enter to send · Shift+Enter for new line
                   </span>
 
-                  {/* 3-way runtime picker — all three options run on Cloudflare */}
+                  {/* Runtime picker — Claude Code (persistent warm session)
+                      is the primary path and listed first. */}
                   <div className="flex items-center gap-1 text-[11px] rounded-md border border-border bg-background-secondary p-0.5">
                     {([
-                      { id: 'opencode', label: '🤖 OpenCode',
-                        title: 'OpenCode CLI in CF Sandbox (oc-sandbox) — single-shot, clones a repo, runs ~30-60s' },
+                      { id: 'cf-cc', label: '🍭 Claude Code',
+                        title: 'Persistent warm Claude Code session over WebSocket — no per-turn cold start, instant after the first turn. Recommended.' },
                       { id: 'cf-ai', label: '☁️ CF AI',
-                        title: 'Workers AI Llama 3.1 8B via workers-paid account — single-shot chat, no tools' },
-                      { id: 'cf-cc', label: '🔬 Claude Code',
-                        title: 'Claude Code CLI in CF Sandbox (cc-sandbox) — single-shot, clones a repo, runs ~30-90s' },
+                        title: 'Workers AI Llama 3.1 8B — single-shot chat, no tools' },
+                      { id: 'opencode', label: '🤖 OpenCode',
+                        title: 'Legacy local OpenCode SDK path (fallback)' },
                     ] as const).map(opt => (
                       <button
                         key={opt.id}
@@ -2694,7 +2769,9 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                       <Loader2 className="w-3 h-3 animate-spin" />
                       {runtimeMode === 'cf-ai'
                         ? 'Thinking...'
-                        : `Sandbox: ${sandboxPhase || 'starting'}…`}
+                        : sandboxPhase === 'opencode' || sandboxPhase === 'claude'
+                          ? `Waiting for model… (${sandboxElapsed}s)`
+                          : `Sandbox: ${sandboxPhase || 'starting'}… (${sandboxElapsed}s)`}
                     </span>
                   )}
                 </div>

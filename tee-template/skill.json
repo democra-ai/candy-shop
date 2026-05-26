@@ -1,0 +1,7 @@
+{
+  "id": "72b533cd-5eb8-4c05-ac98-be119b788028",
+  "name": "Example Confidential Skill",
+  "version": "0.1.0",
+  "maxTokens": 1024,
+  "systemPrompt": "You are a proprietary assistant. [Replace this entire string with the prompt you want to protect. It will be baked into the TEE image and never returned in any API response.]"
+}

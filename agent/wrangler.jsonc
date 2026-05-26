@@ -1,0 +1,43 @@
+/**
+ * Candy Shop agent — Claude Code in a Cloudflare Sandbox, streamed over SSE.
+ *
+ * Deploys as `cc-sandbox`, so the public URL stays
+ *   https://cc-sandbox.<account>.workers.dev
+ * which is exactly what the main API worker proxies to via /api/cc/run
+ * (see worker/src/index.ts → CC_SANDBOX_URL). Keeping the name means the
+ * frontend contract does not change.
+ *
+ * Schema: https://developers.cloudflare.com/workers/wrangler/configuration/
+ */
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cc-sandbox",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-04-22",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+
+  // The Sandbox container image (Dockerfile installs the Claude Code CLI).
+  // `standard` gives Claude Code enough RAM/CPU to run real skills; bump to
+  // a larger instance_type if skills do heavy work.
+  "containers": [
+    {
+      "class_name": "Sandbox",
+      "image": "./Dockerfile",
+      "instance_type": "standard-1",
+      "max_instances": 20
+    }
+  ],
+
+  // Sandbox is a Durable Object (one container instance per DO id).
+  "durable_objects": {
+    "bindings": [{ "class_name": "Sandbox", "name": "Sandbox" }]
+  },
+
+  "migrations": [{ "new_sqlite_classes": ["Sandbox"], "tag": "v1" }]
+
+  // Secret (set once, never committed):
+  //   wrangler secret put ANTHROPIC_API_KEY
+  // The key is injected by the outbound proxy in src/index.ts and never
+  // enters the container.
+}

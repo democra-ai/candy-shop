@@ -43,6 +43,7 @@ export default {
         ring: 'var(--color-ring)',
         caramel: 'var(--color-caramel)',
         mint: 'var(--color-mint)',
+        grape: 'var(--color-grape)',
         chocolate: 'var(--color-chocolate)',
         cream: 'var(--color-cream)',
         syntax: {
@@ -81,6 +82,8 @@ export default {
         'float': 'float 3s ease-in-out infinite',
         'float-slow': 'float 5s ease-in-out infinite',
         'shimmer': 'shimmer 2s linear infinite',
+        'spin-slow': 'spin 18s linear infinite',
+        'sheen': 'sheen 3.2s ease-in-out infinite',
         'slide-up': 'slide-up 0.5s ease-out forwards',
         'scale-in': 'scale-in 0.3s ease-out',
         'jelly': 'jelly 0.5s ease',
@@ -109,6 +112,11 @@ export default {
         float: {
           '0%, 100%': { transform: 'translateY(0)' },
           '50%': { transform: 'translateY(-6px)' },
+        },
+        sheen: {
+          '0%, 100%': { transform: 'translateX(-120%) skewX(-12deg)', opacity: '0' },
+          '45%, 55%': { opacity: '0.7' },
+          '70%': { transform: 'translateX(220%) skewX(-12deg)', opacity: '0' },
         },
         shimmer: {
           '0%': { backgroundPosition: '-200% 0' },
@@ -150,9 +158,11 @@ export default {
         },
       },
       backgroundImage: {
-        'candy-gradient': 'linear-gradient(135deg, #D4246A 0%, #D4A574 50%, #6EC6B8 100%)',
-        'candy-gradient-soft': 'linear-gradient(135deg, rgba(212,36,106,0.08) 0%, rgba(212,165,116,0.06) 50%, rgba(110,198,184,0.04) 100%)',
-        'candy-mesh': 'radial-gradient(at 40% 20%, rgba(212,36,106,0.06) 0px, transparent 50%), radial-gradient(at 80% 0%, rgba(212,165,116,0.05) 0px, transparent 50%), radial-gradient(at 0% 50%, rgba(110,198,184,0.04) 0px, transparent 50%)',
+        // Candy Atelier signature: raspberry → grape → mint
+        'candy-gradient': 'linear-gradient(135deg, #E11D6B 0%, #7C3AED 52%, #18C3A6 100%)',
+        'candy-gradient-soft': 'linear-gradient(135deg, rgba(225,29,107,0.10) 0%, rgba(124,58,237,0.08) 52%, rgba(24,195,166,0.06) 100%)',
+        'candy-mesh': 'radial-gradient(at 18% 12%, rgba(225,29,107,0.12) 0px, transparent 45%), radial-gradient(at 84% 8%, rgba(124,58,237,0.10) 0px, transparent 48%), radial-gradient(at 50% 96%, rgba(24,195,166,0.09) 0px, transparent 50%)',
+        'candy-conic': 'conic-gradient(from 210deg at 50% 50%, #E11D6B, #7C3AED, #18C3A6, #F2A742, #E11D6B)',
       },
     },
   },

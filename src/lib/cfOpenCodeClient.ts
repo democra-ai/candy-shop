@@ -30,7 +30,8 @@ export interface OCBudget {
 
 export interface OCStreamCallbacks {
   onPhase?: (phase: string) => void;
-  onSandboxEvent?: (event: 'restore' | 'setup', data: Record<string, unknown>) => void;
+  onSandboxEvent?: (event: 'restore' | 'setup' | 'snapshot' | 'diff' | 'opencode_ms' | 'done' | 'server' | 'stall-diagnostics' | 'opencode-submit' | 'opencode-session',
+                    data: Record<string, unknown>) => void;
   /** Stderr line from the sandbox (e.g. db migration messages). */
   onStderr?: (line: string) => void;
   /** A new agent step begins. */
@@ -114,8 +115,11 @@ export async function streamOpenCodeRun(
         cb.onPhase?.(parsed.phase);
         continue;
       }
-      if (event === 'restore' || event === 'setup') {
-        cb.onSandboxEvent?.(event as 'restore' | 'setup', parsed ?? {});
+      if (event === 'restore' || event === 'setup' || event === 'snapshot' ||
+          event === 'diff' || event === 'opencode_ms' || event === 'done' ||
+          event === 'server' || event === 'stall-diagnostics' ||
+          event === 'opencode-submit' || event === 'opencode-session') {
+        cb.onSandboxEvent?.(event as Parameters<NonNullable<typeof cb.onSandboxEvent>>[0], parsed ?? {});
         continue;
       }
       if (event === 'stderr') {

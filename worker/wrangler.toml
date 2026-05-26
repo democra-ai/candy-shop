@@ -39,9 +39,14 @@ binding = "AI"
 # Non-secret env vars. Secrets (Stripe keys, webhook secret) are set via
 #   wrangler secret put STRIPE_SECRET_KEY
 #   wrangler secret put STRIPE_WEBHOOK_SECRET
+#   wrangler secret put CC_AGENT_TICKET_SECRET   # shared with cc-sandbox
 [vars]
 # Leave empty by default; checkout route falls back to request origin.
 PUBLIC_APP_ORIGIN = ""
+# Public URL of the agent worker (deploys as `cc-sandbox`). Unset → the
+# workers.dev default. Override for staging / local dev, e.g.
+# "http://127.0.0.1:8788/".
+# CC_SANDBOX_URL = "https://cc-sandbox.candy-shop.workers.dev/"
 
 [observability]
 enabled = true

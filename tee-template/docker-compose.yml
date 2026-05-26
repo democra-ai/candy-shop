@@ -1,0 +1,20 @@
+# Phala CVM deployment manifest for a Tier-2 Candy Shop skill.
+# Build & push your image first, then run `phala deploy` from this folder.
+services:
+  skill:
+    image: ${SKILL_IMAGE:-ghcr.io/your-org/candy-shop-skill:latest}
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - TEE_PROVIDER=phala
+      - TEE_PLATFORM_SIGNING_KEY=${TEE_PLATFORM_SIGNING_KEY}
+      - TEE_PLATFORM_ED25519_PUBKEY=${TEE_PLATFORM_ED25519_PUBKEY:-}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_BASE_URL=${LLM_BASE_URL:-https://api.anthropic.com/v1/messages}
+      - LLM_MODEL=${LLM_MODEL:-claude-sonnet-4-6}
+      # Real CVM: dstack guest agent socket lives at /var/run/dstack.sock
+      - DSTACK_SOCK=/var/run/dstack.sock
+    volumes:
+      # Bind the dstack agent socket into the container for attestation calls.
+      - /var/run/dstack.sock:/var/run/dstack.sock

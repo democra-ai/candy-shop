@@ -60,6 +60,9 @@ export const storageUtils = {
         origin: skill.origin || 'created',
         createdAt: skill.createdAt instanceof Date ? skill.createdAt : new Date(skill.createdAt || Date.now()),
         updatedAt: new Date(),
+        // ── Privacy tier (v2) ──
+        executionModel: skill.executionModel || 'open',
+        ...(skill.teeConfig && { teeConfig: skill.teeConfig }),
       };
       skills.push(skillWithTimestamp);
       localStorage.setItem(SKILLS_KEY, JSON.stringify(skills));
@@ -101,6 +104,35 @@ export const storageUtils = {
   getSkillById: (skillId: string): Skill | undefined => {
     const skills = storageUtils.getSkills();
     return skills.find(s => s.id === skillId);
+  },
+
+  // Publish a skill to the marketplace (writes to Supabase via /api/skills/upsert).
+  // Creator-side skills normally live in localStorage only; calling this
+  // promotes one into the public catalog. TEE config is validated server-side.
+  publishSkill: async (skill: Skill): Promise<{ ok: boolean; id?: string; error?: string }> => {
+    try {
+      const resp = await fetch('/api/skills/upsert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: skill.id,
+          userId: skill.userId,
+          name: skill.name,
+          description: skill.description,
+          category: skill.category,
+          icon: skill.icon,
+          tags: skill.tags,
+          isPublic: skill.isPublic,
+          executionModel: skill.executionModel,
+          teeConfig: skill.teeConfig,
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) return { ok: false, error: data?.error || `HTTP ${resp.status}` };
+      return { ok: true, id: data.id };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : 'Publish failed' };
+    }
   },
 
   saveExecutionHistory: (skillId: string, input: string, output: string, duration: number): void => {

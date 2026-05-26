@@ -55,16 +55,17 @@ const THEME_COLORS: Record<
       '--color-primary-active': '#F59E0B',
     },
   },
+  // Candy Atelier default — matches the redesigned tokens.
   rose: {
     light: {
-      '--color-primary': '#D4246A',
-      '--color-primary-hover': '#BF1F5F',
-      '--color-primary-active': '#A81A54',
+      '--color-primary': '#E11D6B',
+      '--color-primary-hover': '#C9165C',
+      '--color-primary-active': '#AE1250',
     },
     dark: {
-      '--color-primary': '#F28BAE',
-      '--color-primary-hover': '#F5A0BF',
-      '--color-primary-active': '#E8759A',
+      '--color-primary': '#FF6FA5',
+      '--color-primary-hover': '#FF85B4',
+      '--color-primary-active': '#F25492',
     },
   },
   violet: {

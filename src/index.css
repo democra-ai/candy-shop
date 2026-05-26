@@ -20,133 +20,154 @@
 
 @layer base {
   :root {
-    /* ==================== Confiserie de Luxe — Light ==================== */
+    /* ==================== Candy Atelier — Sugar Glass (Light) ====================
+       Glossy confectionery. Crisp sugar-white canvas, confident raspberry,
+       a vivid grape third accent, bright mint. Richer & more dimensional
+       than the old timid cream/pink. */
 
-    /* Background — warm cream tones */
-    --color-background: #FFF8F0;
-    --color-background-secondary: #FFF3E8;
-    --color-background-tertiary: #FFEDE0;
+    /* Background — clean sugar with the faintest warm bloom */
+    --color-background: #FFFDFB;
+    --color-background-secondary: #FFF4F8;
+    --color-background-tertiary: #F4F0FF;
 
-    /* Card — white with warm pink tint */
-    --color-card: #FFFBF8;
-    --color-card-foreground: #2D1B14;
+    /* Card — pure glossy white */
+    --color-card: #FFFFFF;
+    --color-card-foreground: #1F1320;
 
-    /* Text — chocolate tones */
-    --color-foreground: #2D1B14;
-    --color-foreground-secondary: #7A6058;
-    --color-foreground-tertiary: #9A8A82;
-    --color-foreground-muted: #D4C4BC;
+    /* Text — deep plum-ink */
+    --color-foreground: #1F1320;
+    --color-foreground-secondary: #6B5566;
+    --color-foreground-tertiary: #978795;
+    --color-foreground-muted: #D9CCD6;
 
-    /* Primary — Rich Raspberry */
-    --color-primary: #D4246A;
-    --color-primary-hover: #BF1F5F;
-    --color-primary-active: #A81A54;
+    /* Primary — Punch Raspberry */
+    --color-primary: #E11D6B;
+    --color-primary-hover: #C9165C;
+    --color-primary-active: #AE1250;
     --color-primary-foreground: #FFFFFF;
 
-    /* Secondary */
-    --color-secondary: #F5EDE4;
-    --color-secondary-foreground: #2D1B14;
+    /* Secondary — raspberry sugar */
+    --color-secondary: #FBEFF5;
+    --color-secondary-foreground: #1F1320;
 
-    /* Accent — Sophisticated Mint */
-    --color-accent: #6EC6B8;
-    --color-accent-foreground: #1A5C52;
+    /* Accent — Vivid Mint */
+    --color-accent: #18C3A6;
+    --color-accent-foreground: #06443A;
 
     /* Candy tokens */
-    --color-caramel: #D4A574;
-    --color-mint: #6EC6B8;
-    --color-chocolate: #2D1B14;
-    --color-cream: #FFF8F0;
+    --color-caramel: #F2A742;
+    --color-mint: #18C3A6;
+    --color-grape: #7C3AED;
+    --color-chocolate: #1F1320;
+    --color-cream: #FFFDFB;
+
+    /* Glossy candy surface controls */
+    --candy-gloss: rgba(255, 255, 255, 0.7);
+    --candy-gloss-edge: rgba(255, 255, 255, 0.15);
+    --sticker-ink: #1F1320;
+    --sticker-shadow: 4px 4px 0 0 rgba(31, 19, 32, 0.12);
+    --sticker-shadow-press: 1px 1px 0 0 rgba(31, 19, 32, 0.16);
 
     /* Semantic */
-    --color-success: #4CAF82;
+    --color-success: #1FB97A;
     --color-success-foreground: #FFFFFF;
-    --color-warning: #E8A84C;
-    --color-warning-foreground: #FFFFFF;
-    --color-error: #D94848;
+    --color-warning: #F5A623;
+    --color-warning-foreground: #4A2C00;
+    --color-error: #F0413E;
     --color-error-foreground: #FFFFFF;
-    --color-info: #5B7FD6;
+    --color-info: #4F6EF2;
     --color-info-foreground: #FFFFFF;
 
-    /* Border — warm */
-    --color-border: #F0DDD0;
-    --color-border-hover: #E6C8B8;
+    /* Border */
+    --color-border: #F1E3EC;
+    --color-border-hover: #E6CFE0;
 
     /* Input */
-    --color-input: #FFFBF8;
-    --color-input-border: #F0DDD0;
-    --color-ring: #D4246A;
+    --color-input: #FFFFFF;
+    --color-input-border: #EAD9E6;
+    --color-ring: #E11D6B;
 
     /* Syntax — candy-themed */
-    --color-syntax-keyword: #D4246A;
-    --color-syntax-string: #4CAF82;
-    --color-syntax-comment: #B8A090;
-    --color-syntax-variable: #D4A574;
-    --color-syntax-function: #6EC6B8;
+    --color-syntax-keyword: #E11D6B;
+    --color-syntax-string: #1FB97A;
+    --color-syntax-comment: #B7A6B4;
+    --color-syntax-variable: #F2A742;
+    --color-syntax-function: #18C3A6;
   }
 
   .dark {
-    /* ==================== Confiserie de Luxe — Dark ==================== */
+    /* ==================== Candy Atelier — Licorice Neon (Dark) ====================
+       Deep aubergine-black glass with neon candy accents. Striking,
+       not muddy. */
 
-    /* Background — deep dark chocolate */
-    --color-background: #1A0E0A;
-    --color-background-secondary: #221510;
-    --color-background-tertiary: #2D1E18;
+    /* Background — deep aubergine */
+    --color-background: #140A18;
+    --color-background-secondary: #1C0F22;
+    --color-background-tertiary: #261433;
 
-    /* Card — dark truffle */
-    --color-card: #261A15;
-    --color-card-foreground: #F5EDE4;
+    /* Card — glassy dark plum */
+    --color-card: #1E1126;
+    --color-card-foreground: #F7ECF4;
 
-    /* Text — cream tones */
-    --color-foreground: #F5EDE4;
-    --color-foreground-secondary: #B8A898;
-    --color-foreground-tertiary: #8A7A70;
-    --color-foreground-muted: #3D2E28;
+    /* Text — sugar tones */
+    --color-foreground: #F7ECF4;
+    --color-foreground-secondary: #C0A6BE;
+    --color-foreground-tertiary: #8C7389;
+    --color-foreground-muted: #3A2640;
 
-    /* Primary — Soft Rose */
-    --color-primary: #F28BAE;
-    --color-primary-hover: #F5A0BF;
-    --color-primary-active: #E8759A;
-    --color-primary-foreground: #1A0E0A;
+    /* Primary — Neon Rose */
+    --color-primary: #FF6FA5;
+    --color-primary-hover: #FF85B4;
+    --color-primary-active: #F25492;
+    --color-primary-foreground: #1A0E1F;
 
     /* Secondary */
-    --color-secondary: #2D1E18;
-    --color-secondary-foreground: #F5EDE4;
+    --color-secondary: #261433;
+    --color-secondary-foreground: #F7ECF4;
 
-    /* Accent */
-    --color-accent: #7ED6C8;
-    --color-accent-foreground: #1A4A42;
+    /* Accent — Neon Mint */
+    --color-accent: #34E2C4;
+    --color-accent-foreground: #053C33;
 
     /* Candy tokens (dark) */
-    --color-caramel: #E8C49A;
-    --color-mint: #7ED6C8;
-    --color-chocolate: #F5EDE4;
-    --color-cream: #1A0E0A;
+    --color-caramel: #F7C173;
+    --color-mint: #34E2C4;
+    --color-grape: #A974FF;
+    --color-chocolate: #F7ECF4;
+    --color-cream: #140A18;
+
+    /* Glossy candy surface controls */
+    --candy-gloss: rgba(255, 255, 255, 0.16);
+    --candy-gloss-edge: rgba(255, 255, 255, 0.05);
+    --sticker-ink: #000000;
+    --sticker-shadow: 4px 4px 0 0 rgba(0, 0, 0, 0.45);
+    --sticker-shadow-press: 1px 1px 0 0 rgba(0, 0, 0, 0.5);
 
     /* Semantic */
-    --color-success: #6BCF9E;
-    --color-success-foreground: #0D3B26;
-    --color-warning: #F0C06A;
-    --color-warning-foreground: #5A3A00;
-    --color-error: #F07070;
-    --color-error-foreground: #5A0000;
-    --color-info: #8AA4F0;
-    --color-info-foreground: #1A2850;
+    --color-success: #43D998;
+    --color-success-foreground: #053C26;
+    --color-warning: #F7C35A;
+    --color-warning-foreground: #4A2C00;
+    --color-error: #FF6B6B;
+    --color-error-foreground: #2E0000;
+    --color-info: #8AA0FF;
+    --color-info-foreground: #0F1A50;
 
     /* Border */
-    --color-border: #3D2E28;
-    --color-border-hover: #4D3E38;
+    --color-border: #3A2640;
+    --color-border-hover: #4C3454;
 
     /* Input */
-    --color-input: #261A15;
-    --color-input-border: #3D2E28;
-    --color-ring: #F28BAE;
+    --color-input: #1E1126;
+    --color-input-border: #3A2640;
+    --color-ring: #FF6FA5;
 
     /* Syntax (dark) */
-    --color-syntax-keyword: #F28BAE;
-    --color-syntax-string: #6BCF9E;
-    --color-syntax-comment: #6A5A50;
-    --color-syntax-variable: #E8C49A;
-    --color-syntax-function: #7ED6C8;
+    --color-syntax-keyword: #FF6FA5;
+    --color-syntax-string: #43D998;
+    --color-syntax-comment: #6A4F6E;
+    --color-syntax-variable: #F7C173;
+    --color-syntax-function: #34E2C4;
   }
 }
 
@@ -198,51 +219,42 @@
   @apply bg-foreground-tertiary;
 }
 
-/* ==================== Glass Morphism ==================== */
+/* ==================== Glass Morphism — token-driven ====================
+   Tints to whatever the active theme's card/border tokens are, so the
+   chrome (sidebar, top bar, cards, modals) always matches the palette
+   instead of being pinned to the old warm-brown values. */
 .glass {
-  background: rgba(255, 251, 248, 0.75);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(240, 221, 208, 0.4);
-}
-
-.dark .glass {
-  background: rgba(38, 26, 21, 0.75);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(61, 46, 40, 0.4);
+  background: color-mix(in srgb, var(--color-card) 72%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid color-mix(in srgb, var(--color-border) 65%, transparent);
 }
 
 .glass-strong {
-  background: rgba(255, 251, 248, 0.9);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: color-mix(in srgb, var(--color-card) 90%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
 }
 
-.dark .glass-strong {
-  background: rgba(38, 26, 21, 0.9);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-/* ==================== Candy Gradients ==================== */
+/* ==================== Candy Gradients — Atelier palette ==================== */
 .candy-gradient {
-  background: linear-gradient(135deg, #D4246A 0%, #D4A574 50%, #6EC6B8 100%);
+  background: linear-gradient(135deg, #E11D6B 0%, #7C3AED 52%, #18C3A6 100%);
 }
 
 .candy-gradient-soft {
-  background: linear-gradient(135deg, rgba(212,36,106,0.08) 0%, rgba(212,165,116,0.06) 50%, rgba(110,198,184,0.04) 100%);
+  background: linear-gradient(135deg, rgba(225,29,107,0.10) 0%, rgba(124,58,237,0.08) 52%, rgba(24,195,166,0.06) 100%);
 }
 
 .candy-gradient-text {
-  background: linear-gradient(135deg, #D4246A 0%, #D4A574 60%, #6EC6B8 100%);
+  background: linear-gradient(135deg, #E11D6B 0%, #7C3AED 55%, #18C3A6 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .candy-gradient-raspberry-gold {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-caramel) 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-grape) 55%, var(--color-accent) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -298,6 +310,62 @@
 .card-luxe:hover {
   transform: translateY(-4px);
   box-shadow: 0 12px 30px -8px rgba(212, 36, 106, 0.1), 0 4px 12px rgba(45, 27, 20, 0.06);
+}
+
+/* ==================== Candy Atelier — Signature Surfaces ==================== */
+
+/* Glossy specular sheen — the wet-candy highlight. Layer on any rounded
+   surface (hero orb, primary buttons, featured cards). */
+.candy-gloss { position: relative; overflow: hidden; }
+.candy-gloss::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(120% 80% at 30% 8%, var(--candy-gloss) 0%, transparent 42%),
+    linear-gradient(180deg, var(--candy-gloss-edge) 0%, transparent 30%);
+  pointer-events: none;
+}
+
+/* Pastille surface (formerly "sticker") — refined glossy confection.
+   Replaces the chunky inked border + hard offset shadow (which read as
+   scrapbook / amateur) with a soft hairline + layered candy elevation
+   that lifts on hover. Premium patisserie, not sticker book. */
+.sticker {
+  border: 2px solid var(--sticker-ink);
+  border-radius: 1.25rem;
+  box-shadow: var(--sticker-shadow);
+  transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.16s ease;
+  will-change: transform;
+}
+.sticker:hover {
+  transform: translate(2px, 2px);
+  box-shadow: var(--sticker-shadow-press);
+}
+.sticker:active {
+  transform: translate(4px, 4px) scale(0.99);
+  box-shadow: 0 0 0 0 transparent;
+}
+
+/* Gumdrop pill — glossy rounded tag/badge */
+.gumdrop {
+  border-radius: 999px;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--color-primary) 88%, white) 0%,
+    var(--color-primary) 100%);
+  color: var(--color-primary-foreground);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.45),
+              0 4px 14px -3px color-mix(in srgb, var(--color-primary) 45%, transparent);
+}
+
+/* Subtle sugar grain — atmosphere without noise files */
+.candy-grain {
+  background-image:
+    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--color-grape) 40%, transparent) 0.6px, transparent 0.7px);
+  background-size: 7px 7px;
+  opacity: 0.04;
 }
 
 /* ==================== Staggered Reveal ==================== */

@@ -1,6 +1,23 @@
 import { useState } from 'react';
-import { ArrowLeft, Plus, X } from 'lucide-react';
+import { ArrowLeft, Plus, X, Shield, Cloud, Globe } from 'lucide-react';
 import type { Skill, SkillCategory } from '../../types/skill-creator';
+
+type ExecutionTier = 'open' | 'managed' | 'tee';
+type TeeProvider = 'phala' | 'aws-nitro' | 'gcp-cs' | 'azure-cc' | 'oasis';
+
+const TIER_OPTIONS: Array<{ value: ExecutionTier; label: string; subtitle: string; icon: React.ReactNode; ring: string }> = [
+  { value: 'open',    label: 'Open',    subtitle: 'Source public — user runs locally. Free.',                          icon: <Globe className="w-4 h-4" />,  ring: 'ring-emerald-500' },
+  { value: 'managed', label: 'Managed', subtitle: 'We run it. Prompt hidden from users.',                               icon: <Cloud className="w-4 h-4" />,  ring: 'ring-blue-500' },
+  { value: 'tee',     label: 'TEE',     subtitle: 'Runs in a confidential enclave. Prompt hidden from everyone.',      icon: <Shield className="w-4 h-4" />, ring: 'ring-fuchsia-500' },
+];
+
+const TEE_PROVIDERS: Array<{ value: TeeProvider; label: string }> = [
+  { value: 'phala',     label: 'Phala Cloud (recommended)' },
+  { value: 'aws-nitro', label: 'AWS Nitro Enclaves' },
+  { value: 'gcp-cs',    label: 'GCP Confidential Space' },
+  { value: 'azure-cc',  label: 'Azure Confidential Computing' },
+  { value: 'oasis',     label: 'Oasis Network' },
+];
 
 interface ManualSkillFormProps {
   onSave: (skill: Partial<Skill>) => void;
@@ -25,6 +42,11 @@ export function ManualSkillForm({ onSave, onCancel }: ManualSkillFormProps) {
   const [systemPrompt, setSystemPrompt] = useState('');
   const [capabilities, setCapabilities] = useState<string[]>([]);
   const [newCapability, setNewCapability] = useState('');
+  const [executionTier, setExecutionTier] = useState<ExecutionTier>('open');
+  const [teeProvider, setTeeProvider] = useState<TeeProvider>('phala');
+  const [teeEndpoint, setTeeEndpoint] = useState('');
+  const [teeCodeHash, setTeeCodeHash] = useState('');
+  const [teeAttestationUrl, setTeeAttestationUrl] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validateForm = (): boolean => {
@@ -41,6 +63,17 @@ export function ManualSkillForm({ onSave, onCancel }: ManualSkillFormProps) {
     }
     if (capabilities.length === 0) {
       newErrors.capabilities = 'At least one capability is required';
+    }
+
+    if (executionTier === 'tee') {
+      // Endpoint & codeHash can be filled in after deploy, so only require provider.
+      // But if an endpoint is present, require a valid URL.
+      if (teeEndpoint.trim() && !/^https?:\/\//.test(teeEndpoint.trim())) {
+        newErrors.teeEndpoint = 'Endpoint must start with http:// or https://';
+      }
+      if (teeCodeHash.trim() && !/^[0-9a-f]{64}$/i.test(teeCodeHash.trim())) {
+        newErrors.teeCodeHash = 'Code hash must be a 64-char sha256 hex string';
+      }
     }
 
     setErrors(newErrors);
@@ -73,6 +106,15 @@ export function ManualSkillForm({ onSave, onCancel }: ManualSkillFormProps) {
       icon,
       color: 'bg-primary/10 border-primary/20 text-primary',
       tags: [category],
+      executionModel: executionTier,
+      ...(executionTier === 'tee' && {
+        teeConfig: {
+          provider: teeProvider,
+          endpoint: teeEndpoint.trim() || undefined,
+          codeHash: teeCodeHash.trim() || undefined,
+          attestationUrl: teeAttestationUrl.trim() || undefined,
+        },
+      }),
       config: {
         capabilities,
         systemPrompt,
@@ -257,6 +299,110 @@ export function ManualSkillForm({ onSave, onCancel }: ManualSkillFormProps) {
 
           {errors.capabilities && (
             <p className="text-sm text-red-600 mt-1">{errors.capabilities}</p>
+          )}
+        </div>
+
+        {/* Privacy Tier */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Privacy Tier</label>
+          <p className="text-xs text-gray-500 mb-3">
+            Controls who can see your skill's system prompt after publishing.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            {TIER_OPTIONS.map((opt) => {
+              const selected = executionTier === opt.value;
+              return (
+                <button
+                  type="button"
+                  key={opt.value}
+                  onClick={() => setExecutionTier(opt.value)}
+                  className={`text-left p-3 border rounded-lg transition-all ${
+                    selected
+                      ? `border-transparent ring-2 ${opt.ring} bg-gray-50`
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1 font-medium text-gray-900">
+                    {opt.icon}
+                    <span>{opt.label}</span>
+                  </div>
+                  <p className="text-xs text-gray-500 leading-snug">{opt.subtitle}</p>
+                </button>
+              );
+            })}
+          </div>
+
+          {executionTier === 'tee' && (
+            <div className="mt-4 p-4 rounded-lg border border-fuchsia-200 bg-fuchsia-50/50 space-y-4">
+              <div className="flex items-start gap-2 text-xs text-fuchsia-900">
+                <Shield className="w-4 h-4 mt-0.5 shrink-0" />
+                <p>
+                  Your prompt will be baked into a sealed Docker image and deployed to a TEE.
+                  Use <code className="px-1 py-0.5 bg-white rounded border">tee-template/</code> to
+                  build & deploy, then paste the deployment details below.
+                  Endpoint and code hash can be left blank now and filled in after deploy.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">TEE Provider</label>
+                <select
+                  value={teeProvider}
+                  onChange={(e) => setTeeProvider(e.target.value as TeeProvider)}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  {TEE_PROVIDERS.map((p) => (
+                    <option key={p.value} value={p.value}>{p.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Endpoint URL <span className="text-gray-400">(optional — set after deploy)</span>
+                </label>
+                <input
+                  type="text"
+                  value={teeEndpoint}
+                  onChange={(e) => setTeeEndpoint(e.target.value)}
+                  placeholder="https://<your-cvm>.phala.network"
+                  className={`w-full px-3 py-2 text-sm font-mono border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring ${
+                    errors.teeEndpoint ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                />
+                {errors.teeEndpoint && <p className="text-xs text-red-600 mt-1">{errors.teeEndpoint}</p>}
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Code hash <span className="text-gray-400">(sha256 from <code>docker run ... cat /app/code_hash.txt</code>)</span>
+                </label>
+                <input
+                  type="text"
+                  value={teeCodeHash}
+                  onChange={(e) => setTeeCodeHash(e.target.value)}
+                  placeholder="e.g. 3a7b…"
+                  className={`w-full px-3 py-2 text-sm font-mono border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring ${
+                    errors.teeCodeHash ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                />
+                {errors.teeCodeHash && <p className="text-xs text-red-600 mt-1">{errors.teeCodeHash}</p>}
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Attestation URL <span className="text-gray-400">(optional — for public verification)</span>
+                </label>
+                <input
+                  type="text"
+                  value={teeAttestationUrl}
+                  onChange={(e) => setTeeAttestationUrl(e.target.value)}
+                  placeholder="https://<your-cvm>.phala.network/attestation"
+                  className="w-full px-3 py-2 text-sm font-mono border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+            </div>
           )}
         </div>
 

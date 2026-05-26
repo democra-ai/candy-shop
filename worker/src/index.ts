@@ -27,6 +27,17 @@ type Bindings = {
   // exceeds the free 10k Neurons/day instead of being hard-cut.
   AI_PROXY_URL?: string;
   AI_PROXY_SECRET?: string;
+  // Tier-1 BYOK: derives an AES-GCM key for encrypting user API keys at rest.
+  BYOK_ENC_KEY?: string;
+  // Tier-2 TEE: shared HMAC secret for signing platform→CVM requests.
+  TEE_PLATFORM_SIGNING_KEY?: string;
+  TEE_TIMEOUT_MS?: string;
+  // Public URL of the in-repo `agent/` worker (deploys as `cc-sandbox`).
+  // Overridable per-environment; default is the workers.dev URL.
+  CC_SANDBOX_URL?: string;
+  // Shared HMAC secret with the agent worker, used to sign short-lived
+  // access tickets. Set via: wrangler secret put CC_AGENT_TICKET_SECRET
+  CC_AGENT_TICKET_SECRET?: string;
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
@@ -737,97 +748,755 @@ app.post('/api/ai/chat', async (c) => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// Claude Code Sandbox proxy
+// Skill invocation — fast LLM path with 3-tier privacy
 // ═══════════════════════════════════════════════════════════════
 //
-// Proxies POST /api/cc/run → cc-sandbox.candy-shop.workers.dev
-// - cc-sandbox itself doesn't set CORS headers, so the browser cannot
-//   call it directly from candy.democra.ai. We forward and stream back
-//   the SSE response with our own CORS already applied via Hono.
-// - Hard cap: 8 runs / session / day in AI_BUDGET KV. Each Claude Code
-//   run can take 30-90s of compute on the upstream sandbox, so we keep
-//   the budget very tight.
+// POST /api/skill/:id/run  { input, model?, byokProvider? }
+//
+// Tiers (per skill.execution_model):
+//   open     — Tier 0: prompt + LLM call run on platform (env.AI / AI_PROXY).
+//                       Source is public. Default cheapest path.
+//   managed  — Tier 1: prompt sealed in D1, never returned to client.
+//                       Platform calls 3rd-party LLM. If the caller has a
+//                       BYOK key registered, the call goes out with their
+//                       key (so the LLM provider sees prompt but never
+//                       caller identity — caller is anonymized at the
+//                       network edge). Otherwise the platform key is used.
+//   tee      — Tier 2: prompt sealed inside a TEE CVM. We forward, verify
+//                       the returned attestation, log it, return result.
+//
+// All tiers stream SSE: event=delta data="...", final event=done data={...}.
 
-const CC_SANDBOX_URL = 'https://cc-sandbox.candy-shop.workers.dev/';
-const OC_SANDBOX_URL = 'https://oc-sandbox.candy-shop.workers.dev/';
+type SkillRow = {
+  id: string;
+  name: string;
+  pricing_model: string;
+  price_amount: number;
+  execution_model: 'open' | 'managed' | 'tee' | 'federated';
+  system_prompt: string | null;
+  default_model: string | null;
+  tee_provider: string | null;
+  tee_endpoint: string | null;
+  tee_code_hash: string | null;
+  allowed_providers: string | null;
+};
 
-/** Generic Sandbox proxy — used for both /api/cc/run and /api/oc/run.
- *  No hard cap — billing protection is the user's CF account spending limit.
- *  We still maintain a daily counter for transparency / observability. */
-async function sandboxProxy(c: any, kind: 'cc' | 'oc') {
-  const sess = await readSession(c);
-  const upstream = kind === 'cc' ? CC_SANDBOX_URL : OC_SANDBOX_URL;
-  const budgetKey = todayKey(`${kind}:${sess?.sub ?? c.req.header('cf-connecting-ip') ?? 'anon'}`);
-
-  const body = await c.req.json().catch(() => null) as {
-    repo?: string;
-    task?: string;
-    model?: string;
-    skillMd?: string;
-    fresh?: boolean;
-  } | null;
-  if (!body?.task) {
-    return c.json({ error: 'task required (repo optional — empty uses sandbox scratch dir)' }, 400);
+async function checkEntitlement(env: Bindings, userId: string, skillId: string, pricingModel: string, priceAmount: number): Promise<{ ok: boolean; reason: string }> {
+  if (pricingModel === 'free' || priceAmount === 0) return { ok: true, reason: 'free' };
+  const ent = await env.DB.prepare(
+    `SELECT type, expires_at, remaining_calls FROM entitlements WHERE user_id = ? AND skill_id = ?`
+  ).bind(userId, skillId).first<{ type: string; expires_at: string | null; remaining_calls: number | null }>();
+  if (!ent) return { ok: false, reason: 'no_entitlement' };
+  if (ent.type === 'permanent') return { ok: true, reason: 'permanent' };
+  if (ent.type === 'subscription') {
+    const alive = !ent.expires_at || new Date(ent.expires_at).getTime() > Date.now();
+    return { ok: alive, reason: alive ? 'subscription' : 'subscription_expired' };
   }
-
-  // Track usage (no cap, just a counter)
-  const used = parseInt((await c.env.AI_BUDGET.get(budgetKey)) ?? '0', 10);
-  await c.env.AI_BUDGET.put(budgetKey, String(used + 1), {
-    expirationTtl: secondsUntilUtcMidnight(),
-  });
-
-  // Forward streaming SSE upstream. Pass through the optional fields too
-  // so the sandbox can load skill context, switch models per request, etc.
-  const forwardBody: Record<string, unknown> = { task: body.task };
-  if (body.repo) forwardBody.repo = body.repo;
-  if (body.model) forwardBody.model = body.model;
-  if (body.skillMd) forwardBody.skillMd = body.skillMd;
-  if (body.fresh) forwardBody.fresh = body.fresh;
-
-  const upRes = await fetch(upstream, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(forwardBody),
-  });
-
-  if (!upRes.ok || !upRes.body) {
-    const err = await upRes.text().catch(() => '');
-    return c.json({ error: `upstream ${upRes.status}: ${err.slice(0, 200)}` }, 502);
+  if (ent.type === 'per_call') {
+    if ((ent.remaining_calls ?? 0) > 0) return { ok: true, reason: 'per_call' };
+    return { ok: false, reason: 'per_call_exhausted' };
   }
+  return { ok: false, reason: 'unknown_entitlement' };
+}
 
-  return new Response(upRes.body, {
+async function consumePerCall(env: Bindings, userId: string, skillId: string) {
+  await env.DB.prepare(
+    `UPDATE entitlements SET remaining_calls = remaining_calls - 1
+     WHERE user_id = ? AND skill_id = ? AND type = 'per_call' AND remaining_calls > 0`
+  ).bind(userId, skillId).run();
+}
+
+// SSE helper — encodes events as text/event-stream frames.
+function sseStream(producer: (write: (event: string, data: unknown) => void) => Promise<void>): Response {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      const write = (event: string, data: unknown) => {
+        const payload = typeof data === 'string' ? data : JSON.stringify(data);
+        controller.enqueue(encoder.encode(`event: ${event}\ndata: ${payload}\n\n`));
+      };
+      try { await producer(write); }
+      catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        write('error', { message: msg });
+      }
+      finally { controller.close(); }
+    },
+  });
+  return new Response(stream, {
     status: 200,
     headers: {
-      'content-type': upRes.headers.get('content-type') || 'text/event-stream',
+      'content-type': 'text/event-stream',
       'cache-control': 'no-store, no-transform',
       'x-accel-buffering': 'no',
-      [`x-${kind}-runs-used-today`]: String(used + 1),
     },
   });
 }
 
-function sandboxBudget(kind: 'cc' | 'oc', upstream: string) {
-  return async (c: any) => {
-    const sess = await readSession(c);
-    const key = todayKey(`${kind}:${sess?.sub ?? c.req.header('cf-connecting-ip') ?? 'anon'}`);
-    const used = parseInt((await c.env.AI_BUDGET.get(key)) ?? '0', 10);
-    // No cap — `limit: null` signals "unlimited" to the frontend.
-    return c.json({
-      date: todayKey('').split(':')[1],
-      used,
-      limit: null,
-      remaining: null,
-      upstream,
-      resets_in_seconds: secondsUntilUtcMidnight(),
-    });
+// ── BYOK encryption (AES-GCM, key derived from env.BYOK_ENC_KEY) ─
+async function byokCryptoKey(env: Bindings): Promise<CryptoKey | null> {
+  const secret = (env as any).BYOK_ENC_KEY as string | undefined;
+  if (!secret) return null;
+  const raw = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secret));
+  return crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt', 'decrypt']);
+}
+
+async function encryptBYOK(env: Bindings, plaintext: string): Promise<string | null> {
+  const key = await byokCryptoKey(env);
+  if (!key) return null;
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(plaintext));
+  const buf = new Uint8Array(iv.length + ct.byteLength);
+  buf.set(iv, 0);
+  buf.set(new Uint8Array(ct), iv.length);
+  return btoa(String.fromCharCode(...buf));
+}
+
+async function decryptBYOK(env: Bindings, ciphertextB64: string): Promise<string | null> {
+  const key = await byokCryptoKey(env);
+  if (!key) return null;
+  try {
+    const buf = Uint8Array.from(atob(ciphertextB64), c => c.charCodeAt(0));
+    const iv = buf.slice(0, 12);
+    const ct = buf.slice(12);
+    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+    return new TextDecoder().decode(pt);
+  } catch { return null; }
+}
+
+// ── BYOK routes ───────────────────────────────────────────────
+app.put('/api/user/byok', async (c) => {
+  const sess = await readSession(c);
+  if (!sess) return c.json({ error: 'auth_required' }, 401);
+  const body = await c.req.json().catch(() => null) as { provider?: string; apiKey?: string; label?: string } | null;
+  if (!body?.provider || !body?.apiKey) return c.json({ error: 'provider and apiKey required' }, 400);
+  if (!['anthropic', 'openai', 'groq', 'cerebras', 'deepseek', 'zhipu', 'mock', 'workers-ai'].includes(body.provider)) {
+    return c.json({ error: 'unsupported provider' }, 400);
+  }
+  // workers-ai is a virtual provider that uses Cloudflare's free daily
+  // Workers AI allocation — no real third-party key required. We still
+  // store a marker row so the BYOK flow looks the same end-to-end.
+  if (body.provider === 'workers-ai' && body.apiKey === 'use-cf-free-tier') {
+    // accepted — marker key
+  }
+  const ct = await encryptBYOK(c.env, body.apiKey);
+  if (!ct) return c.json({ error: 'BYOK_ENC_KEY not configured on this Worker' }, 503);
+  await c.env.DB.prepare(
+    `INSERT INTO user_byok_keys (user_id, provider, ciphertext, label, updated_at)
+     VALUES (?, ?, ?, ?, datetime('now'))
+     ON CONFLICT(user_id, provider) DO UPDATE SET
+       ciphertext = excluded.ciphertext, label = excluded.label, updated_at = datetime('now')`
+  ).bind(sess.sub, body.provider, ct, body.label ?? null).run();
+  return c.json({ ok: true, provider: body.provider });
+});
+
+app.get('/api/user/byok', async (c) => {
+  const sess = await readSession(c);
+  if (!sess) return c.json({ error: 'auth_required' }, 401);
+  const { results } = await c.env.DB.prepare(
+    `SELECT provider, label, updated_at FROM user_byok_keys WHERE user_id = ?`
+  ).bind(sess.sub).all<{ provider: string; label: string | null; updated_at: string }>();
+  return c.json({ keys: results || [] });
+});
+
+app.delete('/api/user/byok/:provider', async (c) => {
+  const sess = await readSession(c);
+  if (!sess) return c.json({ error: 'auth_required' }, 401);
+  await c.env.DB.prepare(
+    `DELETE FROM user_byok_keys WHERE user_id = ? AND provider = ?`
+  ).bind(sess.sub, c.req.param('provider')).run();
+  return c.json({ ok: true });
+});
+
+async function getBYOKKey(env: Bindings, userId: string, provider: string): Promise<string | null> {
+  const row = await env.DB.prepare(
+    `SELECT ciphertext FROM user_byok_keys WHERE user_id = ? AND provider = ?`
+  ).bind(userId, provider).first<{ ciphertext: string }>();
+  if (!row) return null;
+  return decryptBYOK(env, row.ciphertext);
+}
+
+// ── Provider dispatchers (Tier-1) ────────────────────────────
+// Stream text deltas via `onDelta`. Returns usage counts.
+async function callAnthropic(opts: {
+  apiKey: string;
+  model: string;
+  systemPrompt: string;
+  userInput: string;
+  onDelta: (text: string) => void;
+}): Promise<{ inputTokens: number; outputTokens: number }> {
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': opts.apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: opts.model || 'claude-haiku-4-5',
+      max_tokens: 1024,
+      system: opts.systemPrompt,
+      messages: [{ role: 'user', content: opts.userInput }],
+      stream: true,
+    }),
+  });
+  if (!resp.ok || !resp.body) {
+    const t = await resp.text().catch(() => '');
+    throw new Error(`Anthropic ${resp.status}: ${t.slice(0, 200)}`);
+  }
+  const reader = resp.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '';
+  let inputTokens = 0, outputTokens = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let sep;
+    while ((sep = buf.indexOf('\n\n')) >= 0) {
+      const block = buf.slice(0, sep); buf = buf.slice(sep + 2);
+      const dataLine = block.split('\n').find(l => l.startsWith('data: '));
+      if (!dataLine) continue;
+      const json = dataLine.slice(6);
+      if (json === '[DONE]') continue;
+      try {
+        const e = JSON.parse(json);
+        if (e.type === 'content_block_delta' && e.delta?.type === 'text_delta') {
+          opts.onDelta(e.delta.text || '');
+        } else if (e.type === 'message_start' && e.message?.usage) {
+          inputTokens = e.message.usage.input_tokens ?? 0;
+        } else if (e.type === 'message_delta' && e.usage?.output_tokens) {
+          outputTokens = e.usage.output_tokens;
+        }
+      } catch { /* skip */ }
+    }
+  }
+  return { inputTokens, outputTokens };
+}
+
+async function callOpenAICompatible(opts: {
+  apiKey: string;
+  baseURL: string;
+  model: string;
+  systemPrompt: string;
+  userInput: string;
+  onDelta: (text: string) => void;
+}): Promise<{ inputTokens: number; outputTokens: number }> {
+  const resp = await fetch(`${opts.baseURL.replace(/\/+$/, '')}/chat/completions`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'authorization': `Bearer ${opts.apiKey}` },
+    body: JSON.stringify({
+      model: opts.model,
+      messages: [
+        { role: 'system', content: opts.systemPrompt },
+        { role: 'user', content: opts.userInput },
+      ],
+      stream: true,
+    }),
+  });
+  if (!resp.ok || !resp.body) {
+    const t = await resp.text().catch(() => '');
+    throw new Error(`${opts.baseURL} ${resp.status}: ${t.slice(0, 200)}`);
+  }
+  const reader = resp.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '';
+  let inputTokens = 0, outputTokens = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let sep;
+    while ((sep = buf.indexOf('\n\n')) >= 0) {
+      const block = buf.slice(0, sep); buf = buf.slice(sep + 2);
+      const dataLine = block.split('\n').find(l => l.startsWith('data: '));
+      if (!dataLine) continue;
+      const json = dataLine.slice(6);
+      if (json === '[DONE]') continue;
+      try {
+        const e = JSON.parse(json);
+        const delta = e.choices?.[0]?.delta?.content;
+        if (delta) opts.onDelta(delta);
+        if (e.usage) {
+          inputTokens = e.usage.prompt_tokens ?? inputTokens;
+          outputTokens = e.usage.completion_tokens ?? outputTokens;
+        }
+      } catch { /* skip */ }
+    }
+  }
+  return { inputTokens, outputTokens };
+}
+
+function providerBaseURLs(env: Bindings): Record<string, string> {
+  return {
+    openai: 'https://api.openai.com/v1',
+    groq: 'https://api.groq.com/openai/v1',
+    cerebras: 'https://api.cerebras.ai/v1',
+    deepseek: 'https://api.deepseek.com/v1',
+    zhipu: 'https://open.bigmodel.cn/api/paas/v4',
+    // Local dev override — only takes effect when MOCK_LLM_BASE_URL is set
+    // (e.g. in worker/.dev.vars). Used by scripts/byok-smoke.mjs.
+    ...((env as any).MOCK_LLM_BASE_URL ? { mock: (env as any).MOCK_LLM_BASE_URL as string } : {}),
   };
 }
 
-app.get('/api/cc/budget', sandboxBudget('cc', CC_SANDBOX_URL));
-app.post('/api/cc/run', (c) => sandboxProxy(c, 'cc'));
+// ── TEE proxy (Tier-2) — mirrors api/invoke/[skillId]/index.ts ─
+async function proxyToTEEWorker(env: Bindings, skill: SkillRow, input: unknown, callerId: string): Promise<{ result: string; attestation: any; attestationId: string }> {
+  if (!skill.tee_endpoint) throw new Error('Tier-2 skill missing tee_endpoint');
+  const nonce = crypto.randomUUID();
+  const body = JSON.stringify({ skillId: skill.id, input, callerId, nonce });
 
-app.get('/api/oc/budget', sandboxBudget('oc', OC_SANDBOX_URL));
-app.post('/api/oc/run', (c) => sandboxProxy(c, 'oc'));
+  const hmacKey = (env as any).TEE_PLATFORM_SIGNING_KEY as string | undefined;
+  let sig = '', alg = 'none';
+  if (hmacKey) {
+    const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(hmacKey),
+      { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const s = await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(body + nonce));
+    sig = Array.from(new Uint8Array(s)).map(b => b.toString(16).padStart(2, '0')).join('');
+    alg = 'hmac-sha256';
+  }
+  const timeoutMs = Number((env as any).TEE_TIMEOUT_MS || 30000);
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+
+  let resp: Response;
+  try {
+    resp = await fetch(`${skill.tee_endpoint.replace(/\/$/, '')}/invoke`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'X-Platform-Signature': sig,
+        'X-Platform-Sig-Alg': alg,
+        'X-Nonce': nonce,
+      },
+      body, signal: ctrl.signal,
+    });
+  } finally { clearTimeout(timer); }
+
+  if (!resp.ok) {
+    const t = await resp.text().catch(() => '');
+    throw new Error(`TEE ${resp.status}: ${t.slice(0, 200)}`);
+  }
+  const data = await resp.json() as { result: any; attestation: any };
+  if (!data.attestation?.codeHash) throw new Error('TEE response missing attestation');
+
+  // Verify codeHash + nonce binding (local strategy)
+  const reasons: string[] = [];
+  if (skill.tee_code_hash && data.attestation.codeHash !== skill.tee_code_hash) {
+    reasons.push(`codeHash mismatch`);
+  }
+  const echoed = data.attestation.payload?.nonce;
+  if (echoed !== nonce) reasons.push('nonce binding failed');
+  const valid = reasons.length === 0;
+
+  // Record attestation
+  const attestationId = crypto.randomUUID();
+  await env.DB.prepare(
+    `INSERT INTO tee_attestations (id, skill_id, code_hash, provider, payload, signature, valid, verifier)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'platform:local')`
+  ).bind(
+    attestationId, skill.id, data.attestation.codeHash, data.attestation.provider,
+    JSON.stringify(data.attestation.payload), data.attestation.signature ?? null,
+    valid ? 1 : 0
+  ).run().catch(e => console.error('tee_attestations insert', e));
+
+  if (valid) {
+    await env.DB.prepare(
+      `UPDATE skills SET tee_last_verified_at = datetime('now') WHERE id = ?`
+    ).bind(skill.id).run().catch(() => {});
+  } else {
+    throw new Error(`TEE attestation rejected: ${reasons.join('; ')}`);
+  }
+
+  const result = typeof data.result === 'string' ? data.result : JSON.stringify(data.result);
+  return { result, attestation: data.attestation, attestationId };
+}
+
+// ── GET /api/skill/:id/manifest (public, always visible) ────
+// Tier-1/2 skills expose name/description/pricing but never the
+// system_prompt. Tier-0 includes systemPrompt so anyone can run it.
+app.get('/api/skill/:id/manifest', async (c) => {
+  const skill = await c.env.DB.prepare(
+    `SELECT id, name, description, category, icon, tags, pricing_model, price_amount,
+            price_currency, execution_model, system_prompt, default_model, tee_provider,
+            tee_endpoint, tee_code_hash, tee_last_verified_at
+     FROM skills WHERE id = ?`
+  ).bind(c.req.param('id')).first<{
+    id: string; name: string; description: string; category: string | null;
+    icon: string | null; tags: string | null; pricing_model: string;
+    price_amount: number; price_currency: string;
+    execution_model: 'open' | 'managed' | 'tee' | 'federated';
+    system_prompt: string | null; default_model: string | null;
+    tee_provider: string | null; tee_endpoint: string | null;
+    tee_code_hash: string | null; tee_last_verified_at: string | null;
+  }>();
+  if (!skill) return c.json({ error: 'skill not found' }, 404);
+
+  const exposesPrompt = skill.execution_model === 'open';
+  let tags: string[] = [];
+  try { tags = skill.tags ? JSON.parse(skill.tags) : []; } catch { /* */ }
+
+  return c.json({
+    id: skill.id,
+    name: skill.name,
+    description: skill.description,
+    category: skill.category,
+    icon: skill.icon,
+    tags,
+    pricing: {
+      model: skill.pricing_model,
+      amount: skill.price_amount,
+      currency: skill.price_currency,
+    },
+    executionModel: skill.execution_model,
+    manifestVisibility: exposesPrompt ? 'full' : 'manifest_only',
+    systemPrompt: exposesPrompt ? skill.system_prompt : null,
+    defaultModel: skill.default_model,
+    tee: skill.execution_model === 'tee' ? {
+      provider: skill.tee_provider,
+      endpoint: skill.tee_endpoint,
+      codeHash: skill.tee_code_hash,
+      lastVerifiedAt: skill.tee_last_verified_at,
+    } : null,
+  });
+});
+
+// ── POST /api/skills/upsert (creator publish) ────────────────
+app.post('/api/skills/upsert', async (c) => {
+  const sess = await readSession(c);
+  if (!sess) return c.json({ error: 'auth_required' }, 401);
+
+  const body = await c.req.json().catch(() => null) as {
+    id?: string;
+    name?: string;
+    description?: string;
+    category?: string;
+    icon?: string;
+    tags?: string[];
+    isPublic?: boolean;
+    pricingModel?: 'free' | 'one_time' | 'per_call' | 'subscription';
+    price?: number;
+    executionModel?: 'open' | 'managed' | 'tee';
+    systemPrompt?: string;
+    defaultModel?: string;
+    teeConfig?: {
+      provider?: string;
+      endpoint?: string;
+      codeHash?: string;
+    };
+  } | null;
+
+  if (!body?.id || !body?.name) return c.json({ error: 'id and name required' }, 400);
+  const exec = body.executionModel ?? 'open';
+  if (!['open', 'managed', 'tee', 'federated'].includes(exec)) {
+    return c.json({ error: 'invalid executionModel' }, 400);
+  }
+  if (exec === 'tee') {
+    if (!body.teeConfig?.provider) return c.json({ error: 'tee skill needs teeConfig.provider' }, 400);
+    if (body.teeConfig.codeHash && !/^[0-9a-f]{64}$/i.test(body.teeConfig.codeHash)) {
+      return c.json({ error: 'tee_code_hash must be sha256 hex' }, 400);
+    }
+  }
+  if ((exec === 'managed' || exec === 'tee') && !body.systemPrompt && exec !== 'tee') {
+    return c.json({ error: 'managed skill needs systemPrompt' }, 400);
+  }
+
+  await c.env.DB.prepare(
+    `INSERT INTO skills (id, user_id, name, description, category, icon, tags, is_public,
+                         pricing_model, price_amount, price_currency,
+                         execution_model, system_prompt, default_model,
+                         tee_provider, tee_endpoint, tee_code_hash, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'usd', ?, ?, ?, ?, ?, ?, datetime('now'))
+     ON CONFLICT(id) DO UPDATE SET
+       name = excluded.name,
+       description = excluded.description,
+       category = excluded.category,
+       icon = excluded.icon,
+       tags = excluded.tags,
+       is_public = excluded.is_public,
+       pricing_model = excluded.pricing_model,
+       price_amount = excluded.price_amount,
+       execution_model = excluded.execution_model,
+       system_prompt = excluded.system_prompt,
+       default_model = excluded.default_model,
+       tee_provider = excluded.tee_provider,
+       tee_endpoint = excluded.tee_endpoint,
+       tee_code_hash = excluded.tee_code_hash,
+       updated_at = datetime('now')`
+  ).bind(
+    body.id, sess.sub, body.name, body.description ?? '',
+    body.category ?? 'Custom', body.icon ?? '✨',
+    JSON.stringify(body.tags ?? []), body.isPublic === false ? 0 : 1,
+    body.pricingModel ?? 'free', body.price ?? 0,
+    exec,
+    exec === 'open' ? (body.systemPrompt ?? null) : (body.systemPrompt ?? null),
+    body.defaultModel ?? null,
+    exec === 'tee' ? body.teeConfig?.provider ?? null : null,
+    exec === 'tee' ? body.teeConfig?.endpoint ?? null : null,
+    exec === 'tee' ? body.teeConfig?.codeHash ?? null : null,
+  ).run();
+
+  return c.json({ ok: true, id: body.id });
+});
+
+// ── /api/skill/:id/run ────────────────────────────────────────
+app.post('/api/skill/:id/run', async (c) => {
+  const sess = await readSession(c);
+  if (!sess) return c.json({ error: 'auth_required' }, 401);
+
+  const skillId = c.req.param('id');
+  const body = await c.req.json().catch(() => null) as {
+    input?: string;
+    model?: string;
+    byokProvider?: string;
+  } | null;
+  if (!body?.input) return c.json({ error: 'input required' }, 400);
+
+  const skill = await c.env.DB.prepare(
+    `SELECT id, name, pricing_model, price_amount, execution_model, system_prompt,
+            default_model, tee_provider, tee_endpoint, tee_code_hash, allowed_providers
+     FROM skills WHERE id = ?`
+  ).bind(skillId).first<SkillRow>();
+  if (!skill) return c.json({ error: 'skill not found' }, 404);
+
+  const ent = await checkEntitlement(c.env, sess.sub, skill.id, skill.pricing_model, skill.price_amount);
+  if (!ent.ok) {
+    return c.json({
+      error: 'payment_required',
+      reason: ent.reason,
+      pricingModel: skill.pricing_model,
+      priceAmount: skill.price_amount,
+    }, 402);
+  }
+
+  const invocationId = crypto.randomUUID();
+  const startedAt = Date.now();
+  const tier = skill.execution_model === 'tee' ? 'tee'
+             : skill.execution_model === 'managed' ? 'managed'
+             : 'open';
+
+  return sseStream(async (write) => {
+    write('start', { invocationId, tier, skillId: skill.id });
+
+    let inputTokens = 0, outputTokens = 0, fullOutput = '';
+    const onDelta = (t: string) => { fullOutput += t; write('delta', t); };
+
+    try {
+      if (tier === 'tee') {
+        const { result, attestation, attestationId } = await proxyToTEEWorker(c.env, skill, body.input, sess.sub);
+        write('delta', result);
+        fullOutput = result;
+        write('attestation', { attestationId, codeHash: attestation.codeHash, provider: attestation.provider });
+      } else if (tier === 'managed') {
+        const provider = body.byokProvider || 'workers-ai';
+        const sys = skill.system_prompt ?? `You are ${skill.name}.`;
+
+        if (provider === 'workers-ai') {
+          // Free path — uses Cloudflare's daily Workers AI allocation. No
+          // third-party key required. Privacy still holds at platform layer
+          // (prompt sealed in D1), but the "external provider anonymization"
+          // is moot since the provider IS this platform's AI binding.
+          const messages = [
+            { role: 'system' as const, content: sys.slice(0, 4000) },
+            { role: 'user' as const, content: body.input!.slice(0, 4000) },
+          ];
+          const aiStream = await c.env.AI.run(AI_MODEL, { messages, max_tokens: 768, stream: true } as any) as unknown as ReadableStream<Uint8Array>;
+          const reader = aiStream.getReader();
+          const dec = new TextDecoder();
+          let buf = '';
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buf += dec.decode(value, { stream: true });
+            let sep;
+            while ((sep = buf.indexOf('\n')) >= 0) {
+              const line = buf.slice(0, sep); buf = buf.slice(sep + 1);
+              if (!line.startsWith('data: ')) continue;
+              const json = line.slice(6).trim();
+              if (!json || json === '[DONE]') continue;
+              try {
+                const e = JSON.parse(json);
+                const t = e.response ?? e.choices?.[0]?.delta?.content;
+                if (t) onDelta(t);
+              } catch { /* skip */ }
+            }
+          }
+        } else {
+          const apiKey = await getBYOKKey(c.env, sess.sub, provider);
+          if (!apiKey) {
+            write('error', { message: `No BYOK key registered for provider '${provider}'. PUT /api/user/byok first.` });
+            return;
+          }
+          const model = body.model || skill.default_model || (provider === 'anthropic' ? 'claude-haiku-4-5' : 'gpt-4o-mini');
+          if (provider === 'anthropic') {
+            const u = await callAnthropic({ apiKey, model, systemPrompt: sys, userInput: body.input!, onDelta });
+            inputTokens = u.inputTokens; outputTokens = u.outputTokens;
+          } else {
+            const baseURL = providerBaseURLs(c.env)[provider];
+            if (!baseURL) { write('error', { message: `Unknown provider ${provider}` }); return; }
+            const u = await callOpenAICompatible({ apiKey, baseURL, model, systemPrompt: sys, userInput: body.input!, onDelta });
+            inputTokens = u.inputTokens; outputTokens = u.outputTokens;
+          }
+        }
+      } else {
+        // Tier 0 — Workers AI on the platform account.
+        const sys = skill.system_prompt ?? `You are ${skill.name}. ${''}`;
+        const messages = [
+          { role: 'system' as const, content: sys.slice(0, 4000) },
+          { role: 'user' as const, content: body.input!.slice(0, 4000) },
+        ];
+        // env.AI.run with stream: true returns a ReadableStream of OpenAI-style SSE.
+        const aiStream = await c.env.AI.run(AI_MODEL, { messages, max_tokens: 768, stream: true } as any) as unknown as ReadableStream<Uint8Array>;
+        const reader = aiStream.getReader();
+        const dec = new TextDecoder();
+        let buf = '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += dec.decode(value, { stream: true });
+          let sep;
+          while ((sep = buf.indexOf('\n')) >= 0) {
+            const line = buf.slice(0, sep); buf = buf.slice(sep + 1);
+            if (!line.startsWith('data: ')) continue;
+            const json = line.slice(6).trim();
+            if (!json || json === '[DONE]') continue;
+            try {
+              const e = JSON.parse(json);
+              const t = e.response ?? e.choices?.[0]?.delta?.content;
+              if (t) onDelta(t);
+            } catch { /* skip */ }
+          }
+        }
+      }
+
+      const durationMs = Date.now() - startedAt;
+      // Record invocation + consume per-call entitlement
+      await c.env.DB.prepare(
+        `INSERT INTO invocations (id, skill_id, caller_id, caller_type, provider, amount, tier, duration_ms, input_tokens, output_tokens)
+         VALUES (?, ?, ?, 'user', ?, ?, ?, ?, ?, ?)`
+      ).bind(
+        invocationId, skill.id, sess.sub,
+        // Tier-1 always records `byok` (the LLM call was paid for by the
+        // caller's third-party key, regardless of whether the skill itself
+        // is free). Tier 0/2 record the entitlement provider.
+        tier === 'managed' ? 'byok' : (ent.reason === 'free' ? 'free' : 'stripe'),
+        skill.price_amount, tier, durationMs, inputTokens, outputTokens,
+      ).run().catch(e => console.error('invocations insert', e));
+
+      if (ent.reason === 'per_call') {
+        await consumePerCall(c.env, sess.sub, skill.id);
+      }
+
+      write('done', {
+        invocationId, durationMs, tier,
+        inputTokens, outputTokens,
+        outputLength: fullOutput.length,
+        entitlement: ent.reason,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      write('error', { message: msg, tier });
+    }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Agent access tickets
+// ═══════════════════════════════════════════════════════════════
+//
+// The browser talks to the agent (`cc-sandbox`) over a *direct*
+// WebSocket — no per-turn proxy hop, lowest latency. To stop the agent
+// endpoint from being scanned/freeloaded, every connection must carry a
+// short-lived HMAC ticket minted HERE, only after the user's session is
+// validated. The agent worker verifies the signature + expiry before it
+// boots any container or makes any LLM call.
+//
+//   POST /api/cc/ticket  →  { ticket, exp, agentUrl }   (needs session)
+//
+// The agent base URL is overridable per-environment; default matches the
+// `cc-sandbox` deploy name on the account's workers.dev subdomain.
+const DEFAULT_CC_SANDBOX_URL = 'https://cc-sandbox.candy-shop.workers.dev/';
+const ccSandboxUrl = (c: any) =>
+  (c.env.CC_SANDBOX_URL || DEFAULT_CC_SANDBOX_URL).replace(/\/+$/, '') + '/';
+
+const TICKET_TTL_MS = 120_000; // enough to open the WS / pre-warm
+
+function b64url(bytes: ArrayBuffer | Uint8Array): string {
+  const b = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  let s = '';
+  for (let i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/** ticket = b64url(payloadJSON) + "." + b64url(HMAC-SHA256(payloadB64)). */
+async function mintTicket(
+  secret: string,
+  payload: { sub: string; exp: number; skill?: string },
+): Promise<string> {
+  const payloadB64 = b64url(new TextEncoder().encode(JSON.stringify(payload)));
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const sig = await crypto.subtle.sign(
+    'HMAC',
+    key,
+    new TextEncoder().encode(payloadB64),
+  );
+  return `${payloadB64}.${b64url(sig)}`;
+}
+
+// Mint an agent access ticket. Requires an authenticated session (guest
+// sessions count — they still carry a stable `sub`), so an anonymous
+// scanner with no session cookie cannot obtain one.
+app.post('/api/cc/ticket', async (c) => {
+  const sess = await readSession(c);
+  if (!sess?.sub) {
+    return c.json({ error: 'sign in (or start a guest session) first' }, 401);
+  }
+  const secret = c.env.CC_AGENT_TICKET_SECRET;
+  if (!secret) {
+    return c.json(
+      { error: 'agent not configured (CC_AGENT_TICKET_SECRET unset)' },
+      503,
+    );
+  }
+
+  const body = (await c.req.json().catch(() => ({}))) as { skill?: string };
+
+  // Usage counter (observability / future rate-limit hook).
+  const key = todayKey(`cc:${sess.sub}`);
+  const used = parseInt((await c.env.AI_BUDGET.get(key)) ?? '0', 10);
+  await c.env.AI_BUDGET.put(key, String(used + 1), {
+    expirationTtl: secondsUntilUtcMidnight(),
+  });
+
+  const exp = Date.now() + TICKET_TTL_MS;
+  const ticket = await mintTicket(secret, {
+    sub: sess.sub,
+    exp,
+    skill: body.skill,
+  });
+  return c.json({ ticket, exp, agentUrl: ccSandboxUrl(c) });
+});
+
+// Daily usage counter (frontend shows this; no hard cap).
+app.get('/api/cc/budget', async (c) => {
+  const sess = await readSession(c);
+  const key = todayKey(`cc:${sess?.sub ?? c.req.header('cf-connecting-ip') ?? 'anon'}`);
+  const used = parseInt((await c.env.AI_BUDGET.get(key)) ?? '0', 10);
+  return c.json({
+    date: todayKey('').split(':')[1],
+    used,
+    limit: null,
+    remaining: null,
+    upstream: ccSandboxUrl(c),
+    resets_in_seconds: secondsUntilUtcMidnight(),
+  });
+});
 
 // ═══════════════════════════════════════════════════════════════
 // Fallback

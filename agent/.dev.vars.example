@@ -1,0 +1,11 @@
+# Local dev secrets for `wrangler dev`. Copy to `.dev.vars` (gitignored).
+#
+# Set ONE of the following. The credential stays in the worker; only a
+# placeholder ("proxy-injected") is forwarded into the container, and the
+# outbound proxy swaps in the real value on calls to api.anthropic.com.
+
+# Pay-per-token API key (recommended for production):
+ANTHROPIC_API_KEY=
+
+# OR a Claude.ai subscription token. Get one with: claude setup-token
+CLAUDE_CODE_OAUTH_TOKEN=

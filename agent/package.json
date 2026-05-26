@@ -1,0 +1,24 @@
+{
+  "name": "candy-shop-agent",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Candy Shop AI-skill execution agent — Claude Code running inside a Cloudflare Sandbox, streamed over SSE. Deploys as `cc-sandbox`.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "secret:anthropic": "wrangler secret put ANTHROPIC_API_KEY",
+    "types": "wrangler types",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cloudflare/containers": "^0.3.0",
+    "@cloudflare/sandbox": "0.10.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250121.0",
+    "@types/node": "^24.10.1",
+    "typescript": "~5.9.3",
+    "wrangler": "^4.82.2"
+  }
+}

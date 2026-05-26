@@ -1,0 +1,15 @@
+{
+  "name": "candy-shop-agent-container",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Persistent Claude Agent SDK WebSocket server that runs inside the Cloudflare Sandbox container. One long-lived session per connection — no per-turn re-init.",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "0.3.143",
+    "ws": "^8.18.0"
+  }
+}

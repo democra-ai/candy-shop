@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ShoppingBag, User as UserIcon, LogOut, Plus, Library, Menu, X, Moon, Sun, Check, Settings, Globe } from 'lucide-react';
+import { ShoppingBag, User as UserIcon, LogOut, Plus, Library, Menu, X, Moon, Sun, Check, Settings, Globe, Puzzle } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import type { User } from '../../lib/supabaseClient';
 import { supabase } from '../../lib/supabaseClient';
@@ -67,15 +67,22 @@ export function Header({
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur-sm">
-        <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      <header className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-xl">
+        {/* candy-wrapper hairline */}
+        <div className="h-[3px] w-full bg-candy-gradient" />
+        <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto border-b border-border/60">
           {/* Logo */}
           <div className="flex items-center gap-8">
             <button
               onClick={() => navigate('/')}
-              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+              className="group flex items-center gap-2.5 transition-transform active:scale-95"
             >
-              <span className="font-candy font-bold text-foreground text-lg">🍭 Candy Shop</span>
+              <span className="grid place-items-center w-8 h-8 rounded-xl bg-candy-gradient candy-gloss text-base shadow-candy group-hover:animate-jelly">
+                🍭
+              </span>
+              <span className="font-candy font-bold text-lg bg-candy-gradient bg-clip-text text-transparent">
+                Candy Shop
+              </span>
             </button>
 
             {/* Desktop Nav */}
@@ -117,6 +124,19 @@ export function Header({
                   </button>
                 </>
               )}
+              <button
+                onClick={() => navigate('/tweaks')}
+                title="Tweaks — community modifications"
+                className={cn(
+                  'px-3 py-2 text-sm rounded-lg transition-colors flex items-center gap-1.5',
+                  location.pathname === '/tweaks'
+                    ? 'text-primary bg-primary/10'
+                    : 'text-foreground-secondary hover:text-foreground hover:bg-secondary'
+                )}
+              >
+                <Puzzle className="w-3.5 h-3.5" />
+                Tweaks
+              </button>
             </nav>
           </div>
 
@@ -223,7 +243,7 @@ export function Header({
             ) : (
               <button
                 onClick={onOpenAuth}
-                className="hidden md:flex items-center h-9 px-4 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary-hover transition-colors"
+                className="sticker candy-gloss hidden md:flex items-center h-9 px-5 bg-candy-gradient text-white !rounded-xl text-sm font-bold"
               >
                 {t('login')}
               </button>
@@ -293,7 +313,7 @@ export function Header({
                   <div className="h-px bg-border my-2" />
                   <button
                     onClick={() => { onOpenAuth(); setMobileOpen(false); }}
-                    className="w-full h-10 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary-hover transition-colors"
+                    className="sticker candy-gloss w-full h-10 bg-candy-gradient text-white !rounded-xl text-sm font-bold"
                   >
                     {t('login')}
                   </button>

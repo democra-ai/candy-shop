@@ -1,16 +1,8 @@
 {
   "rewrites": [
     {
-      "source": "/api/payment/config",
-      "destination": "/api/health"
-    },
-    {
-      "source": "/api/invoke/:skillId/stats",
-      "destination": "/api/invoke/:skillId/manifest"
-    },
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
+      "source": "/api/:path*",
+      "destination": "https://candy-shop-api.tao-shen.workers.dev/api/:path*"
     },
     {
       "source": "/((?!api/)(?!.*\\.).*)",

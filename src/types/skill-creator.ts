@@ -38,6 +38,21 @@ export interface Skill {
 
   // Origin
   origin?: 'created' | 'store';
+
+  // ── Privacy tier (v2) ──────────────────────────────────
+  /** Privacy tier for the skill's runtime:
+   *   'open'    = source public, user runs locally
+   *   'managed' = platform runs it; prompt hidden from users but visible to platform ops
+   *   'tee'     = runs in a TEE; prompt hidden from everyone incl. platform */
+  executionModel?: 'open' | 'managed' | 'tee';
+
+  /** TEE deployment config — required when executionModel === 'tee' */
+  teeConfig?: {
+    provider: 'phala' | 'aws-nitro' | 'gcp-cs' | 'azure-cc' | 'oasis';
+    endpoint?: string;                // set after CVM deploy
+    codeHash?: string;                // sha256 from docker build
+    attestationUrl?: string;
+  };
 }
 
 export type SkillCategory =

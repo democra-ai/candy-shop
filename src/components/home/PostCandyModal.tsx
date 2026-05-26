@@ -14,14 +14,14 @@ const CATEGORY_EMOJIS: Record<SkillCategory, string> = {
 };
 
 const CATEGORY_COLORS: Record<SkillCategory, string> = {
-  Development: 'bg-blue-100 border-blue-200 text-blue-700',
-  Design: 'bg-pink-100 border-pink-200 text-pink-700',
+  Development: 'bg-sky-100 border-sky-200 text-sky-700',
+  Design: 'bg-fuchsia-100 border-fuchsia-200 text-fuchsia-700',
   Marketing: 'bg-orange-100 border-orange-200 text-orange-700',
-  Productivity: 'bg-emerald-100 border-emerald-200 text-emerald-700',
+  Productivity: 'bg-teal-100 border-teal-200 text-teal-700',
   Tools: 'bg-violet-100 border-violet-200 text-violet-700',
   Research: 'bg-cyan-100 border-cyan-200 text-cyan-700',
   Mobile: 'bg-lime-100 border-lime-200 text-lime-700',
-  Writing: 'bg-yellow-100 border-yellow-200 text-yellow-700',
+  Writing: 'bg-amber-100 border-amber-200 text-amber-700',
 };
 
 interface PostCandyModalProps {

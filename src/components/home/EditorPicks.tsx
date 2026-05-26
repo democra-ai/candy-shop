@@ -1,22 +1,25 @@
 import { Star, Users, ChevronRight, Sparkles } from 'lucide-react';
-import { SKILLS_DATA, type Skill } from '../../data/skillsData';
+import { SKILLS_DATA, crawlerSkillToSkill, type Skill } from '../../data/skillsData';
 import { cn } from '../../utils/cn';
 import { getCandyEmoji, CANDY_EMOJIS } from '../../utils/candy';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { SkillModal } from '../common/SkillModal';
+import { listSkills } from '../../lib/skillCrawlerClient';
+import { AuditPillCompact, EditorChoiceBadge } from '../common/AuditBadges';
 
 const getCategoryColor = (category: string) => {
   const colors: Record<string, { gradient: string; text: string }> = {
-    Development: { gradient: 'from-blue-500/20 to-indigo-500/10', text: 'text-blue-400' },
-    Design: { gradient: 'from-pink-500/20 to-rose-500/10', text: 'text-pink-400' },
-    Marketing: { gradient: 'from-orange-500/20 to-amber-500/10', text: 'text-orange-400' },
-    Productivity: { gradient: 'from-emerald-500/20 to-teal-500/10', text: 'text-emerald-400' },
-    Tools: { gradient: 'from-violet-500/20 to-purple-500/10', text: 'text-violet-400' },
-    Research: { gradient: 'from-cyan-500/20 to-sky-500/10', text: 'text-cyan-400' },
-    Mobile: { gradient: 'from-lime-500/20 to-green-500/10', text: 'text-lime-400' },
-    Writing: { gradient: 'from-yellow-500/20 to-orange-500/10', text: 'text-yellow-400' },
+    // Matches SkillsGrid's confectionery palette.
+    Development: { gradient: 'from-sky-500/20 to-sky-500/5', text: 'text-sky-500' },
+    Design: { gradient: 'from-fuchsia-500/20 to-fuchsia-500/5', text: 'text-fuchsia-500' },
+    Marketing: { gradient: 'from-orange-500/20 to-orange-500/5', text: 'text-orange-500' },
+    Productivity: { gradient: 'from-teal-500/20 to-teal-500/5', text: 'text-teal-500' },
+    Tools: { gradient: 'from-violet-500/20 to-violet-500/5', text: 'text-violet-500' },
+    Research: { gradient: 'from-cyan-500/20 to-cyan-500/5', text: 'text-cyan-500' },
+    Mobile: { gradient: 'from-lime-500/20 to-lime-500/5', text: 'text-lime-600' },
+    Writing: { gradient: 'from-amber-500/20 to-amber-500/5', text: 'text-amber-500' },
   };
-  return colors[category] || { gradient: 'from-gray-500/20 to-gray-500/10', text: 'text-gray-400' };
+  return colors[category] || { gradient: 'from-primary/20 to-primary/5', text: 'text-primary' };
 };
 
 function deriveRating(skill: Skill): number {
@@ -32,8 +35,29 @@ interface EditorPicksProps {
 
 export function EditorPicks({ onRunSkill }: EditorPicksProps) {
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
+  const [crawlerPicks, setCrawlerPicks] = useState<Skill[] | null>(null);
 
-  const editorPicks = SKILLS_DATA.filter((s) => s.editorPick).slice(0, 5);
+  // Pull Editor's Choice from the live crawler (~1k entries). Falls back
+  // to hand-curated SKILLS_DATA if the API errors out.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await listSkills({ editorsChoice: true, sort: 'stars', limit: 12 });
+        if (cancelled) return;
+        const items = r.items.map(crawlerSkillToSkill);
+        if (items.length > 0) setCrawlerPicks(items);
+      } catch {
+        /* keep fallback */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const fallbackPicks = SKILLS_DATA.filter((s) => s.editorPick).slice(0, 5);
+  const editorPicks = (crawlerPicks ?? fallbackPicks).slice(0, 5);
 
   if (editorPicks.length === 0) return null;
 
@@ -72,11 +96,10 @@ export function EditorPicks({ onRunSkill }: EditorPicksProps) {
                 'min-h-[320px] flex flex-col'
               )}
             >
-              {/* Editor badge */}
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-[10px] font-bold uppercase tracking-widest bg-primary/10 text-primary px-2.5 py-1 rounded-full border border-primary/20 font-mono flex items-center gap-1">
-                  <Sparkles className="w-3 h-3" /> Editor's Choice
-                </span>
+              {/* Editor badge + audit pill */}
+              <div className="flex flex-wrap items-center gap-2 mb-4">
+                <EditorChoiceBadge on={heroSkill.editorPick} reason={heroSkill.editorNote} />
+                <AuditPillCompact summary={heroSkill.auditSummary} />
                 <span className={cn('text-xs font-medium', getCategoryColor(heroSkill.category).text)}>
                   {heroSkill.category}
                 </span>
@@ -153,10 +176,11 @@ export function EditorPicks({ onRunSkill }: EditorPicksProps) {
                     'flex flex-col'
                   )}
                 >
-                  {/* Badge */}
-                  <span className="text-[9px] font-bold uppercase tracking-widest bg-primary/10 text-primary px-2 py-0.5 rounded-full border border-primary/20 font-mono self-start mb-3 flex items-center gap-1">
-                    <Sparkles className="w-2.5 h-2.5" /> Pick
-                  </span>
+                  {/* Badges */}
+                  <div className="flex flex-wrap items-center gap-1.5 mb-3">
+                    <EditorChoiceBadge on={skill.editorPick} reason={skill.editorNote} size="xs" />
+                    <AuditPillCompact summary={skill.auditSummary} size="xs" />
+                  </div>
 
                   {/* Icon + Info */}
                   <div className="flex items-start gap-3 mb-2">

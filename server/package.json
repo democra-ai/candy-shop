@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "node --env-file=.env --import tsx --watch index.ts",
     "start": "node --env-file=.env --import tsx index.ts",
-    "test": "tsx test/payment.test.ts"
+    "test": "tsx test/payment.test.ts",
+    "test:tee": "tsx test/tdx-quote-parser.test.ts && tsx test/tee-roundtrip.test.ts && tsx test/tee-dstack.test.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",
