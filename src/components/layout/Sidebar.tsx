@@ -92,19 +92,19 @@ function NavButton({
     <button
       onClick={() => onAction(item.action)}
       className={cn(
-        'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl',
-        'text-sm font-body font-semibold transition-all duration-200 cursor-pointer',
-        'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg',
+        'text-sm font-mono transition-all duration-200 cursor-pointer',
+        'focus:outline-none focus:ring-2 focus:ring-primary/30',
         isActive
-          ? 'bg-candy-gradient candy-gloss text-white shadow-candy'
-          : 'text-foreground-secondary hover:bg-secondary hover:text-foreground',
+          ? 'bg-gradient-to-r from-primary/10 to-primary/5 text-primary border border-primary/20 shadow-sm'
+          : 'hover:bg-secondary/70 hover:text-foreground border border-transparent',
         collapsed ? 'justify-center' : 'justify-start'
       )}
       title={collapsed ? label : undefined}
       aria-label={label}
       aria-current={isActive ? 'page' : undefined}
     >
-      <Icon className={cn('w-5 h-5 flex-shrink-0', isActive ? 'text-white' : 'text-foreground-tertiary')} />
+      <Icon className={cn('w-5 h-5 flex-shrink-0', isActive ? 'text-primary' : 'text-foreground-secondary')} />
       {!collapsed && <span className="truncate">{label}</span>}
     </button>
   );
@@ -286,16 +286,14 @@ export function Sidebar({
         {!collapsed && (
           <button
             onClick={() => navigate('/')}
-            className="group flex items-center gap-2.5 transition-transform duration-200 active:scale-95 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl"
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30 rounded-lg px-1"
             aria-label="Go to home page"
           >
-            <span className="grid place-items-center w-8 h-8 rounded-xl bg-candy-gradient candy-gloss text-base shadow-candy group-hover:animate-jelly" aria-hidden="true">🍭</span>
-            <span className="font-bold text-lg font-candy candy-gradient-text">Candy Shop</span>
+            <span className="text-2xl leading-none animate-candy-float" aria-hidden="true">🍭</span>
+            <span className="font-bold text-lg font-candy candy-gradient-text">~/Skills</span>
           </button>
         )}
-        {collapsed && (
-          <span className="grid place-items-center w-8 h-8 rounded-xl bg-candy-gradient candy-gloss text-base shadow-candy">🍭</span>
-        )}
+        {collapsed && <span className="text-2xl leading-none animate-candy-float">🍭</span>}
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
@@ -453,9 +451,9 @@ export function Sidebar({
           <button
             onClick={onOpenAuth}
             className={cn(
-              'sticker candy-gloss w-full flex items-center gap-3 px-3 py-2.5 !rounded-xl',
-              'text-sm font-body font-bold',
-              'bg-candy-gradient text-white',
+              'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg',
+              'text-sm font-mono transition-all duration-200',
+              'bg-primary text-primary-foreground hover:bg-primary-hover',
               collapsed ? 'justify-center' : 'justify-start'
             )}
             title={collapsed ? t('login') : undefined}
@@ -490,7 +488,7 @@ export function Sidebar({
 
   return (
     <>
-      <div className="fixed top-0 left-0 right-0 z-30 h-14 glass border-b border-border/50 flex items-center justify-between px-4 after:content-[''] after:absolute after:inset-x-0 after:top-0 after:h-[3px] after:bg-candy-gradient">
+      <div className="fixed top-0 left-0 right-0 z-30 h-14 glass border-b border-border/50 flex items-center justify-between px-4">
         <button
           onClick={() => setMobileOpen(true)}
           className={cn(
@@ -508,10 +506,10 @@ export function Sidebar({
 
         <button
           onClick={() => navigate('/')}
-          className="group flex items-center gap-2 transition-transform active:scale-95"
+          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
         >
-          <span className="grid place-items-center w-7 h-7 rounded-lg bg-candy-gradient candy-gloss text-sm shadow-candy">🍭</span>
-          <span className="font-bold text-base font-candy candy-gradient-text">Candy Shop</span>
+          <span className="text-xl leading-none animate-candy-float">🍭</span>
+          <span className="font-bold text-base font-candy">Candy Shop</span>
         </button>
 
         <button

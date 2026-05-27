@@ -1,16 +1,14 @@
-import { Search, ShoppingBag, Check, X, Heart, Play, Star, ChevronLeft, ChevronRight, Plus, Database, ExternalLink, Users, Zap } from 'lucide-react';
+import { Search, ShoppingBag, Check, X, Heart, Play, Star, ChevronLeft, ChevronRight, Plus, Database, ExternalLink, Download, Users, Zap } from 'lucide-react';
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { SKILLS_DATA, REGISTRY_STATS, type Skill } from '../../data/skillsData';
+import { SKILLS_DATA, REGISTRY_STATS, loadFullRegistry, type Skill, type RegistryEntry } from '../../data/skillsData';
 import { SkillModal } from '../common/SkillModal';
 import { LineageBadge, PricingBadge, ExecutionModelBadge } from '../common/LineageBadge';
-import { AuditPillCompact, EditorChoiceBadge } from '../common/AuditBadges';
 import { storageUtils } from '../../utils/storage';
 import { cn } from '../../utils/cn';
 import { toast } from 'sonner';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useDebounce } from '../../hooks/useDebounce';
 import { CANDY_EMOJIS } from '../../utils/candy';
-import { listSkills, type CrawlerSkill } from '../../lib/skillCrawlerClient';
 
 interface SkillsGridProps {
   searchQuery: string;
@@ -28,18 +26,16 @@ interface SkillsGridProps {
 
 const getCategoryColor = (category: string) => {
   const colors: Record<string, { bg: string; text: string; border: string; solid: string }> = {
-    // Candy Atelier confectionery palette — distinct, but every hue is a
-    // candy tone that sits beside raspberry/grape/mint.
-    Development: { bg: 'bg-sky-500/10', text: 'text-sky-500', border: 'border-sky-500/25', solid: 'bg-sky-500' },        // blueberry soda
-    Design: { bg: 'bg-fuchsia-500/10', text: 'text-fuchsia-500', border: 'border-fuchsia-500/25', solid: 'bg-fuchsia-500' }, // bubblegum
-    Marketing: { bg: 'bg-orange-500/10', text: 'text-orange-500', border: 'border-orange-500/25', solid: 'bg-orange-500' },  // tangerine
-    Productivity: { bg: 'bg-teal-500/10', text: 'text-teal-500', border: 'border-teal-500/25', solid: 'bg-teal-500' },     // mint
-    Tools: { bg: 'bg-violet-500/10', text: 'text-violet-500', border: 'border-violet-500/25', solid: 'bg-violet-500' },     // grape
-    Research: { bg: 'bg-cyan-500/10', text: 'text-cyan-500', border: 'border-cyan-500/25', solid: 'bg-cyan-500' },         // cotton-candy blue
-    Mobile: { bg: 'bg-lime-500/10', text: 'text-lime-600', border: 'border-lime-500/25', solid: 'bg-lime-500' },           // sour apple
-    Writing: { bg: 'bg-amber-500/10', text: 'text-amber-500', border: 'border-amber-500/25', solid: 'bg-amber-500' },      // caramel
+    Development: { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/20', solid: 'bg-blue-500' },
+    Design: { bg: 'bg-pink-500/10', text: 'text-pink-400', border: 'border-pink-500/20', solid: 'bg-pink-500' },
+    Marketing: { bg: 'bg-orange-500/10', text: 'text-orange-400', border: 'border-orange-500/20', solid: 'bg-orange-500' },
+    Productivity: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20', solid: 'bg-emerald-500' },
+    Tools: { bg: 'bg-violet-500/10', text: 'text-violet-400', border: 'border-violet-500/20', solid: 'bg-violet-500' },
+    Research: { bg: 'bg-cyan-500/10', text: 'text-cyan-400', border: 'border-cyan-500/20', solid: 'bg-cyan-500' },
+    Mobile: { bg: 'bg-lime-500/10', text: 'text-lime-400', border: 'border-lime-500/20', solid: 'bg-lime-500' },
+    Writing: { bg: 'bg-yellow-500/10', text: 'text-yellow-400', border: 'border-yellow-500/20', solid: 'bg-yellow-500' },
   };
-  return colors[category] || { bg: 'bg-primary/10', text: 'text-primary', border: 'border-primary/25', solid: 'bg-primary' };
+  return colors[category] || { bg: 'bg-gray-500/10', text: 'text-gray-400', border: 'border-gray-500/20', solid: 'bg-gray-500' };
 };
 
 const POPULAR_TAGS = (() => {
@@ -258,7 +254,7 @@ export function SkillsGrid({
               {onPostCandy && (
                 <button
                   onClick={onPostCandy}
-                  className="sticker candy-gloss h-11 px-4 flex items-center gap-2 bg-candy-gradient text-white !rounded-xl font-body font-bold text-sm whitespace-nowrap"
+                  className="h-11 px-4 flex items-center gap-2 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl font-body font-semibold text-sm hover:shadow-[0_4px_20px_rgba(244,63,94,0.4)] transition-all duration-200 btn-press whitespace-nowrap shadow-[0_2px_12px_rgba(244,63,94,0.25)]"
                 >
                   <Plus className="w-4 h-4" />
                   Post Candy
@@ -267,7 +263,7 @@ export function SkillsGrid({
               {onPostCraving && (
                 <button
                   onClick={onPostCraving}
-                  className="sticker h-11 px-4 flex items-center gap-2 bg-card text-grape !rounded-xl font-body font-bold text-sm whitespace-nowrap"
+                  className="h-11 px-4 flex items-center gap-2 bg-blue-500/10 border border-blue-500/30 text-blue-500 rounded-xl font-body font-semibold text-sm hover:bg-blue-500/20 hover:border-blue-500/50 transition-all duration-200 btn-press whitespace-nowrap"
                 >
                   <Plus className="w-4 h-4" />
                   Post Craving
@@ -388,9 +384,11 @@ export function SkillsGrid({
                 }}
                 aria-label={`View details for ${skill.name}`}
                 className={cn(
-                  'sticker candy-gloss group bg-card',
+                  'group bg-card/80 glass rounded-xl border border-border/50',
+                  'hover:shadow-card-hover hover:border-primary/20',
                   'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none',
-                  'flex flex-col h-full overflow-hidden cursor-pointer'
+                  'transition-all duration-300 flex flex-col h-full overflow-hidden cursor-pointer',
+                  'card-luxe gradient-border'
                 )}
               >
                 {/* Your Candy badge */}
@@ -679,42 +677,13 @@ export function SkillsGrid({
 const REGISTRY_PAGE_SIZE = 50;
 
 function RegistryBrowser() {
-  // API-driven: each page hits skill-crawler /api/skills with offset/limit/q.
-  const [items, setItems] = useState<CrawlerSkill[] | null>(null);
-  const [total, setTotal] = useState<number>(0);
+  const [registry, setRegistry] = useState<RegistryEntry[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [search, setSearch] = useState('');
-  const [onlyEditorsChoice, setOnlyEditorsChoice] = useState(false);
   const debouncedSearch = useDebounce(search, 200);
   const [page, setPage] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
-
-  const loadPage = useCallback(async (p: number, q: string, ec: boolean) => {
-    setLoading(true);
-    try {
-      const r = await listSkills({
-        offset: p * REGISTRY_PAGE_SIZE,
-        limit: REGISTRY_PAGE_SIZE,
-        q: q || undefined,
-        editorsChoice: ec,
-        sort: 'stars',
-      });
-      setItems(r.items);
-      // We don't get a total from the API in this version; estimate from
-      // page size + whether we got a full page.
-      if (r.items.length < REGISTRY_PAGE_SIZE) {
-        setTotal(p * REGISTRY_PAGE_SIZE + r.items.length);
-      } else {
-        // optimistic
-        setTotal((prev) => Math.max(prev, (p + 2) * REGISTRY_PAGE_SIZE));
-      }
-    } catch {
-      toast.error('Failed to load registry');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
   const handleExpand = useCallback(async () => {
     if (expanded) {
@@ -722,35 +691,39 @@ function RegistryBrowser() {
       return;
     }
     setExpanded(true);
-    if (!items) {
-      // Optimistically set total from the static stat so the pager renders
-      setTotal(REGISTRY_STATS.totalSkills);
-      await loadPage(0, '', false);
+    if (!registry) {
+      setLoading(true);
+      try {
+        const data = await loadFullRegistry();
+        setRegistry(data);
+      } catch {
+        toast.error('Failed to load registry');
+      } finally {
+        setLoading(false);
+      }
     }
-  }, [expanded, items, loadPage]);
+  }, [expanded, registry]);
 
-  // Refetch when search / EC filter changes
-  useEffect(() => {
-    if (!expanded) return;
-    setPage(0);
-    void loadPage(0, debouncedSearch, onlyEditorsChoice);
-  }, [debouncedSearch, onlyEditorsChoice, expanded, loadPage]);
+  const filtered = useMemo(() => {
+    if (!registry) return [];
+    if (!debouncedSearch) return registry;
+    const q = debouncedSearch.toLowerCase();
+    return registry.filter(([name, , source]) =>
+      name.toLowerCase().includes(q) || source.toLowerCase().includes(q)
+    );
+  }, [registry, debouncedSearch]);
 
-  // Refetch on page change
-  useEffect(() => {
-    if (!expanded || page === 0) return;
-    void loadPage(page, debouncedSearch, onlyEditorsChoice);
-  }, [page, expanded, loadPage, debouncedSearch, onlyEditorsChoice]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / REGISTRY_PAGE_SIZE));
+  const pageItems = filtered.slice(page * REGISTRY_PAGE_SIZE, (page + 1) * REGISTRY_PAGE_SIZE);
 
-  const pageItems = items ?? [];
-  const totalPages = Math.max(1, Math.ceil(total / REGISTRY_PAGE_SIZE));
+  useEffect(() => { setPage(0); }, [debouncedSearch]);
 
   const goPage = (p: number) => {
     setPage(Math.max(0, Math.min(p, totalPages - 1)));
     listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const formatStars = (n: number) => {
+  const formatInstalls = (n: number) => {
     if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
     if (n >= 1_000) return `${(n / 1_000).toFixed(n >= 10_000 ? 0 : 1)}K`;
     return String(n);
@@ -818,23 +791,12 @@ function RegistryBrowser() {
               )}
             </div>
 
-            {/* Filters + results */}
+            {/* Results count */}
             <div className="flex items-center justify-between text-xs font-mono text-foreground-tertiary px-1">
-              <div className="flex items-center gap-3">
-                <span>
-                  {loading ? 'Loading registry...' : `${pageItems.length} on this page · ~${total.toLocaleString()} total`}
-                </span>
-                <label className="inline-flex items-center gap-1.5 cursor-pointer select-none text-foreground-secondary">
-                  <input
-                    type="checkbox"
-                    checked={onlyEditorsChoice}
-                    onChange={(e) => setOnlyEditorsChoice(e.target.checked)}
-                    className="accent-amber-400"
-                  />
-                  Editor's Choice only
-                </label>
-              </div>
-              {pageItems.length > 0 && (
+              <span>
+                {loading ? 'Loading registry...' : `${filtered.length.toLocaleString()} skills found`}
+              </span>
+              {filtered.length > 0 && (
                 <span>Page {page + 1} / {totalPages.toLocaleString()}</span>
               )}
             </div>
@@ -850,86 +812,67 @@ function RegistryBrowser() {
             )}
 
             {/* Skills Table */}
-            {!loading && pageItems.length > 0 && (
+            {!loading && filtered.length > 0 && (
               <div className="glass rounded-xl border border-border/50 overflow-hidden">
                 {/* Table Header */}
-                <div className="grid grid-cols-[1.4fr_minmax(0,1fr)_auto_auto] gap-4 px-4 py-3 bg-secondary/30 border-b border-border/30 text-[11px] font-mono font-semibold text-foreground-tertiary uppercase tracking-wider">
+                <div className="grid grid-cols-[1fr_auto_auto] sm:grid-cols-[1fr_1fr_auto_auto] gap-4 px-4 py-3 bg-secondary/30 border-b border-border/30 text-[11px] font-mono font-semibold text-foreground-tertiary uppercase tracking-wider">
                   <span>Skill</span>
-                  <span className="hidden sm:block">Source / Badges</span>
-                  <span className="text-right">Stars</span>
+                  <span className="hidden sm:block">Source</span>
+                  <span className="text-right">Installs</span>
                   <span className="text-right w-16">Action</span>
                 </div>
 
                 {/* Table Body */}
                 <div className="divide-y divide-border/20">
-                  {pageItems.map((it) => {
-                    const slug = it.skill_name || it.path.match(/(?:^|\/)([^/]+)\/SKILL\.md$/i)?.[1] || it.repo;
-                    const repoSlug = `${it.owner}/${it.repo}`;
-                    return (
-                      <div
-                        key={it.id}
-                        className="grid grid-cols-[1.4fr_minmax(0,1fr)_auto_auto] gap-4 px-4 py-3 hover:bg-secondary/20 transition-colors group items-center"
-                      >
-                        {/* Skill name + description */}
-                        <div className="min-w-0">
-                          <p className="font-mono text-sm text-foreground truncate font-medium">
-                            {slug}
-                          </p>
-                          <p className="text-[11px] text-foreground-tertiary font-mono truncate sm:hidden">
-                            {repoSlug}
-                          </p>
-                          {it.description && (
-                            <p className="hidden sm:block text-[11px] text-foreground-tertiary truncate mt-0.5">
-                              {it.description}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Source + badges */}
-                        <div className="hidden sm:flex flex-col gap-1 min-w-0">
-                          <a
-                            href={it.html_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1.5 text-xs font-mono text-foreground-tertiary hover:text-violet-400 transition-colors truncate"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <span className="truncate">{repoSlug}</span>
-                            <ExternalLink className="w-3 h-3 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                          </a>
-                          <div className="flex flex-wrap items-center gap-1">
-                            <EditorChoiceBadge
-                              on={it.editors_choice === 1}
-                              reason={it.editors_choice_reason}
-                              size="xs"
-                            />
-                            <AuditPillCompact summary={it.audit_summary} size="xs" />
-                          </div>
-                        </div>
-
-                        {/* Stars */}
-                        <div className="text-right">
-                          <span className="inline-flex items-center gap-1 text-xs font-mono text-foreground-secondary">
-                            <Star className="w-3 h-3" />
-                            {formatStars(it.stars)}
-                          </span>
-                        </div>
-
-                        {/* Copy install command */}
-                        <div className="text-right w-16">
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(`npx skills add ${repoSlug}/${slug}`);
-                              toast.success('Install command copied!');
-                            }}
-                            className="px-2.5 py-1.5 text-[11px] font-mono font-medium rounded-lg bg-violet-500/10 text-violet-400 border border-violet-500/20 hover:bg-violet-500/20 transition-all btn-press"
-                          >
-                            Copy
-                          </button>
-                        </div>
+                  {pageItems.map(([name, installs, source], i) => (
+                    <div
+                      key={`${source}/${name}-${i}`}
+                      className="grid grid-cols-[1fr_auto_auto] sm:grid-cols-[1fr_1fr_auto_auto] gap-4 px-4 py-3 hover:bg-secondary/20 transition-colors group items-center"
+                    >
+                      {/* Skill name */}
+                      <div className="min-w-0">
+                        <p className="font-mono text-sm text-foreground truncate font-medium">
+                          {name}
+                        </p>
+                        <p className="text-[11px] text-foreground-tertiary font-mono truncate sm:hidden">
+                          {source}
+                        </p>
                       </div>
-                    );
-                  })}
+
+                      {/* Source repo */}
+                      <a
+                        href={`https://github.com/${source}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hidden sm:flex items-center gap-1.5 text-xs font-mono text-foreground-tertiary hover:text-violet-400 transition-colors truncate min-w-0"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <span className="truncate">{source}</span>
+                        <ExternalLink className="w-3 h-3 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </a>
+
+                      {/* Installs */}
+                      <div className="text-right">
+                        <span className="inline-flex items-center gap-1 text-xs font-mono text-foreground-secondary">
+                          <Download className="w-3 h-3" />
+                          {formatInstalls(installs)}
+                        </span>
+                      </div>
+
+                      {/* Install button */}
+                      <div className="text-right w-16">
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(`npx skills add ${source}/${name}`);
+                            toast.success('Install command copied!');
+                          }}
+                          className="px-2.5 py-1.5 text-[11px] font-mono font-medium rounded-lg bg-violet-500/10 text-violet-400 border border-violet-500/20 hover:bg-violet-500/20 transition-all btn-press"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -982,11 +925,11 @@ function RegistryBrowser() {
             )}
 
             {/* Empty search state */}
-            {!loading && pageItems.length === 0 && items !== null && (
+            {!loading && filtered.length === 0 && registry && (
               <div className="flex flex-col items-center py-12 gap-3">
                 <Search className="w-8 h-8 text-foreground-tertiary" />
                 <p className="text-sm font-mono text-foreground-tertiary">
-                  {debouncedSearch ? `No skills match "${debouncedSearch}"` : 'No skills'}
+                  No skills match "{search}"
                 </p>
               </div>
             )}
