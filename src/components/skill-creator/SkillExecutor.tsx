@@ -1400,40 +1400,53 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
               skillMd: resolvedSkillInstructions ?? undefined,
             },
             {
-              // Phases drive ONLY the status pill — not the transcript.
-              // (Build-log spam like [restore]/[setup]/[claude] is what made
-              // this feel un-Claude-Code-like.)
               onPhase: (phase) => {
                 setSandboxPhase(phase);
+                startSection(phase);
+                flushLog();
               },
               onSandboxEvent: (ev, data) => {
-                // Surface only real problems in the transcript. Everything
-                // else (restore/setup/ttfo/done) stays in the status pill.
-                if (ev === 'stall-warning') {
-                  const msg = (data as { message?: string }).message ?? 'model stalled';
-                  log += `\n> ⚠ ${msg}\n`;
-                  flushLog();
+                if (ev === 'restore') {
+                  const skipped = (data as { skipped?: boolean }).skipped;
+                  log += skipped
+                    ? `✓ _restore skipped (warm scratch)_\n`
+                    : `✓ container ready (${data.ms ?? '?'}ms)\n`;
                 }
+                else if (ev === 'setup') {
+                  const skipped = (data as { skipped?: boolean }).skipped;
+                  const tail = (data as { tail?: string }).tail;
+                  log += `✓ ${skipped ? '_skipped (warm scratch)_' : (tail || 'cloned')}\n`;
+                }
+                else if (ev === 'claude_ttfo') {
+                  const ms = (data as { ms?: number }).ms ?? 0;
+                  log += `✓ **first response** in ${(ms / 1000).toFixed(1)}s\n`;
+                }
+                else if (ev === 'stall-warning') {
+                  const msg = (data as { message?: string }).message ?? 'model stalled';
+                  log += `\n⚠ **${msg}**\n`;
+                }
+                else if (ev === 'done') log += `\n✓ done\n`;
+                flushLog();
               },
-              // Don't dump model/cwd/tool-list into the transcript.
-              onSystemInit: () => {},
+              onSystemInit: (info) => {
+                if (info.model) log += `model: \`${info.model}\`\n`;
+                if (info.cwd) log += `cwd: \`${info.cwd}\`\n`;
+                if (info.tools?.length) log += `tools: ${info.tools.map(t => `\`${t}\``).join(' · ')}\n`;
+                flushLog();
+              },
               onBlockStart: (b) => {
                 openBlocks.set(b.index, { type: b.type, tool: b.tool?.name, inputJson: '' });
                 if (b.type === 'thinking') {
-                  // Quiet, collapsed-feeling reasoning line.
-                  log += `\n_🤔 thinking…_\n`;
+                  log += `\n🤔 _thinking…_\n\n> `;
                 } else if (b.type === 'tool_use') {
-                  // Tidy tool-call chip: "→ Read(" … args … ")"
-                  log += `\n\`→ ${b.tool?.name ?? 'tool'}(\``;
+                  log += `\n🔧 **${b.tool?.name ?? 'tool'}** \`\``;  // double-tick so input_json_delta below appends inside backticks
                 } else if (b.type === 'text') {
-                  // Assistant text is the star — no emoji prefix, just a break.
-                  if (log && !log.endsWith('\n\n')) log += '\n\n';
+                  log += `\n💬 `;
                 }
                 flushLog();
               },
               onTextDelta: (d) => { log += d; flushLog(); },
-              // Thinking streams but stays de-emphasized (italic, no blockquote wall).
-              onThinkingDelta: () => { /* suppressed — only the "thinking…" marker shows */ },
+              onThinkingDelta: (d) => { log += d.replace(/\n/g, '\n> '); flushLog(); },
               onToolInputDelta: (d, idx) => {
                 const blk = openBlocks.get(idx);
                 if (blk) blk.inputJson = (blk.inputJson || '') + d;
@@ -1443,18 +1456,17 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
               },
               onBlockStop: (idx) => {
                 const blk = openBlocks.get(idx);
-                if (blk?.type === 'tool_use') log += `)\`\n`;   // close → Tool(args)
+                if (blk?.type === 'tool_use') log += `\`\n`;
                 else if (blk?.type === 'thinking') log += `\n`;
                 else if (blk?.type === 'text') log += `\n`;
                 openBlocks.delete(idx);
                 flushLog();
               },
               onToolResult: (r) => {
-                // Compact tool result — short ones inline, long ones trimmed.
-                const trimmed = r.content.length > 400
-                  ? r.content.slice(0, 400) + `\n…(+${r.content.length - 400} chars)`
+                const trimmed = r.content.length > 600
+                  ? r.content.slice(0, 600) + `\n…(+${r.content.length - 600} chars)`
                   : r.content;
-                log += `${r.isError ? '❌ ' : ''}${'```'}\n${trimmed.trim()}\n${'```'}\n`;
+                log += `${r.isError ? '❌' : '↪'} ${'```'}\n${trimmed}\n${'```'}\n`;
                 flushLog();
               },
               onAssistantFinal: () => { /* already streamed via deltas */ },
