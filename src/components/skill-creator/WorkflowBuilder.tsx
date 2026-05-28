@@ -371,15 +371,15 @@ export function WorkflowBuilder({
   }, [workflow]);
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-secondary">
       {/* Left Sidebar - Node Palette */}
-      <div className="w-72 bg-white border-r border-gray-200 flex flex-col">
-        <div className="p-4 border-b border-gray-200">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">Nodes</h2>
+      <div className="w-72 bg-card border-r border-border flex flex-col">
+        <div className="p-4 border-b border-border">
+          <h2 className="text-lg font-bold text-foreground mb-4">Nodes</h2>
           <input
             type="text"
             placeholder="Search nodes..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full px-3 py-2 bg-input border border-input-border rounded-xl text-sm text-foreground placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
@@ -392,14 +392,14 @@ export function WorkflowBuilder({
                   setShowNodePalette(true);
                   setDraggedNode(null);
                 }}
-                className="w-full flex items-center gap-3 p-2 hover:bg-gray-100 rounded-lg transition-colors text-left"
+                className="w-full flex items-center gap-3 p-2 hover:bg-secondary rounded-lg transition-colors text-left"
               >
                 <div className={`w-8 h-8 rounded-lg ${nodeType.color} flex items-center justify-center text-white`}>
                   <Icon className="w-4 h-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-gray-900 truncate">{nodeType.label}</div>
-                  <div className="text-xs text-gray-500 truncate">{nodeType.description}</div>
+                  <div className="text-sm font-medium text-foreground truncate">{nodeType.label}</div>
+                  <div className="text-xs text-foreground-tertiary truncate">{nodeType.description}</div>
                 </div>
               </button>
             );
@@ -410,14 +410,14 @@ export function WorkflowBuilder({
       {/* Main Canvas */}
       <div className="flex-1 flex flex-col">
         {/* Top Toolbar */}
-        <div className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4">
+        <div className="h-16 bg-card border-b border-border flex items-center justify-between px-4">
           <div className="flex items-center gap-4">
             {onBack && (
               <button
                 onClick={onBack}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-secondary rounded-lg transition-colors"
               >
-                <ArrowRight className="w-5 h-5 text-gray-600 rotate-180" />
+                <ArrowRight className="w-5 h-5 text-foreground-secondary rotate-180" />
               </button>
             )}
             <div>
@@ -425,14 +425,14 @@ export function WorkflowBuilder({
                 type="text"
                 value={workflow.name}
                 onChange={(e) => setWorkflow((prev) => ({ ...prev, name: e.target.value }))}
-                className="text-lg font-bold text-gray-900 bg-transparent border-none focus:outline-none"
+                className="text-lg font-bold text-foreground bg-transparent border-none focus:outline-none"
                 placeholder="Workflow name..."
               />
               <input
                 type="text"
                 value={workflow.description || ''}
                 onChange={(e) => setWorkflow((prev) => ({ ...prev, description: e.target.value }))}
-                className="text-sm text-gray-500 bg-transparent border-none focus:outline-none"
+                className="text-sm text-foreground-tertiary bg-transparent border-none focus:outline-none"
                 placeholder="Add description..."
               />
             </div>
@@ -441,32 +441,32 @@ export function WorkflowBuilder({
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowSettings(!showSettings)}
-              className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="flex items-center gap-2 px-3 py-2 hover:bg-secondary rounded-lg transition-colors"
             >
-              <Settings className="w-4 h-4 text-gray-600" />
-              <span className="text-sm text-gray-700">Settings</span>
+              <Settings className="w-4 h-4 text-foreground-secondary" />
+              <span className="text-sm text-foreground-secondary">Settings</span>
             </button>
             <button
               onClick={handleExport}
-              className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="flex items-center gap-2 px-3 py-2 hover:bg-secondary rounded-lg transition-colors"
             >
-              <Download className="w-4 h-4 text-gray-600" />
-              <span className="text-sm text-gray-700">Export</span>
+              <Download className="w-4 h-4 text-foreground-secondary" />
+              <span className="text-sm text-foreground-secondary">Export</span>
             </button>
             <button
               onClick={handleSave}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+              className="candy-btn btn-press flex items-center gap-2 px-4 py-2 rounded-xl font-semibold"
             >
               <Save className="w-4 h-4" />
-              <span className="text-sm font-medium">Save</span>
+              <span className="text-sm">Save</span>
             </button>
             {onExecute && (
               <button
                 onClick={handleExecute}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-accent text-card rounded-xl font-semibold hover:opacity-90 transition-opacity btn-press shadow-candy-1"
               >
                 <Play className="w-4 h-4" />
-                <span className="text-sm font-medium">Run</span>
+                <span className="text-sm">Run</span>
               </button>
             )}
           </div>
@@ -475,7 +475,7 @@ export function WorkflowBuilder({
         {/* Canvas */}
         <div
           ref={canvasRef}
-          className="flex-1 relative overflow-hidden bg-gray-50"
+          className="flex-1 relative overflow-hidden bg-secondary"
           onClick={handleCanvasClick}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
@@ -552,17 +552,17 @@ export function WorkflowBuilder({
                   });
                 }}
               >
-                <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+                <div className="bg-card rounded-xl shadow-lg border border-border overflow-hidden">
                   {/* Node header */}
-                  <div className={`px-4 py-3 flex items-center gap-3 ${nodeDef?.color} bg-opacity-10 border-b border-gray-100`}>
+                  <div className={`px-4 py-3 flex items-center gap-3 ${nodeDef?.color} bg-opacity-10 border-b border-border`}>
                     <div className={`w-8 h-8 rounded-lg ${nodeDef?.color} flex items-center justify-center text-white`}>
                       <Icon className="w-4 h-4" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-gray-900 truncate">
+                      <div className="text-sm font-semibold text-foreground truncate">
                         {node.label || nodeDef?.label}
                       </div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-foreground-tertiary">
                         {nodeDef?.description}
                       </div>
                     </div>
@@ -571,15 +571,15 @@ export function WorkflowBuilder({
                         e.stopPropagation();
                         deleteNode(node.id);
                       }}
-                      className="p-1 hover:bg-white rounded transition-colors opacity-0 group-hover:opacity-100"
+                      className="p-1 hover:bg-card rounded transition-colors opacity-0 group-hover:opacity-100"
                     >
-                      <Trash2 className="w-4 h-4 text-red-500" />
+                      <Trash2 className="w-4 h-4 text-error" />
                     </button>
                   </div>
 
                   {/* Node content preview */}
                   <div className="p-3">
-                    <div className="text-xs text-gray-500 bg-gray-50 rounded-lg p-2">
+                    <div className="text-xs text-foreground-tertiary bg-secondary rounded-lg p-2">
                       {node.type === 'llm' && 'LLM Processing Node'}
                       {node.type === 'web-search' && 'Web Search Query'}
                       {node.type === 'api-call' && 'API Request'}
@@ -595,8 +595,8 @@ export function WorkflowBuilder({
                   </div>
 
                   {/* Connection handles */}
-                  <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-3 h-3 bg-gray-400 rounded-full border-2 border-white" />
-                  <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 bg-gray-400 rounded-full border-2 border-white" />
+                  <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-3 h-3 bg-foreground-tertiary rounded-full border-2 border-card" />
+                  <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 bg-foreground-tertiary rounded-full border-2 border-card" />
                 </div>
               </div>
             );
@@ -606,11 +606,11 @@ export function WorkflowBuilder({
           {(!workflow.nodes || workflow.nodes.length === 0) && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center">
-                <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Plus className="w-8 h-8 text-gray-400" />
+                <div className="w-16 h-16 bg-secondary rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Plus className="w-8 h-8 text-foreground-tertiary" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Start Building</h3>
-                <p className="text-sm text-gray-500 mb-4">
+                <h3 className="text-lg font-semibold text-foreground mb-2">Start Building</h3>
+                <p className="text-sm text-foreground-tertiary mb-4">
                   Select a node type from the sidebar to add to your workflow
                 </p>
               </div>
@@ -620,21 +620,21 @@ export function WorkflowBuilder({
       </div>
 
       {/* Right Sidebar - Node Properties */}
-      <div className="w-80 bg-white border-l border-gray-200 flex flex-col">
-        <div className="p-4 border-b border-gray-200">
-          <h2 className="text-lg font-bold text-gray-900">Properties</h2>
+      <div className="w-80 bg-card border-l border-border flex flex-col">
+        <div className="p-4 border-b border-border">
+          <h2 className="text-lg font-bold text-foreground">Properties</h2>
         </div>
 
         {selectedNode ? (
           <div className="flex-1 overflow-y-auto p-4 space-y-6">
             {/* Basic properties */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Node Label</label>
+              <label className="block text-sm font-medium text-foreground-secondary mb-2">Node Label</label>
               <input
                 type="text"
                 value={selectedNode.label || ''}
                 onChange={(e) => updateNode(selectedNode.id, { label: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 bg-input border border-input-border rounded-xl text-sm text-foreground placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-ring"
                 placeholder="Enter label..."
               />
             </div>
@@ -643,13 +643,13 @@ export function WorkflowBuilder({
             {selectedNode.type === 'llm' && (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Model Provider</label>
+                  <label className="block text-sm font-medium text-foreground-secondary mb-2">Model Provider</label>
                   <select
                     value={(selectedNode.config as LLMNodeConfig).modelProvider}
                     onChange={(e) => updateNode(selectedNode.id, {
                       config: { ...selectedNode.config, modelProvider: e.target.value as 'openai' | 'anthropic' | 'google' | 'custom' }
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-3 py-2 bg-input border border-input-border rounded-xl text-sm text-foreground placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-ring"
                   >
                     <option value="openai">OpenAI</option>
                     <option value="anthropic">Anthropic</option>
@@ -658,25 +658,25 @@ export function WorkflowBuilder({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Model ID</label>
+                  <label className="block text-sm font-medium text-foreground-secondary mb-2">Model ID</label>
                   <input
                     type="text"
                     value={(selectedNode.config as LLMNodeConfig).modelId}
                     onChange={(e) => updateNode(selectedNode.id, {
                       config: { ...selectedNode.config, modelId: e.target.value }
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-3 py-2 bg-input border border-input-border rounded-xl text-sm text-foreground placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-ring"
                     placeholder="gpt-4"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">System Prompt</label>
+                  <label className="block text-sm font-medium text-foreground-secondary mb-2">System Prompt</label>
                   <textarea
                     value={(selectedNode.config as LLMNodeConfig).systemPrompt || ''}
                     onChange={(e) => updateNode(selectedNode.id, {
                       config: { ...selectedNode.config, systemPrompt: e.target.value }
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary min-h-[100px]"
+                    className="w-full px-3 py-2 bg-input border border-input-border rounded-xl text-sm text-foreground placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-ring min-h-[100px]"
                     placeholder="Enter system prompt..."
                   />
                 </div>
@@ -686,13 +686,13 @@ export function WorkflowBuilder({
             {selectedNode.type === 'web-search' && (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Search Engine</label>
+                  <label className="block text-sm font-medium text-foreground-secondary mb-2">Search Engine</label>
                   <select
                     value={(selectedNode.config as WebSearchNodeConfig).searchEngine}
                     onChange={(e) => updateNode(selectedNode.id, {
                       config: { ...selectedNode.config, searchEngine: e.target.value as 'google' | 'bing' | 'duckduckgo' | 'tavily' }
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-3 py-2 bg-input border border-input-border rounded-xl text-sm text-foreground placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-ring"
                   >
                     <option value="google">Google</option>
                     <option value="bing">Bing</option>
@@ -701,26 +701,26 @@ export function WorkflowBuilder({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Query</label>
+                  <label className="block text-sm font-medium text-foreground-secondary mb-2">Query</label>
                   <input
                     type="text"
                     value={(selectedNode.config as WebSearchNodeConfig).query}
                     onChange={(e) => updateNode(selectedNode.id, {
                       config: { ...selectedNode.config, query: e.target.value }
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-3 py-2 bg-input border border-input-border rounded-xl text-sm text-foreground placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-ring"
                     placeholder="Enter search query..."
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Max Results</label>
+                  <label className="block text-sm font-medium text-foreground-secondary mb-2">Max Results</label>
                   <input
                     type="number"
                     value={(selectedNode.config as WebSearchNodeConfig).maxResults}
                     onChange={(e) => updateNode(selectedNode.id, {
                       config: { ...selectedNode.config, maxResults: parseInt(e.target.value) }
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-3 py-2 bg-input border border-input-border rounded-xl text-sm text-foreground placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-ring"
                     min="1"
                     max="50"
                   />
@@ -731,25 +731,25 @@ export function WorkflowBuilder({
             {selectedNode.type === 'api-call' && (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">URL</label>
+                  <label className="block text-sm font-medium text-foreground-secondary mb-2">URL</label>
                   <input
                     type="text"
                     value={(selectedNode.config as APICallNodeConfig).url}
                     onChange={(e) => updateNode(selectedNode.id, {
                       config: { ...selectedNode.config, url: e.target.value }
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-3 py-2 bg-input border border-input-border rounded-xl text-sm text-foreground placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-ring"
                     placeholder="https://api.example.com/endpoint"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Method</label>
+                  <label className="block text-sm font-medium text-foreground-secondary mb-2">Method</label>
                   <select
                     value={(selectedNode.config as APICallNodeConfig).method}
                     onChange={(e) => updateNode(selectedNode.id, {
                       config: { ...selectedNode.config, method: e.target.value as 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' }
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-3 py-2 bg-input border border-input-border rounded-xl text-sm text-foreground placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-ring"
                   >
                     <option value="GET">GET</option>
                     <option value="POST">POST</option>
@@ -764,13 +764,13 @@ export function WorkflowBuilder({
             {selectedNode.type === 'code' && (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Language</label>
+                  <label className="block text-sm font-medium text-foreground-secondary mb-2">Language</label>
                   <select
                     value={(selectedNode.config as CodeNodeConfig).language}
                     onChange={(e) => updateNode(selectedNode.id, {
                       config: { ...selectedNode.config, language: e.target.value as 'javascript' | 'python' | 'typescript' }
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-3 py-2 bg-input border border-input-border rounded-xl text-sm text-foreground placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-ring"
                   >
                     <option value="javascript">JavaScript</option>
                     <option value="python">Python</option>
@@ -778,13 +778,13 @@ export function WorkflowBuilder({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Code</label>
+                  <label className="block text-sm font-medium text-foreground-secondary mb-2">Code</label>
                   <textarea
                     value={(selectedNode.config as CodeNodeConfig).code}
                     onChange={(e) => updateNode(selectedNode.id, {
                       config: { ...selectedNode.config, code: e.target.value }
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary min-h-[150px] font-mono text-xs"
+                    className="w-full px-3 py-2 bg-input border border-input-border rounded-xl text-sm text-foreground placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-ring min-h-[150px] font-mono text-xs"
                     placeholder="// Enter your code here..."
                   />
                 </div>
@@ -794,13 +794,13 @@ export function WorkflowBuilder({
             {selectedNode.type === 'output' && (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Output Format</label>
+                  <label className="block text-sm font-medium text-foreground-secondary mb-2">Output Format</label>
                   <select
                     value={(selectedNode.config as OutputNodeConfig).outputFormat}
                     onChange={(e) => updateNode(selectedNode.id, {
                       config: { ...selectedNode.config, outputFormat: e.target.value as 'text' | 'json' | 'markdown' | 'html' }
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-3 py-2 bg-input border border-input-border rounded-xl text-sm text-foreground placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-ring"
                   >
                     <option value="text">Text</option>
                     <option value="json">JSON</option>
@@ -809,13 +809,13 @@ export function WorkflowBuilder({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Output Template</label>
+                  <label className="block text-sm font-medium text-foreground-secondary mb-2">Output Template</label>
                   <textarea
                     value={(selectedNode.config as OutputNodeConfig).template || ''}
                     onChange={(e) => updateNode(selectedNode.id, {
                       config: { ...selectedNode.config, template: e.target.value }
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary min-h-[100px]"
+                    className="w-full px-3 py-2 bg-input border border-input-border rounded-xl text-sm text-foreground placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-ring min-h-[100px]"
                     placeholder="{{output}} - use {{variable}} for references"
                   />
                 </div>
@@ -825,7 +825,7 @@ export function WorkflowBuilder({
             {/* Delete node button */}
             <button
               onClick={() => deleteNode(selectedNode.id)}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-error/10 text-error rounded-lg hover:bg-error/20 transition-colors"
             >
               <Trash2 className="w-4 h-4" />
               <span className="text-sm font-medium">Delete Node</span>
@@ -833,7 +833,7 @@ export function WorkflowBuilder({
           </div>
         ) : (
           <div className="flex-1 flex items-center justify-center p-8">
-            <p className="text-sm text-gray-500 text-center">
+            <p className="text-sm text-foreground-tertiary text-center">
               Select a node to view and edit its properties
             </p>
           </div>
@@ -842,15 +842,15 @@ export function WorkflowBuilder({
 
       {/* Node Palette Modal */}
       {showNodePalette && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-xl w-[600px] max-h-[80vh] overflow-hidden">
-            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-gray-900">Add Node</h3>
+        <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-card rounded-2xl shadow-xl w-[600px] max-h-[80vh] overflow-hidden">
+            <div className="p-4 border-b border-border flex items-center justify-between">
+              <h3 className="text-lg font-bold text-foreground">Add Node</h3>
               <button
                 onClick={() => setShowNodePalette(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-secondary rounded-lg transition-colors"
               >
-                <X className="w-5 h-5 text-gray-600" />
+                <X className="w-5 h-5 text-foreground-secondary" />
               </button>
             </div>
             <div className="p-4 overflow-y-auto max-h-[60vh] space-y-2">
@@ -860,16 +860,16 @@ export function WorkflowBuilder({
                   <button
                     key={nodeType.type}
                     onClick={() => addNode(nodeType.type, { x: 100, y: 100 })}
-                    className="w-full flex items-center gap-4 p-3 hover:bg-gray-50 rounded-xl transition-colors text-left"
+                    className="w-full flex items-center gap-4 p-3 hover:bg-secondary rounded-xl transition-colors text-left"
                   >
                     <div className={`w-10 h-10 rounded-xl ${nodeType.color} flex items-center justify-center text-white`}>
                       <Icon className="w-5 h-5" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-gray-900">{nodeType.label}</div>
-                      <div className="text-xs text-gray-500">{nodeType.description}</div>
+                      <div className="text-sm font-semibold text-foreground">{nodeType.label}</div>
+                      <div className="text-xs text-foreground-tertiary">{nodeType.description}</div>
                     </div>
-                    <Plus className="w-5 h-5 text-gray-400" />
+                    <Plus className="w-5 h-5 text-foreground-tertiary" />
                   </button>
                 );
               })}
@@ -880,20 +880,20 @@ export function WorkflowBuilder({
 
       {/* Settings Panel */}
       {showSettings && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-xl w-[500px]">
-            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-gray-900">Workflow Settings</h3>
+        <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-card rounded-2xl shadow-xl w-[500px]">
+            <div className="p-4 border-b border-border flex items-center justify-between">
+              <h3 className="text-lg font-bold text-foreground">Workflow Settings</h3>
               <button
                 onClick={() => setShowSettings(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-secondary rounded-lg transition-colors"
               >
-                <X className="w-5 h-5 text-gray-600" />
+                <X className="w-5 h-5 text-foreground-secondary" />
               </button>
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Timeout (seconds)</label>
+                <label className="block text-sm font-medium text-foreground-secondary mb-2">Timeout (seconds)</label>
                 <input
                   type="number"
                   value={workflow.settings?.timeout || 300}
@@ -901,20 +901,20 @@ export function WorkflowBuilder({
                     ...prev,
                     settings: { ...prev.settings, timeout: parseInt(e.target.value) }
                   }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 bg-input border border-input-border rounded-xl text-sm text-foreground placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-ring"
                   min="10"
                   max="3600"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Error Handling</label>
+                <label className="block text-sm font-medium text-foreground-secondary mb-2">Error Handling</label>
                 <select
                   value={workflow.settings?.errorHandling || 'stop'}
                   onChange={(e) => setWorkflow((prev) => ({
                     ...prev,
                     settings: { ...prev.settings, errorHandling: e.target.value as 'stop' | 'continue' | 'retry' }
                   }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 bg-input border border-input-border rounded-xl text-sm text-foreground placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   <option value="stop">Stop on error</option>
                   <option value="continue">Continue on error</option>
@@ -922,7 +922,7 @@ export function WorkflowBuilder({
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Tags</label>
+                <label className="block text-sm font-medium text-foreground-secondary mb-2">Tags</label>
                 <input
                   type="text"
                   value={workflow.metadata?.tags?.join(', ') || ''}
@@ -938,7 +938,7 @@ export function WorkflowBuilder({
                       }
                     };
                   })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 bg-input border border-input-border rounded-xl text-sm text-foreground placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-ring"
                   placeholder="tag1, tag2, tag3"
                 />
               </div>

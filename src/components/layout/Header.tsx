@@ -5,14 +5,16 @@ import type { User } from '../../lib/supabaseClient';
 import { supabase } from '../../lib/supabaseClient';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { cn } from '../../utils/cn';
+import { Logo } from '../illustrations';
 
+// Candy-flavor swatches — `id`s stay stable (wired to THEME_COLORS + i18n keys).
 const themes = [
-  { id: 'indigo', name: 'Indigo', color: '#6366F1', light: '#818CF8' },
-  { id: 'blue', name: 'Ocean', color: '#3B82F6', light: '#60A5FA' },
-  { id: 'emerald', name: 'Emerald', color: '#10B981', light: '#34D399' },
-  { id: 'amber', name: 'Sunset', color: '#F59E0B', light: '#FBBF24' },
-  { id: 'rose', name: 'Rose', color: '#F43F5E', light: '#FB7185' },
-  { id: 'violet', name: 'Purple', color: '#8B5CF6', light: '#A78BFA' },
+  { id: 'rose', name: 'Raspberry', color: '#E11D6B', light: '#FF6FA5' },
+  { id: 'violet', name: 'Grape', color: '#7C3AED', light: '#A974FF' },
+  { id: 'emerald', name: 'Mint', color: '#18C3A6', light: '#34E2C4' },
+  { id: 'amber', name: 'Caramel', color: '#F2A742', light: '#F7C173' },
+  { id: 'blue', name: 'Blueberry', color: '#4F6EF2', light: '#8AA0FF' },
+  { id: 'indigo', name: 'Cotton Candy', color: '#B06AB3', light: '#D49BD6' },
 ];
 
 interface HeaderProps {
@@ -73,9 +75,10 @@ export function Header({
           <div className="flex items-center gap-8">
             <button
               onClick={() => navigate('/')}
-              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+              className="flex items-center hover:opacity-80 transition-opacity"
+              aria-label="Go to home page"
             >
-              <span className="font-candy font-bold text-foreground text-lg">🍭 Candy Shop</span>
+              <Logo size={30} />
             </button>
 
             {/* Desktop Nav */}
@@ -223,7 +226,7 @@ export function Header({
             ) : (
               <button
                 onClick={onOpenAuth}
-                className="hidden md:flex items-center h-9 px-4 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary-hover transition-colors"
+                className="candy-btn btn-press hidden md:flex items-center h-9 px-4 rounded-xl text-sm font-semibold"
               >
                 {t('login')}
               </button>
@@ -293,7 +296,7 @@ export function Header({
                   <div className="h-px bg-border my-2" />
                   <button
                     onClick={() => { onOpenAuth(); setMobileOpen(false); }}
-                    className="w-full h-10 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary-hover transition-colors"
+                    className="candy-btn btn-press w-full h-10 rounded-xl text-sm font-semibold"
                   >
                     {t('login')}
                   </button>

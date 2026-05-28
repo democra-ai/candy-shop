@@ -3,14 +3,15 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../../utils/cn';
 
 const cardVariants = cva(
-  'rounded-lg border transition-all duration-200',
+  'rounded-2xl border border-border transition-all duration-200',
   {
     variants: {
       variant: {
-        default: 'bg-card border-border shadow-card',
-        glass: 'glass shadow-glass',
-        elevated: 'bg-card border-border shadow-card-hover',
-        interactive: 'bg-card border-border shadow-card card-luxe gradient-border cursor-pointer',
+        default: 'bg-card shadow-candy-1',
+        glass: 'glass shadow-candy-1',
+        elevated: 'bg-card shadow-candy-2',
+        // Elastic lift on hover + elevation rise + flavor-neutral border shift.
+        interactive: 'bg-card shadow-candy-1 candy-lift hover:shadow-candy-2 hover:border-border-hover cursor-pointer',
       },
     },
     defaultVariants: {

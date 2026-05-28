@@ -62,7 +62,19 @@ export default {
         '2xl': '1.5rem',
         '3xl': '2rem',
       },
+      transitionTimingFunction: {
+        // Elastic overshoot for hover lifts, card mount, badge pops (DESIGN.md §5).
+        candy: 'cubic-bezier(.34,1.56,.64,1)',
+      },
       boxShadow: {
+        // Elevation system (DESIGN.md §5) — soft, layered; never a single harsh box.
+        'candy-1': '0 1px 2px rgba(31,19,32,.04), 0 4px 12px rgba(31,19,32,.05)',
+        'candy-2': '0 2px 6px rgba(31,19,32,.06), 0 12px 28px rgba(31,19,32,.10)',
+        'candy-3': '0 8px 20px rgba(31,19,32,.10), 0 28px 56px rgba(31,19,32,.16)',
+        // Dark-mode elevation — same offsets, denser shadow on the plum canvas.
+        'candy-1-dark': '0 1px 2px rgba(0,0,0,.4), 0 4px 12px rgba(0,0,0,.45)',
+        'candy-2-dark': '0 2px 6px rgba(0,0,0,.45), 0 12px 28px rgba(0,0,0,.5)',
+        'candy-3-dark': '0 8px 20px rgba(0,0,0,.5), 0 28px 56px rgba(0,0,0,.6)',
         window: '0 4px 6px -1px rgba(45, 27, 20, 0.07), 0 2px 4px -1px rgba(45, 27, 20, 0.04)',
         card: '0 1px 3px rgba(45, 27, 20, 0.06), 0 1px 2px rgba(45, 27, 20, 0.04)',
         'card-hover': '0 10px 25px -5px rgba(212, 36, 106, 0.08), 0 8px 10px -6px rgba(45, 27, 20, 0.06)',
@@ -158,11 +170,12 @@ export default {
         },
       },
       backgroundImage: {
-        // Candy Atelier signature: raspberry → grape → mint
-        'candy-gradient': 'linear-gradient(135deg, #E11D6B 0%, #7C3AED 52%, #18C3A6 100%)',
-        'candy-gradient-soft': 'linear-gradient(135deg, rgba(225,29,107,0.10) 0%, rgba(124,58,237,0.08) 52%, rgba(24,195,166,0.06) 100%)',
-        'candy-mesh': 'radial-gradient(at 18% 12%, rgba(225,29,107,0.12) 0px, transparent 45%), radial-gradient(at 84% 8%, rgba(124,58,237,0.10) 0px, transparent 48%), radial-gradient(at 50% 96%, rgba(24,195,166,0.09) 0px, transparent 50%)',
-        'candy-conic': 'conic-gradient(from 210deg at 50% 50%, #E11D6B, #7C3AED, #18C3A6, #F2A742, #E11D6B)',
+        // Solid raspberry — no rainbow gradient (user feedback round N+1)
+        'candy-gradient': 'linear-gradient(135deg, #E11D6B 0%, #C8175A 100%)',
+        'candy-gradient-soft': 'linear-gradient(135deg, rgba(225,29,107,0.08) 0%, rgba(225,29,107,0.04) 100%)',
+        // Subtle warm mesh — single-hue bloom, not rainbow
+        'candy-mesh': 'radial-gradient(at 18% 12%, rgba(225,29,107,0.06) 0px, transparent 45%), radial-gradient(at 84% 8%, rgba(225,29,107,0.04) 0px, transparent 48%), radial-gradient(at 50% 96%, rgba(225,29,107,0.03) 0px, transparent 50%)',
+        'candy-conic': 'linear-gradient(135deg, #E11D6B 0%, #C8175A 100%)',
       },
     },
   },

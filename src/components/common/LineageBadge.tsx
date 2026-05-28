@@ -1,14 +1,30 @@
+import { Sparkle, GitFork, Recycle, Copyright, BadgeCheck, Cloud, Link2, FileText, Lock, CircleDollarSign, type LucideIcon } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import type { SkillLineage, ExecutionModel, ManifestVisibility } from '../../data/skillsData';
+
+// Badges are tinted from semantic design tokens (success / info / accent /
+// warning / error / primary). Tailwind's `/opacity` modifier can't synthesize
+// an alpha channel on these var()-based tokens, so the muted same-hue pill is
+// built with color-mix — the same approach the design system already uses for
+// .glass / .gumdrop. This keeps the tint correct in both light and dark mode.
+function tintPill(tokenVar: string) {
+  return {
+    color: `var(${tokenVar})`,
+    backgroundColor: `color-mix(in srgb, var(${tokenVar}) 12%, transparent)`,
+    borderColor: `color-mix(in srgb, var(${tokenVar}) 28%, transparent)`,
+  };
+}
+
+const PILL_CLASS = 'font-semibold px-1.5 py-0.5 rounded-full border font-mono inline-flex items-center gap-0.5';
 
 // ── Lineage Badge ──────────────────────────────────────────
 // Shows the provenance of a skill: original, fork, remix, or licensed derivative
 
-const LINEAGE_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
-  original:            { label: 'Original',              color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20', icon: '✦' },
-  fork:                { label: 'Fork',                  color: 'bg-blue-500/10 text-blue-500 border-blue-500/20',         icon: '⑂' },
-  remix:               { label: 'Remix',                 color: 'bg-purple-500/10 text-purple-500 border-purple-500/20',   icon: '♻' },
-  licensed_derivative: { label: 'Licensed Derivative',   color: 'bg-amber-500/10 text-amber-500 border-amber-500/20',     icon: '©' },
+const LINEAGE_CONFIG: Record<string, { label: string; token: string; Icon: LucideIcon }> = {
+  original:            { label: 'Original',            token: '--color-success', Icon: Sparkle },
+  fork:                { label: 'Fork',                token: '--color-info',    Icon: GitFork },
+  remix:               { label: 'Remix',               token: '--color-accent',  Icon: Recycle },
+  licensed_derivative: { label: 'Licensed Derivative', token: '--color-warning', Icon: Copyright },
 };
 
 interface LineageBadgeProps {
@@ -21,21 +37,17 @@ export function LineageBadge({ lineage, size = 'sm', showCanonical = true }: Lin
   if (!lineage) return null;
   const config = LINEAGE_CONFIG[lineage.type] || LINEAGE_CONFIG.original;
   const textSize = size === 'xs' ? 'text-[9px]' : 'text-[10px]';
+  const iconSize = size === 'xs' ? 'w-2.5 h-2.5' : 'w-3 h-3';
+  const { Icon } = config;
 
   return (
     <span className="inline-flex items-center gap-1">
-      <span className={cn(
-        textSize, 'font-semibold px-1.5 py-0.5 rounded-full border font-mono inline-flex items-center gap-0.5',
-        config.color,
-      )}>
-        {config.icon} {config.label}
+      <span className={cn(textSize, PILL_CLASS)} style={tintPill(config.token)}>
+        <Icon className={iconSize} /> {config.label}
       </span>
       {showCanonical && lineage.canonical && (
-        <span className={cn(
-          textSize, 'font-semibold px-1.5 py-0.5 rounded-full border font-mono',
-          'bg-rose-500/10 text-rose-500 border-rose-500/20'
-        )}>
-          ★ Canonical
+        <span className={cn(textSize, PILL_CLASS)} style={tintPill('--color-primary')}>
+          <BadgeCheck className={iconSize} /> Canonical
         </span>
       )}
     </span>
@@ -44,10 +56,10 @@ export function LineageBadge({ lineage, size = 'sm', showCanonical = true }: Lin
 
 // ── Execution Model Badge ──────────────────────────────────
 
-const EXEC_CONFIG: Record<string, { label: string; color: string; desc: string }> = {
-  open:      { label: 'Open',      color: 'text-emerald-500', desc: 'Self-hostable, run anywhere' },
-  managed:   { label: 'Managed',   color: 'text-blue-500',    desc: 'Runs on our infrastructure' },
-  federated: { label: 'Federated', color: 'text-purple-500',  desc: 'Creator-hosted execution' },
+const EXEC_CONFIG: Record<string, { label: string; token: string; desc: string }> = {
+  open:      { label: 'Open',      token: '--color-success', desc: 'Self-hostable, run anywhere' },
+  managed:   { label: 'Managed',   token: '--color-info',    desc: 'Runs on our infrastructure' },
+  federated: { label: 'Federated', token: '--color-accent',  desc: 'Creator-hosted execution' },
 };
 
 interface ExecutionModelBadgeProps {
@@ -60,19 +72,21 @@ export function ExecutionModelBadge({ model, size = 'sm' }: ExecutionModelBadgeP
   const config = EXEC_CONFIG[model];
   const textSize = size === 'xs' ? 'text-[9px]' : 'text-[10px]';
 
+  const iconSize = size === 'xs' ? 'w-2.5 h-2.5' : 'w-3 h-3';
+
   return (
-    <span className={cn(textSize, 'font-medium', config.color)} title={config.desc}>
-      {model === 'managed' ? '☁' : '🔗'} {config.label}
+    <span className={cn(textSize, 'font-medium inline-flex items-center gap-1')} style={{ color: `var(${config.token})` }} title={config.desc}>
+      {model === 'managed' ? <Cloud className={iconSize} /> : <Link2 className={iconSize} />} {config.label}
     </span>
   );
 }
 
 // ── Manifest Visibility Indicator ──────────────────────────
 
-const VIS_CONFIG: Record<string, { label: string; color: string; desc: string }> = {
-  full:          { label: 'Full Access',     color: 'text-emerald-500', desc: 'Manifest and runtime fully visible' },
-  manifest_only: { label: 'Manifest Only',  color: 'text-amber-500',   desc: 'Manifest visible, runtime gated' },
-  private:       { label: 'Private',         color: 'text-red-500',     desc: 'Access requires entitlement' },
+const VIS_CONFIG: Record<string, { label: string; token: string; desc: string }> = {
+  full:          { label: 'Full Access',    token: '--color-success', desc: 'Manifest and runtime fully visible' },
+  manifest_only: { label: 'Manifest Only',  token: '--color-warning', desc: 'Manifest visible, runtime gated' },
+  private:       { label: 'Private',        token: '--color-error',   desc: 'Access requires entitlement' },
 };
 
 interface ManifestVisibilityBadgeProps {
@@ -85,9 +99,11 @@ export function ManifestVisibilityBadge({ visibility, size = 'sm' }: ManifestVis
   const config = VIS_CONFIG[visibility];
   const textSize = size === 'xs' ? 'text-[9px]' : 'text-[10px]';
 
+  const iconSize = size === 'xs' ? 'w-2.5 h-2.5' : 'w-3 h-3';
+
   return (
-    <span className={cn(textSize, 'font-medium', config.color)} title={config.desc}>
-      {visibility === 'manifest_only' ? '📋' : '🔒'} {config.label}
+    <span className={cn(textSize, 'font-medium inline-flex items-center gap-1')} style={{ color: `var(${config.token})` }} title={config.desc}>
+      {visibility === 'manifest_only' ? <FileText className={iconSize} /> : <Lock className={iconSize} />} {config.label}
     </span>
   );
 }
@@ -111,12 +127,11 @@ export function PricingBadge({ pricingModel, price, size = 'sm' }: PricingBadgeP
     subscription: 'Subscription',
   };
 
+  const iconSize = size === 'xs' ? 'w-2.5 h-2.5' : 'w-3 h-3';
+
   return (
-    <span className={cn(
-      textSize, 'font-semibold px-1.5 py-0.5 rounded-full border font-mono inline-flex items-center gap-0.5',
-      'bg-amber-500/10 text-amber-500 border-amber-500/20'
-    )}>
-      💰 {priceDisplay} {modelLabels[pricingModel] || pricingModel}
+    <span className={cn(textSize, PILL_CLASS)} style={tintPill('--color-warning')}>
+      <CircleDollarSign className={iconSize} /> {priceDisplay} {modelLabels[pricingModel] || pricingModel}
     </span>
   );
 }

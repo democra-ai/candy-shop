@@ -5,13 +5,17 @@ import { Button } from '../components/ui/Button';
 import { useLanguage } from '../contexts/LanguageContext';
 import { cn } from '../utils/cn';
 
+// Candy-flavor theme palette. The `id`s are kept stable (they drive the
+// `--color-primary` CSS vars in THEME_COLORS below and map to the `theme.{id}`
+// i18n keys), but the display name + swatch are re-skinned to candy flavors.
+// Swatch colors match the raspberry-family candy palette so name and color agree.
 const themes = [
-  { id: 'indigo', name: 'Indigo', color: '#4F46E5', light: '#818CF8', desc: 'Professional & Modern' },
-  { id: 'blue', name: 'Ocean', color: '#3B82F6', light: '#60A5FA', desc: 'Calm & Trustworthy' },
-  { id: 'emerald', name: 'Emerald', color: '#10B981', light: '#34D399', desc: 'Fresh & Natural' },
-  { id: 'amber', name: 'Sunset', color: '#F59E0B', light: '#FBBF24', desc: 'Warm & Energetic' },
-  { id: 'rose', name: 'Rose', color: '#F43F5E', light: '#FB7185', desc: 'Bold & Vibrant' },
-  { id: 'violet', name: 'Purple', color: '#8B5CF6', light: '#A78BFA', desc: 'Creative & Elegant' },
+  { id: 'rose',    name: 'Raspberry',    color: '#E11D6B', light: '#FF6FA5', desc: 'The house flavor' },
+  { id: 'violet',  name: 'Grape',        color: '#7C3AED', light: '#A974FF', desc: 'Bold & juicy' },
+  { id: 'emerald', name: 'Mint',         color: '#18C3A6', light: '#34E2C4', desc: 'Cool & fresh' },
+  { id: 'amber',   name: 'Caramel',      color: '#F2A742', light: '#F7C173', desc: 'Warm & buttery' },
+  { id: 'blue',    name: 'Blueberry',    color: '#4F6EF2', light: '#8AA0FF', desc: 'Crisp & tart' },
+  { id: 'indigo',  name: 'Cotton Candy', color: '#B06AB3', light: '#D49BD6', desc: 'Soft & sweet' },
 ];
 
 export function SettingsPage() {
@@ -20,7 +24,7 @@ export function SettingsPage() {
     document.documentElement.classList.contains('dark')
   );
   const [currentTheme, setCurrentTheme] = useState(() =>
-    localStorage.getItem('colorTheme') || 'indigo'
+    localStorage.getItem('colorTheme') || 'rose'
   );
 
   const toggleDarkMode = () => {
@@ -44,13 +48,15 @@ export function SettingsPage() {
     // Directly apply
     const theme = themes.find(t => t.id === themeId);
     if (!theme) return;
+    // Candy-flavor primaries — same `id` keys, recolored to the boutique palette
+    // so the applied accent matches the swatch shown above.
     const THEME_COLORS: Record<string, Record<string, string>> = {
-      indigo: { '--color-primary': '#4F46E5', '--color-primary-hover': '#4338CA', '--color-primary-active': '#3730A3' },
-      blue: { '--color-primary': '#3B82F6', '--color-primary-hover': '#2563EB', '--color-primary-active': '#1D4ED8' },
-      emerald: { '--color-primary': '#10B981', '--color-primary-hover': '#059669', '--color-primary-active': '#047857' },
-      amber: { '--color-primary': '#F59E0B', '--color-primary-hover': '#D97706', '--color-primary-active': '#B45309' },
-      rose: { '--color-primary': '#F43F5E', '--color-primary-hover': '#E11D48', '--color-primary-active': '#BE123C' },
-      violet: { '--color-primary': '#8B5CF6', '--color-primary-hover': '#7C3AED', '--color-primary-active': '#6D28D9' },
+      rose: { '--color-primary': '#E11D6B', '--color-primary-hover': '#C9165C', '--color-primary-active': '#AE1250' },
+      violet: { '--color-primary': '#7C3AED', '--color-primary-hover': '#6D28D9', '--color-primary-active': '#5B21B6' },
+      emerald: { '--color-primary': '#18C3A6', '--color-primary-hover': '#129E87', '--color-primary-active': '#0D7E6C' },
+      amber: { '--color-primary': '#F2A742', '--color-primary-hover': '#D98B2A', '--color-primary-active': '#B86F1C' },
+      blue: { '--color-primary': '#4F6EF2', '--color-primary-hover': '#3B58D9', '--color-primary-active': '#2D45B8' },
+      indigo: { '--color-primary': '#B06AB3', '--color-primary-hover': '#9A559D', '--color-primary-active': '#824486' },
     };
     const colors = THEME_COLORS[themeId];
     if (colors) {
@@ -61,13 +67,16 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-2xl font-bold font-candy mb-8">Settings</h1>
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+      <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-foreground-tertiary mb-1.5">
+        your preferences
+      </p>
+      <h1 className="text-3xl font-bold font-candy tracking-tight mb-8">Settings</h1>
 
       {/* Appearance */}
       <Card className="mb-6">
         <CardContent className="pt-6">
-          <h2 className="text-lg font-semibold mb-4">Appearance</h2>
+          <h2 className="text-lg font-candy font-bold mb-4">Appearance</h2>
 
           {/* Dark Mode */}
           <div className="flex items-center justify-between py-3 border-b border-border">
@@ -100,10 +109,10 @@ export function SettingsPage() {
                   key={theme.id}
                   onClick={() => selectTheme(theme.id)}
                   className={cn(
-                    'flex items-center gap-3 p-3 rounded-lg border transition-all',
+                    'flex items-center gap-3 p-3 rounded-xl border transition-all',
                     currentTheme === theme.id
-                      ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
-                      : 'border-border hover:border-border-hover'
+                      ? 'border-primary bg-primary/5 ring-2 ring-primary/20 shadow-candy-1'
+                      : 'border-border hover:border-border-hover hover:shadow-candy-1'
                   )}
                 >
                   <div

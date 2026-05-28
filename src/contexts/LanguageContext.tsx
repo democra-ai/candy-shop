@@ -34,21 +34,21 @@ const translations: Record<Language, Record<string, string>> = {
     'darkMode': 'Dark Mode',
     'language': 'Language',
 
-    // Theme names
-    'theme.indigo': 'Indigo',
-    'theme.blue': 'Ocean',
-    'theme.emerald': 'Emerald',
-    'theme.amber': 'Sunset',
-    'theme.rose': 'Rose',
-    'theme.violet': 'Purple',
+    // Theme names — candy flavors (ids stay stable, labels re-skinned)
+    'theme.indigo': 'Cotton Candy',
+    'theme.blue': 'Blueberry',
+    'theme.emerald': 'Mint',
+    'theme.amber': 'Caramel',
+    'theme.rose': 'Raspberry',
+    'theme.violet': 'Grape',
 
     // Theme descriptions
-    'theme.indigo.desc': 'Professional & Modern',
-    'theme.blue.desc': 'Calm & Trustworthy',
-    'theme.emerald.desc': 'Fresh & Natural',
-    'theme.amber.desc': 'Warm & Energetic',
-    'theme.rose.desc': 'Bold & Vibrant',
-    'theme.violet.desc': 'Creative & Elegant',
+    'theme.indigo.desc': 'Soft & sweet',
+    'theme.blue.desc': 'Crisp & tart',
+    'theme.emerald.desc': 'Cool & fresh',
+    'theme.amber.desc': 'Warm & buttery',
+    'theme.rose.desc': 'The house flavor',
+    'theme.violet.desc': 'Bold & juicy',
 
     // Hero
     'hero.tagline': 'AI is simple like candy',
@@ -171,21 +171,21 @@ const translations: Record<Language, Record<string, string>> = {
     'darkMode': '深色模式',
     'language': '语言',
 
-    // Theme names
-    'theme.indigo': '靛蓝',
-    'theme.blue': '海洋',
-    'theme.emerald': '翠绿',
-    'theme.amber': '日落',
-    'theme.rose': '玫瑰',
-    'theme.violet': '紫色',
+    // Theme names — 糖果口味（id 不变，仅换显示名）
+    'theme.indigo': '棉花糖',
+    'theme.blue': '蓝莓',
+    'theme.emerald': '薄荷',
+    'theme.amber': '焦糖',
+    'theme.rose': '覆盆子',
+    'theme.violet': '葡萄',
 
     // Theme descriptions
-    'theme.indigo.desc': '专业现代',
-    'theme.blue.desc': '冷静可信',
-    'theme.emerald.desc': '清新自然',
-    'theme.amber.desc': '温暖活力',
-    'theme.rose.desc': '大胆鲜艳',
-    'theme.violet.desc': '创意优雅',
+    'theme.indigo.desc': '柔软香甜',
+    'theme.blue.desc': '清爽微酸',
+    'theme.emerald.desc': '清凉新鲜',
+    'theme.amber.desc': '温暖醇厚',
+    'theme.rose.desc': '招牌口味',
+    'theme.violet.desc': '浓郁多汁',
 
     // Hero
     'hero.tagline': 'AI 简单如糖果',

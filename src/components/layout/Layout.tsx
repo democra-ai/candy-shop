@@ -1,82 +1,93 @@
 import { useState, useEffect } from 'react';
+import { ArrowUp } from 'lucide-react';
 import type { User } from '../../lib/supabaseClient';
 import { Sidebar } from './Sidebar';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { LogoMark } from '../illustrations';
 
+// Candy-flavor primaries. `id` keys are stable (Raspberry=rose, Grape=violet,
+// Mint=emerald, Caramel=amber, Blueberry=blue, Cotton Candy=indigo); the hues
+// are the boutique palette so the live accent matches the swatch in the picker.
 const THEME_COLORS: Record<
   string,
   { light: Record<string, string>; dark: Record<string, string> }
 > = {
+  // Cotton Candy
   indigo: {
     light: {
-      '--color-primary': '#5E6AD2',
-      '--color-primary-hover': '#4F5CC0',
-      '--color-primary-active': '#434DB0',
+      '--color-primary': '#B06AB3',
+      '--color-primary-hover': '#9A559D',
+      '--color-primary-active': '#824486',
     },
     dark: {
-      '--color-primary': '#818CF8',
-      '--color-primary-hover': '#A5B4FC',
-      '--color-primary-active': '#6366F1',
+      '--color-primary': '#D49BD6',
+      '--color-primary-hover': '#E0B4E2',
+      '--color-primary-active': '#C285C4',
     },
   },
+  // Blueberry
   blue: {
     light: {
-      '--color-primary': '#3B82F6',
-      '--color-primary-hover': '#2563EB',
-      '--color-primary-active': '#1D4ED8',
+      '--color-primary': '#4F6EF2',
+      '--color-primary-hover': '#3B58D9',
+      '--color-primary-active': '#2D45B8',
     },
     dark: {
-      '--color-primary': '#60A5FA',
-      '--color-primary-hover': '#93C5FD',
-      '--color-primary-active': '#3B82F6',
+      '--color-primary': '#8AA0FF',
+      '--color-primary-hover': '#A6B7FF',
+      '--color-primary-active': '#6E87F2',
     },
   },
+  // Mint
   emerald: {
     light: {
-      '--color-primary': '#10B981',
-      '--color-primary-hover': '#059669',
-      '--color-primary-active': '#047857',
+      '--color-primary': '#18C3A6',
+      '--color-primary-hover': '#129E87',
+      '--color-primary-active': '#0D7E6C',
     },
     dark: {
-      '--color-primary': '#34D399',
-      '--color-primary-hover': '#6EE7B7',
-      '--color-primary-active': '#10B981',
+      '--color-primary': '#34E2C4',
+      '--color-primary-hover': '#5CEBD2',
+      '--color-primary-active': '#22C9AC',
     },
   },
+  // Caramel
   amber: {
     light: {
-      '--color-primary': '#F59E0B',
-      '--color-primary-hover': '#D97706',
-      '--color-primary-active': '#B45309',
+      '--color-primary': '#F2A742',
+      '--color-primary-hover': '#D98B2A',
+      '--color-primary-active': '#B86F1C',
     },
     dark: {
-      '--color-primary': '#FBBF24',
-      '--color-primary-hover': '#FCD34D',
-      '--color-primary-active': '#F59E0B',
+      '--color-primary': '#F7C173',
+      '--color-primary-hover': '#FAD295',
+      '--color-primary-active': '#EBAE55',
     },
   },
+  // Raspberry — the house flavor
   rose: {
     light: {
-      '--color-primary': '#D4246A',
-      '--color-primary-hover': '#BF1F5F',
-      '--color-primary-active': '#A81A54',
+      '--color-primary': '#E11D6B',
+      '--color-primary-hover': '#C9165C',
+      '--color-primary-active': '#AE1250',
     },
     dark: {
-      '--color-primary': '#F28BAE',
-      '--color-primary-hover': '#F5A0BF',
-      '--color-primary-active': '#E8759A',
+      '--color-primary': '#FF6FA5',
+      '--color-primary-hover': '#FF85B4',
+      '--color-primary-active': '#F25492',
     },
   },
+  // Grape
   violet: {
     light: {
-      '--color-primary': '#8B5CF6',
-      '--color-primary-hover': '#7C3AED',
-      '--color-primary-active': '#6D28D9',
+      '--color-primary': '#7C3AED',
+      '--color-primary-hover': '#6D28D9',
+      '--color-primary-active': '#5B21B6',
     },
     dark: {
-      '--color-primary': '#A78BFA',
-      '--color-primary-hover': '#C4B5FD',
-      '--color-primary-active': '#8B5CF6',
+      '--color-primary': '#A974FF',
+      '--color-primary-hover': '#BC93FF',
+      '--color-primary-active': '#9659F2',
     },
   },
 };
@@ -111,22 +122,26 @@ export function Layout({
   onNavPostCandy,
 }: LayoutProps) {
   const { t } = useLanguage();
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const [currentTheme, setCurrentTheme] = useState('rose');
+  // Read the theme state synchronously from <html class="dark"> (set by the
+  // inline FOUC-prevention script in index.html before first paint).
+  // Using useState's lazy initializer avoids the false→true flip that used
+  // to cause a flicker on first mount.
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof document === 'undefined') return false;
+    return document.documentElement.classList.contains('dark');
+  });
+  const [currentTheme, setCurrentTheme] = useState(() => {
+    if (typeof localStorage === 'undefined') return 'rose';
+    return localStorage.getItem('colorTheme') || 'rose';
+  });
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    const savedColorTheme = localStorage.getItem('colorTheme') || 'rose';
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-    setCurrentTheme(savedColorTheme);
-
-    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
-      setIsDarkMode(true);
-      document.documentElement.classList.add('dark');
-    }
-
-    applyThemeColors(savedColorTheme, savedTheme === 'dark' || (!savedTheme && prefersDark));
+    // Apply CSS color vars for the resolved theme. The `dark` class was
+    // already applied by the inline script in index.html; we only need to
+    // push the per-theme CSS variables here.
+    applyThemeColors(currentTheme, isDarkMode);
+    // Intentionally only on mount — toggleTheme + changeTheme keep things in sync after.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const applyThemeColors = (themeName: string, isDark: boolean) => {
@@ -181,21 +196,29 @@ export function Layout({
         currentTheme={currentTheme}
         onChangeTheme={changeTheme}
       />
-      <main className="lg:pl-64 pt-14 min-h-screen relative">
-        <div className="container max-w-7xl mx-auto px-4 sm:px-8 py-8 md:py-12">{children}</div>
+      {/* `min-h` reserves enough height that short pages (e.g. a filtered grid
+          with few results, or an empty craving tab) don't leave a dark void
+          above the footer — but it stops short of a full viewport so it never
+          INTRODUCES a void on tall pages. The outer wrapper carries the
+          full-page `min-h-screen` background. */}
+      <main className="lg:pl-64 pt-14 min-h-[60vh] relative">
+        <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8 md:pt-6 md:pb-12">{children}</div>
       </main>
 
-      <footer className="lg:pl-64 w-full relative mt-16">
-        {/* Gradient divider */}
-        <div className="h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+      <footer className="lg:pl-64 w-full relative">
+        {/* Clean hairline divider — single-hue, no rainbow candy-tape (DESIGN.md §5) */}
+        <div className="h-px w-full bg-border" aria-hidden />
         <div className="py-10 glass-strong">
-          <div className="container max-w-7xl mx-auto px-4">
+          <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-3 text-sm text-foreground-secondary font-body">
-                <span className="text-lg animate-candy-float">🍭</span>
-                <p>{t('footer.tagline')}</p>
+                <LogoMark size={22} />
+                <p className="font-candy font-bold text-foreground">{t('footer.tagline')}</p>
+                <span className="text-foreground-tertiary font-mono text-[11px] hidden md:inline">
+                  · handmade in small batches
+                </span>
               </div>
-              <div className="flex items-center gap-6 text-xs text-foreground-tertiary font-mono">
+              <div className="flex items-center gap-4 text-xs text-foreground-tertiary font-mono">
                 <a
                   href="https://github.com/anthropics/claude-skills"
                   target="_blank"
@@ -214,10 +237,10 @@ export function Layout({
                 </a>
                 <button
                   onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                  className="hover:text-primary transition-colors duration-200 cursor-pointer px-3 py-2 rounded-lg hover:bg-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  className="inline-flex items-center gap-1 hover:text-primary transition-colors duration-200 cursor-pointer px-3 py-2 rounded-lg hover:bg-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
                   aria-label="Scroll to top"
                 >
-                  {t('footer.backToTop')} ↑
+                  {t('footer.backToTop')} <ArrowUp className="w-3 h-3" />
                 </button>
               </div>
             </div>

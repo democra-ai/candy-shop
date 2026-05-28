@@ -24,6 +24,7 @@ import type { User as SupabaseUser } from '../../lib/supabaseClient';
 import { supabase } from '../../lib/supabaseClient';
 import { cn } from '../../utils/cn';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { Logo, LogoMark } from '../illustrations';
 
 interface SidebarProps {
   onOpenAuth: () => void;
@@ -64,13 +65,15 @@ const userNavItems: NavItem[] = [
   { id: 'library', labelKey: 'nav.library', userLabelKey: 'nav.library.user', icon: Library, action: 'library' },
 ];
 
+// Candy-flavor swatches. `id`s stay stable (wired to THEME_COLORS + i18n keys);
+// `name`/`description` come from i18n (`theme.{id}`) — these are display fallbacks.
 const themes = [
-  { id: 'indigo', name: 'Indigo', color: '#5E6AD2', light: '#818CF8', description: 'Professional & Modern' },
-  { id: 'blue', name: 'Ocean', color: '#3B82F6', light: '#60A5FA', description: 'Calm & Trustworthy' },
-  { id: 'emerald', name: 'Emerald', color: '#10B981', light: '#34D399', description: 'Fresh & Natural' },
-  { id: 'amber', name: 'Sunset', color: '#F59E0B', light: '#FBBF24', description: 'Warm & Energetic' },
-  { id: 'rose', name: 'Rose', color: '#F43F5E', light: '#FB7185', description: 'Bold & Vibrant' },
-  { id: 'violet', name: 'Purple', color: '#8B5CF6', light: '#A78BFA', description: 'Creative & Elegant' },
+  { id: 'rose', name: 'Raspberry', color: '#E11D6B', light: '#FF6FA5', description: 'The house flavor' },
+  { id: 'violet', name: 'Grape', color: '#7C3AED', light: '#A974FF', description: 'Bold & juicy' },
+  { id: 'emerald', name: 'Mint', color: '#18C3A6', light: '#34E2C4', description: 'Cool & fresh' },
+  { id: 'amber', name: 'Caramel', color: '#F2A742', light: '#F7C173', description: 'Warm & buttery' },
+  { id: 'blue', name: 'Blueberry', color: '#4F6EF2', light: '#8AA0FF', description: 'Crisp & tart' },
+  { id: 'indigo', name: 'Cotton Candy', color: '#B06AB3', light: '#D49BD6', description: 'Soft & sweet' },
 ];
 
 // Extracted as a top-level component to avoid HMR issues
@@ -92,11 +95,11 @@ function NavButton({
     <button
       onClick={() => onAction(item.action)}
       className={cn(
-        'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg',
+        'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl',
         'text-sm font-mono transition-all duration-200 cursor-pointer',
         'focus:outline-none focus:ring-2 focus:ring-primary/30',
         isActive
-          ? 'bg-gradient-to-r from-primary/10 to-primary/5 text-primary border border-primary/20 shadow-sm'
+          ? 'bg-primary/10 text-primary border border-primary/15 font-semibold'
           : 'hover:bg-secondary/70 hover:text-foreground border border-transparent',
         collapsed ? 'justify-center' : 'justify-start'
       )}
@@ -286,14 +289,21 @@ export function Sidebar({
         {!collapsed && (
           <button
             onClick={() => navigate('/')}
-            className="flex items-center gap-2 hover:opacity-80 transition-opacity duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30 rounded-lg px-1"
+            className="flex items-center hover:opacity-80 transition-opacity duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30 rounded-lg px-1"
             aria-label="Go to home page"
           >
-            <span className="text-2xl leading-none animate-candy-float" aria-hidden="true">🍭</span>
-            <span className="font-bold text-lg font-candy candy-gradient-text">~/Skills</span>
+            <Logo size={30} />
           </button>
         )}
-        {collapsed && <span className="text-2xl leading-none animate-candy-float">🍭</span>}
+        {collapsed && (
+          <button
+            onClick={() => navigate('/')}
+            className="flex items-center justify-center hover:opacity-80 transition-opacity duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30 rounded-lg"
+            aria-label="Go to home page"
+          >
+            <LogoMark size={28} />
+          </button>
+        )}
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
@@ -451,9 +461,8 @@ export function Sidebar({
           <button
             onClick={onOpenAuth}
             className={cn(
-              'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg',
-              'text-sm font-mono transition-all duration-200',
-              'bg-primary text-primary-foreground hover:bg-primary-hover',
+              'candy-btn btn-press w-full flex items-center gap-3 px-3 py-2.5 rounded-xl',
+              'text-sm font-mono font-semibold',
               collapsed ? 'justify-center' : 'justify-start'
             )}
             title={collapsed ? t('login') : undefined}
@@ -506,10 +515,10 @@ export function Sidebar({
 
         <button
           onClick={() => navigate('/')}
-          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+          className="flex items-center hover:opacity-80 transition-opacity"
+          aria-label="Go to home page"
         >
-          <span className="text-xl leading-none animate-candy-float">🍭</span>
-          <span className="font-bold text-base font-candy">Candy Shop</span>
+          <Logo size={26} />
         </button>
 
         <button

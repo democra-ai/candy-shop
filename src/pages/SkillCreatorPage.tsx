@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, CheckCircle } from 'lucide-react';
+import { Pip } from '../components/illustrations';
 import { SkillCreationMethodSelector } from '../components/skill-creator/SkillCreationMethodSelector';
 import { FileUploadZone } from '../components/skill-creator/FileUploadZone';
 import { AnalysisProgress } from '../components/skill-creator/AnalysisProgress';
@@ -174,19 +175,13 @@ export function SkillCreatorPage({ onComplete, onCancel }: SkillCreatorPageProps
   if (!creationMethod) {
     return (
       <div className="space-y-6">
-        <div>
-          <button
-            onClick={onCancel}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-4"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            Back
-          </button>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Create AI Skill</h1>
-          <p className="text-gray-600">
-            Choose how you want to create your skill
-          </p>
-        </div>
+        <button
+          onClick={onCancel}
+          className="inline-flex items-center gap-1.5 text-sm text-foreground-secondary hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back
+        </button>
 
         <SkillCreationMethodSelector
           onSelectMethod={(method) => setCreationMethod(method as CreationMethod)}
@@ -219,60 +214,65 @@ export function SkillCreatorPage({ onComplete, onCancel }: SkillCreatorPageProps
               onCancel();
             }
           }}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-4"
+          className="inline-flex items-center gap-1.5 text-sm text-foreground-secondary hover:text-foreground transition-colors mb-4"
         >
-          <ArrowLeft className="w-5 h-5" />
-          {step === 'upload' ? 'Back to Methods' : 'Back'}
+          <ArrowLeft className="w-4 h-4" />
+          {step === 'upload' ? 'Back to methods' : 'Back'}
         </button>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Create AI Skill</h1>
-        <p className="text-gray-600">
-          Upload your files and let AI analyze and generate a custom skill
+        <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-foreground-tertiary mb-1.5">
+          from files
+        </p>
+        <h1 className="font-candy font-bold tracking-tight leading-[1.1] text-2xl md:text-3xl text-foreground mb-1.5">
+          Create from your files
+        </h1>
+        <p className="text-sm text-foreground-secondary">
+          Upload files and let AI analyse them into a custom skill.
         </p>
       </div>
 
       {/* Feedback Messages */}
       {feedback && (
         <div
-          className={`p-4 rounded-lg ${feedback.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}
+          className={`p-4 rounded-xl border text-sm ${
+            feedback.type === 'success'
+              ? 'bg-success/10 border-success/30 text-success'
+              : 'bg-error/10 border-error/30 text-error'
+          }`}
         >
-          <p
-            className={`text-sm ${feedback.type === 'success' ? 'text-green-800' : 'text-red-800'}`}
-          >
-            {feedback.message}
-          </p>
+          {feedback.message}
         </div>
       )}
 
       {/* Progress Steps */}
-      <div className="mb-12">
-        <div className="flex items-center justify-center gap-4">
+      <div className="mb-10">
+        <div className="flex items-center justify-center gap-3 md:gap-4">
           {[
-            { key: 'upload', label: 'Upload Files' },
+            { key: 'upload', label: 'Upload' },
             { key: 'analyzing', label: 'Analyzing' },
-            { key: 'preview', label: 'Preview & Edit' },
+            { key: 'preview', label: 'Preview' },
             { key: 'complete', label: 'Complete' },
           ].map((s, index) => {
             const isActive = s.key === step;
             const isComplete = ['upload', 'analyzing', 'preview', 'complete'].indexOf(step) > index;
 
             return (
-              <div key={s.key} className="flex items-center gap-4">
+              <div key={s.key} className="flex items-center gap-3 md:gap-4">
                 <div className="flex flex-col items-center">
                   <div
                     className={`
-                      w-10 h-10 rounded-full flex items-center justify-center font-medium transition-all
-                      ${isActive ? 'bg-primary text-white scale-110' : ''}
-                      ${isComplete ? 'bg-green-500 text-white' : ''}
-                      ${!isActive && !isComplete ? 'bg-gray-200 text-gray-500' : ''}
+                      w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center font-mono text-sm font-bold transition-all
+                      ${isActive ? 'bg-primary text-primary-foreground scale-110' : ''}
+                      ${isComplete ? 'bg-accent text-card' : ''}
+                      ${!isActive && !isComplete ? 'bg-secondary text-foreground-tertiary' : ''}
                     `}
                   >
                     {isComplete ? <CheckCircle className="w-5 h-5" /> : index + 1}
                   </div>
-                  <span className="text-xs mt-2 text-gray-600">{s.label}</span>
+                  <span className="text-[11px] mt-2 text-foreground-secondary">{s.label}</span>
                 </div>
                 {index < 3 && (
                   <div
-                    className={`w-16 h-1 rounded ${isComplete ? 'bg-green-500' : 'bg-gray-200'}`}
+                    className={`w-10 md:w-16 h-1 rounded-full transition-colors ${isComplete ? 'bg-accent' : 'bg-secondary'}`}
                   />
                 )}
               </div>
@@ -282,7 +282,7 @@ export function SkillCreatorPage({ onComplete, onCancel }: SkillCreatorPageProps
       </div>
 
       {/* Content */}
-      <div className="bg-white rounded-2xl shadow-xl p-8">
+      <div className="bg-card rounded-3xl shadow-candy-1 border border-border p-6 md:p-8">
         {step === 'upload' && (
           <div className="space-y-6">
             <FileUploadZone onFilesSelected={handleFilesSelected} />
@@ -292,9 +292,9 @@ export function SkillCreatorPage({ onComplete, onCancel }: SkillCreatorPageProps
                 <button
                   onClick={handleStartAnalysis}
                   disabled={isUploading}
-                  className="px-8 py-3 bg-gradient-to-r from-primary to-primary-active text-white font-medium rounded-lg hover:from-primary-hover hover:to-primary-active transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="candy-btn btn-press h-10 px-6 font-semibold rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isUploading ? 'Uploading...' : 'Start Analysis'}
+                  {isUploading ? 'Uploading…' : 'Start analysis'}
                 </button>
               </div>
             )}
@@ -310,8 +310,8 @@ export function SkillCreatorPage({ onComplete, onCancel }: SkillCreatorPageProps
               message={status.message}
             />
             {error && (
-              <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-800">{error}</p>
+              <div className="mt-6 p-4 bg-error/10 border border-error/30 rounded-xl">
+                <p className="text-sm text-error">{error}</p>
               </div>
             )}
           </div>
@@ -328,11 +328,11 @@ export function SkillCreatorPage({ onComplete, onCancel }: SkillCreatorPageProps
 
         {step === 'complete' && (
           <div className="text-center py-12">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <CheckCircle className="w-12 h-12 text-green-600" />
+            <div className="flex items-center justify-center mx-auto mb-6">
+              <Pip size={104} />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Skill Created Successfully!</h2>
-            <p className="text-gray-600">Redirecting to skills library...</p>
+            <h2 className="font-candy text-2xl font-bold text-foreground mb-2">Fresh batch is ready!</h2>
+            <p className="text-foreground-secondary">Taking you to your library…</p>
           </div>
         )}
       </div>

@@ -12,7 +12,10 @@ import { PostCandyModal } from './components/home/PostCandyModal';
 import { Categories } from './components/home/Categories';
 import { ExternalResources } from './components/home/ExternalResources';
 import { FAQ } from './components/home/FAQ';
-import { EditorPicks } from './components/home/EditorPicks';
+import { MostPopularRail } from './components/home/MostPopularRail';
+import { ShopWindow } from './components/home/ShopWindow';
+// EditorPicks intentionally not mounted — its content now lives in the bento Hero
+// (featured raspberry cell) and Aisle 1 (MostPopularRail).
 import { AuthModal } from './components/auth/AuthModal';
 import { AuthCallback } from './components/auth/AuthCallback';
 import { CartDrawer } from './components/common/CartDrawer';
@@ -249,7 +252,8 @@ function HomePage({
 
         {activeTab === 'candy' && (
           <>
-            <EditorPicks onRunSkill={onRunSkill} />
+            <ShopWindow onRunSkill={onRunSkill} />
+            <MostPopularRail onRunSkill={onRunSkill} />
             <Categories
               activeCategory={candyTagFilter}
               onSelectCategory={(tag: string | null) => {

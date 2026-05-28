@@ -26,14 +26,14 @@ export function AnalysisProgress({
   return (
     <div className="w-full max-w-2xl mx-auto space-y-6">
       {/* Progress Bar */}
-      <div className="relative">
-        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+      <div className="relative pt-5">
+        <div className="h-2 bg-secondary rounded-full overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-primary to-primary-active transition-all duration-500 ease-out"
+            className="h-full bg-primary transition-all duration-500 ease-out"
             style={{ width: `${progress}%` }}
           />
         </div>
-        <div className="absolute -top-1 right-0 text-xs font-mono text-gray-500">{progress}%</div>
+        <div className="absolute top-0 right-0 text-xs font-mono text-foreground-tertiary">{progress}%</div>
       </div>
 
       {/* Steps */}
@@ -49,9 +49,9 @@ export function AnalysisProgress({
               <div
                 className={`
                   w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300
-                  ${isActive ? 'bg-primary text-white scale-110' : ''}
-                  ${isComplete ? 'bg-success text-success-foreground' : ''}
-                  ${isPending ? 'bg-secondary text-foreground-muted' : ''}
+                  ${isActive ? 'bg-primary text-primary-foreground scale-110' : ''}
+                  ${isComplete ? 'bg-accent text-card' : ''}
+                  ${isPending ? 'bg-secondary text-foreground-tertiary' : ''}
                 `}
               >
                 {isComplete ? (
@@ -66,8 +66,8 @@ export function AnalysisProgress({
                 className={`
                   text-xs font-medium text-center
                   ${isActive ? 'text-primary' : ''}
-                  ${isComplete ? 'text-success' : ''}
-                  ${isPending ? 'text-foreground-muted' : ''}
+                  ${isComplete ? 'text-accent' : ''}
+                  ${isPending ? 'text-foreground-tertiary' : ''}
                 `}
               >
                 {step.label}
@@ -78,13 +78,13 @@ export function AnalysisProgress({
       </div>
 
       {/* Status Message */}
-      <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+      <div className="bg-secondary rounded-xl p-4 border border-border">
         <div className="flex items-start gap-3">
           <Loader2 className="w-5 h-5 text-primary animate-spin flex-shrink-0 mt-0.5" />
           <div className="flex-1">
-            <p className="text-sm font-medium text-gray-700 mb-1">{message}</p>
+            <p className="text-sm font-medium text-foreground mb-1">{message}</p>
             {currentFile && (
-              <p className="text-xs text-gray-500 font-mono">Processing: {currentFile}</p>
+              <p className="text-xs text-foreground-tertiary font-mono">Processing: {currentFile}</p>
             )}
           </div>
         </div>
@@ -92,7 +92,7 @@ export function AnalysisProgress({
 
       {/* Fun Loading Messages */}
       <div className="text-center">
-        <p className="text-xs text-gray-400 italic">{getLoadingMessage(status)}</p>
+        <p className="text-xs text-foreground-tertiary italic">{getLoadingMessage(status)}</p>
       </div>
     </div>
   );

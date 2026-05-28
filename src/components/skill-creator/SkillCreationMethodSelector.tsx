@@ -1,83 +1,96 @@
-import { Upload, Edit3, Github, GitBranch } from 'lucide-react';
+import { Upload, Edit3, Github, GitBranch, ArrowRight } from 'lucide-react';
+import { useIsDark } from '../../hooks/useIsDark';
+import { getFlavor } from '../../utils/candyShells';
 
 interface SkillCreationMethodSelectorProps {
   onSelectMethod: (method: 'upload' | 'manual' | 'github' | 'workflow') => void;
 }
 
 export function SkillCreationMethodSelector({ onSelectMethod }: SkillCreationMethodSelectorProps) {
+  const isDark = useIsDark();
+
+  // Each method borrows a category shell so the cards feel like the rest of the
+  // boutique (muted pastel surfaces, dark-aware) instead of generic white.
   const methods = [
     {
-      id: 'workflow',
+      id: 'workflow' as const,
       title: 'Visual Workflow Builder',
-      description: 'Build complex agent skills using visual node-based workflow editor (like Refly)',
+      description: 'Compose agent skills on a node-based canvas — wire up steps visually.',
       icon: GitBranch,
-      color: 'from-violet-600 to-purple-700',
+      shellKey: 'Design',
     },
     {
-      id: 'upload',
+      id: 'upload' as const,
       title: 'Upload Files',
-      description: 'Upload your local files and let AI analyze them to create a skill',
+      description: 'Drop in your local files and let AI analyse them into a fresh skill.',
       icon: Upload,
-      color: 'from-info to-info-foreground',
+      shellKey: 'Research',
     },
     {
-      id: 'manual',
+      id: 'manual' as const,
       title: 'Manual Creation',
-      description: 'Create a skill by manually entering all of the details and configuration',
+      description: 'Hand-craft a skill — enter the name, prompt and capabilities yourself.',
       icon: Edit3,
-      color: 'from-primary to-primary-active',
+      shellKey: 'Development',
     },
     {
-      id: 'github',
+      id: 'github' as const,
       title: 'Import from GitHub',
-      description: 'Import a skill from a GitHub repository (skill.md file)',
+      description: 'Pull a skill straight from a repo that ships a skill.md file.',
       icon: Github,
-      color: 'from-gray-700 to-gray-800',
+      shellKey: 'Tools',
     },
   ];
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Choose Creation Method</h2>
-        <p className="text-gray-600">Select how you'd like to create your new skill</p>
+        <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-foreground-tertiary mb-1.5">
+          fresh batch
+        </p>
+        <h2 className="font-candy font-bold tracking-tight leading-[1.1] text-2xl md:text-3xl text-foreground">
+          Choose a creation method
+        </h2>
+        <p className="mt-1.5 text-sm text-foreground-secondary">
+          Pick how you'd like to make your new candy.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {methods.map((method) => {
           const Icon = method.icon;
+          const f = getFlavor(method.shellKey, isDark);
           return (
             <button
               key={method.id}
-              onClick={() => onSelectMethod(method.id as 'upload' | 'manual' | 'github' | 'workflow')}
-              className="group relative overflow-hidden rounded-xl bg-white border-2 border-gray-200 hover:border-primary transition-all hover:shadow-lg p-6 text-left"
+              onClick={() => onSelectMethod(method.id)}
+              className="group relative flex flex-col gap-4 overflow-hidden rounded-2xl p-5 text-left bg-card border border-border shadow-candy-1 candy-lift hover:shadow-candy-2 hover:border-border-hover focus:outline-none focus:ring-2 focus:ring-ring"
             >
-              {/* Background gradient on hover */}
-              <div
-                className={`absolute inset-0 bg-gradient-to-br ${method.color} opacity-0 group-hover:opacity-5 transition-opacity`}
-              />
+              {/* thin flavor top accent */}
+              <span className="absolute inset-x-0 top-0 h-1" style={{ background: f.base }} aria-hidden />
+              <span
+                className="inline-flex w-11 h-11 rounded-xl items-center justify-center"
+                style={{ backgroundColor: f.tint, color: f.base }}
+              >
+                <Icon className="w-5 h-5" />
+              </span>
 
-              {/* Content */}
-              <div className="relative z-10 space-y-4">
-                <div
-                  className={`w-12 h-12 rounded-lg bg-gradient-to-br ${method.color} flex items-center justify-center text-white`}
-                >
-                  <Icon className="w-6 h-6" />
-                </div>
-
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900 group-hover:text-primary transition-colors">
-                    {method.title}
-                  </h3>
-                  <p className="text-sm text-gray-600 mt-1">{method.description}</p>
-                </div>
-
-                <div className="pt-2">
-                  <span className="inline-flex items-center text-sm font-medium text-primary group-hover:text-primary-active">
-                    Get Started →
-                  </span>
-                </div>
+              <div className="space-y-1">
+                <h3 className="font-candy font-bold text-base md:text-lg leading-[1.15] text-foreground">
+                  {method.title}
+                </h3>
+                <p className="text-[13px] leading-snug font-body text-foreground-secondary">
+                  {method.description}
+                </p>
               </div>
+
+              <span
+                className="mt-auto inline-flex items-center gap-1 text-[11px] font-mono font-bold uppercase tracking-wider"
+                style={{ color: f.base }}
+              >
+                get started
+                <ArrowRight className="w-3 h-3 transition-transform duration-200 group-hover:translate-x-0.5" />
+              </span>
             </button>
           );
         })}

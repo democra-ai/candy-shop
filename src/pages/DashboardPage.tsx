@@ -1,13 +1,15 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, Heart, Star, Package, Plus, ArrowRight } from 'lucide-react';
+import { Heart, Star, Package, Plus, ArrowRight } from 'lucide-react';
 import type { User } from '../lib/supabaseClient';
-import { Button } from '../components/ui/Button';
-import { Card, CardContent } from '../components/ui/Card';
-import { Badge } from '../components/ui/Badge';
 import { storageUtils } from '../utils/storage';
 import { SKILLS_DATA } from '../data/skillsData';
 import { cn } from '../utils/cn';
+import { CandyCard } from '../components/home/CandyCard';
+import { skillToCard } from '../utils/skillToCard';
+import { useIsDark } from '../hooks/useIsDark';
+import { getFlavor } from '../utils/candyShells';
+import { EmptyJar, Counter, getCandyIcon } from '../components/illustrations';
 
 type DashboardTab = 'skills' | 'cravings' | 'starred';
 
@@ -18,6 +20,7 @@ interface DashboardPageProps {
 
 export function DashboardPage({ user, onOpenAuth }: DashboardPageProps) {
   const navigate = useNavigate();
+  const isDark = useIsDark();
   const [activeTab, setActiveTab] = useState<DashboardTab>('skills');
 
   const userSkills = useMemo(() => storageUtils.getSkills(), []);
@@ -28,15 +31,30 @@ export function DashboardPage({ user, onOpenAuth }: DashboardPageProps) {
     [likedIds]
   );
 
+  // ── Sign-in gate — charming, on-brand empty state ──
   if (!user) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
-        <div className="text-5xl mb-4">🔐</div>
-        <h1 className="text-2xl font-bold mb-2">Sign in to access your Dashboard</h1>
-        <p className="text-foreground-secondary mb-6">
-          Manage your skills, cravings, and starred items.
-        </p>
-        <Button onClick={onOpenAuth}>Sign In</Button>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-20 md:py-28">
+        <div className="max-w-md mx-auto text-center">
+          <div className="mx-auto mb-6 flex items-center justify-center">
+            <Counter size={112} />
+          </div>
+          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-foreground-tertiary mb-2">
+            your counter
+          </p>
+          <h1 className="font-candy font-bold tracking-tight leading-[1.1] text-3xl text-foreground mb-3">
+            Sign in to your candy counter
+          </h1>
+          <p className="text-foreground-secondary mb-7">
+            Keep your made candies, cravings and starred jars in one tidy place.
+          </p>
+          <button
+            onClick={onOpenAuth}
+            className="candy-btn btn-press inline-flex items-center justify-center h-11 px-7 font-semibold rounded-2xl"
+          >
+            Sign in
+          </button>
+        </div>
       </div>
     );
   }
@@ -51,43 +69,40 @@ export function DashboardPage({ user, onOpenAuth }: DashboardPageProps) {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 md:py-12">
       {/* Profile Card */}
-      <Card className="mb-8">
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-4">
-            {avatarUrl ? (
-              <img src={avatarUrl} alt="" className="w-16 h-16 rounded-full border-2 border-border" />
-            ) : (
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                <span className="text-2xl font-bold text-primary">{displayName[0]?.toUpperCase()}</span>
-              </div>
-            )}
-            <div className="flex-1">
-              <h1 className="text-xl font-bold">{displayName}</h1>
-              <p className="text-sm text-foreground-secondary">{user.email}</p>
-              <div className="flex items-center gap-4 mt-2">
-                <span className="text-xs text-foreground-tertiary">
-                  {userSkills.length} skills created
-                </span>
-                <span className="text-xs text-foreground-tertiary">
-                  {userCravings.length} cravings posted
-                </span>
-                <span className="text-xs text-foreground-tertiary">
-                  {starredSkills.length} starred
-                </span>
-              </div>
+      <div className="mb-8 bg-card rounded-3xl border border-border shadow-candy-1 p-5 md:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="" className="w-16 h-16 rounded-full border border-border object-cover" />
+          ) : (
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <span className="text-2xl font-bold font-candy text-primary">{displayName[0]?.toUpperCase()}</span>
             </div>
-            <Button variant="outline" size="sm" onClick={() => navigate('/skills/create')}>
-              <Plus className="w-4 h-4" />
-              Create Skill
-            </Button>
+          )}
+          <div className="flex-1 min-w-0">
+            <h1 className="font-candy text-xl font-bold text-foreground truncate">{displayName}</h1>
+            <p className="text-sm text-foreground-secondary truncate">{user.email}</p>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 font-mono text-xs text-foreground-tertiary">
+              <span>{userSkills.length} made</span>
+              <span aria-hidden className="opacity-50">·</span>
+              <span>{userCravings.length} cravings</span>
+              <span aria-hidden className="opacity-50">·</span>
+              <span>{starredSkills.length} starred</span>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+          <button
+            onClick={() => navigate('/skills/create')}
+            className="inline-flex items-center gap-1.5 h-10 px-5 border border-border bg-card text-foreground font-semibold rounded-2xl hover:border-border-hover hover:shadow-candy-1 transition-all shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            New skill
+          </button>
+        </div>
+      </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 border-b border-border mb-6">
+      <div className="flex items-center gap-1 border-b border-border mb-6 overflow-x-auto">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           return (
@@ -95,15 +110,17 @@ export function DashboardPage({ user, onOpenAuth }: DashboardPageProps) {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                'flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors',
+                'flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-ring rounded-t',
                 activeTab === tab.id
                   ? 'border-primary text-primary'
-                  : 'border-transparent text-foreground-secondary hover:text-foreground hover:border-border'
+                  : 'border-transparent text-foreground-secondary hover:text-foreground'
               )}
             >
               <Icon className="w-4 h-4" />
               {tab.label}
-              <Badge variant="secondary" size="sm">{tab.count}</Badge>
+              <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-secondary text-foreground-secondary text-[11px] font-mono">
+                {tab.count}
+              </span>
             </button>
           );
         })}
@@ -113,36 +130,30 @@ export function DashboardPage({ user, onOpenAuth }: DashboardPageProps) {
       {activeTab === 'skills' && (
         <div>
           {userSkills.length === 0 ? (
-            <div className="text-center py-16">
-              <Sparkles className="w-12 h-12 text-foreground-muted mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No skills yet</h3>
-              <p className="text-foreground-secondary mb-4">Create your first AI skill or browse the marketplace.</p>
-              <div className="flex justify-center gap-3">
-                <Button onClick={() => navigate('/skills/create')}>
-                  <Plus className="w-4 h-4" /> Create Skill
-                </Button>
-                <Button variant="outline" onClick={() => navigate('/discover')}>
-                  Browse Marketplace
-                </Button>
-              </div>
-            </div>
+            <EmptyState
+              title="No candies yet"
+              body="Make your first AI skill or browse the shop for inspiration."
+              primary={{ label: 'Make a skill', onClick: () => navigate('/skills/create') }}
+              secondary={{ label: 'Browse the shop', onClick: () => navigate('/') }}
+            />
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {userSkills.map((skill) => (
-                <Card key={skill.id} variant="interactive" className="p-5">
-                  <CardContent className="p-0">
-                    <div className="flex items-center gap-3 mb-3">
-                      <span className="text-2xl">{skill.icon}</span>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-sm truncate">{skill.name}</h3>
-                        <Badge variant={skill.status === 'active' ? 'success' : 'secondary'} size="sm">
-                          {skill.status}
-                        </Badge>
-                      </div>
-                    </div>
-                    <p className="text-xs text-foreground-secondary line-clamp-2">{skill.description}</p>
-                  </CardContent>
-                </Card>
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {userSkills.map((skill, index) => (
+                <CandyCard
+                  key={skill.id}
+                  skill={skillToCard({
+                    id: skill.id,
+                    name: skill.name,
+                    description: skill.description,
+                    category: skill.category,
+                    icon: skill.icon,
+                    tags: skill.tags,
+                    popularity: skill.popularity,
+                  })}
+                  index={index}
+                  onSelect={() => navigate('/skills/library')}
+                  onRun={() => navigate('/skills/library')}
+                />
               ))}
             </div>
           )}
@@ -152,40 +163,46 @@ export function DashboardPage({ user, onOpenAuth }: DashboardPageProps) {
       {activeTab === 'cravings' && (
         <div>
           {userCravings.length === 0 ? (
-            <div className="text-center py-16">
-              <Heart className="w-12 h-12 text-foreground-muted mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No cravings yet</h3>
-              <p className="text-foreground-secondary mb-4">Post what you need and let makers find you.</p>
-              <Button onClick={() => navigate('/discover?tab=craving')}>
-                Post a Craving
-              </Button>
-            </div>
+            <EmptyState
+              title="No cravings yet"
+              body="Post what you wish existed and let makers find you."
+              primary={{ label: 'Post a craving', onClick: () => navigate('/?tab=craving') }}
+            />
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {userCravings.map((craving) => (
-                <Card
-                  key={craving.id}
-                  variant="interactive"
-                  className="p-5"
-                  onClick={() => navigate(`/craving/${craving.id}`)}
-                >
-                  <CardContent className="p-0">
-                    <div className="flex items-center gap-3 mb-3">
-                      <span className="text-2xl">{craving.emoji}</span>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-sm truncate">{craving.title}</h3>
-                        <Badge
-                          variant={craving.status === 'open' ? 'success' : 'secondary'}
-                          size="sm"
-                        >
-                          {craving.status}
-                        </Badge>
-                      </div>
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {userCravings.map((craving) => {
+                const f = getFlavor(craving.category ?? craving.tags?.[0], isDark);
+                const Candy = getCandyIcon(craving.category ?? craving.tags?.[0], isDark);
+                return (
+                  <button
+                    key={craving.id}
+                    onClick={() => navigate(`/craving/${craving.id}`)}
+                    className="group text-left rounded-2xl p-4 md:p-5 bg-card border border-border shadow-candy-1 candy-lift hover:shadow-candy-2 hover:border-border-hover focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <div className="flex items-center gap-2 mb-3">
+                      <span
+                        className="inline-flex items-center justify-center w-9 h-9 rounded-xl shrink-0"
+                        style={{ background: f.tint }}
+                        aria-hidden="true"
+                      >
+                        <Candy size={22} color={f.base} />
+                      </span>
+                      <span
+                        className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-widest"
+                        style={{ backgroundColor: f.tint, color: f.ink }}
+                      >
+                        {craving.status}
+                      </span>
                     </div>
-                    <p className="text-xs text-foreground-secondary line-clamp-2">{craving.description}</p>
-                  </CardContent>
-                </Card>
-              ))}
+                    <h3 className="font-candy font-bold text-base leading-[1.15] line-clamp-2 text-foreground">
+                      {craving.title}
+                    </h3>
+                    <p className="mt-1.5 text-xs leading-snug line-clamp-2 text-foreground-secondary">
+                      {craving.description}
+                    </p>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
@@ -194,40 +211,73 @@ export function DashboardPage({ user, onOpenAuth }: DashboardPageProps) {
       {activeTab === 'starred' && (
         <div>
           {starredSkills.length === 0 ? (
-            <div className="text-center py-16">
-              <Star className="w-12 h-12 text-foreground-muted mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No starred skills</h3>
-              <p className="text-foreground-secondary mb-4">Star skills you like to find them quickly.</p>
-              <Button onClick={() => navigate('/discover')}>
-                Discover Skills <ArrowRight className="w-4 h-4" />
-              </Button>
-            </div>
+            <EmptyState
+              title="No starred candy"
+              body="Star skills you love to find them again in a snap."
+              primary={{ label: 'Discover skills', onClick: () => navigate('/'), icon: true }}
+            />
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {starredSkills.map((skill) => (
-                <Card
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {starredSkills.map((skill, index) => (
+                <CandyCard
                   key={skill.id}
-                  variant="interactive"
-                  className="p-5"
-                  onClick={() => navigate(`/candy/${skill.id}`)}
-                >
-                  <CardContent className="p-0">
-                    <div className="flex items-center gap-3 mb-3">
-                      <span className="text-2xl">{skill.icon}</span>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-sm truncate">{skill.name}</h3>
-                        <Badge variant="secondary" size="sm">{skill.category}</Badge>
-                      </div>
-                      <Star className="w-4 h-4 fill-warning text-warning" />
-                    </div>
-                    <p className="text-xs text-foreground-secondary line-clamp-2">{skill.description}</p>
-                  </CardContent>
-                </Card>
+                  skill={skill}
+                  index={index}
+                  onSelect={() => navigate(`/candy/${skill.id}`)}
+                  onRun={() => navigate(`/candy/${skill.id}`)}
+                />
               ))}
             </div>
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Shared empty-state block ──
+interface EmptyStateAction {
+  label: string;
+  onClick: () => void;
+  icon?: boolean;
+}
+
+function EmptyState({
+  title,
+  body,
+  primary,
+  secondary,
+}: {
+  title: string;
+  body: string;
+  primary: EmptyStateAction;
+  secondary?: EmptyStateAction;
+}) {
+  return (
+    <div className="text-center py-16 rounded-3xl border border-dashed border-border bg-secondary/40">
+      <div className="mx-auto mb-4 flex items-center justify-center">
+        <EmptyJar size={96} />
+      </div>
+      <h3 className="font-candy text-xl font-bold text-foreground mb-2">{title}</h3>
+      <p className="text-sm text-foreground-secondary mb-6 max-w-sm mx-auto">{body}</p>
+      <div className="flex flex-wrap justify-center gap-3">
+        <button
+          onClick={primary.onClick}
+          className="candy-btn btn-press inline-flex items-center gap-1.5 h-10 px-5 font-semibold rounded-2xl"
+        >
+          {!primary.icon && <Plus className="w-4 h-4" />}
+          {primary.label}
+          {primary.icon && <ArrowRight className="w-4 h-4" />}
+        </button>
+        {secondary && (
+          <button
+            onClick={secondary.onClick}
+            className="inline-flex items-center h-10 px-5 border border-border bg-card text-foreground font-semibold rounded-2xl hover:border-border-hover hover:shadow-candy-1 transition-all"
+          >
+            {secondary.label}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

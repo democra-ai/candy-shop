@@ -25,6 +25,10 @@
        a vivid grape third accent, bright mint. Richer & more dimensional
        than the old timid cream/pink. */
 
+    /* Elastic easing (DESIGN.md §5) — exposed as a CSS var for hand-rolled
+       utilities (.candy-btn, .candy-lift). Mirrors tailwind ease-candy. */
+    --ease-candy: cubic-bezier(.34,1.56,.64,1);
+
     /* Background — clean sugar with the faintest warm bloom */
     --color-background: #FFFDFB;
     --color-background-secondary: #FFF4F8;
@@ -237,24 +241,38 @@
   border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
 }
 
-/* ==================== Candy Gradients — Atelier palette ==================== */
+/* ==================== Candy Solids ====================
+ * All "candy gradient" classes now resolve to SOLID raspberry.
+ * Rainbow gradients were removed per user feedback (round N+1):
+ * 不要任何这种炫彩色 — no rainbow anywhere.
+ * Stragglers in legacy components still using these classes
+ * will get solid raspberry instead of a 3-stop rainbow.
+ */
 .candy-gradient {
-  background: linear-gradient(135deg, #E11D6B 0%, #7C3AED 52%, #18C3A6 100%);
+  background: #E11D6B;
 }
 
 .candy-gradient-soft {
-  background: linear-gradient(135deg, rgba(225,29,107,0.10) 0%, rgba(124,58,237,0.08) 52%, rgba(24,195,166,0.06) 100%);
+  background: rgba(225, 29, 107, 0.08);
 }
 
 .candy-gradient-text {
-  background: linear-gradient(135deg, #E11D6B 0%, #7C3AED 55%, #18C3A6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #E11D6B;
+  background: none;
+  -webkit-text-fill-color: currentColor;
 }
 
 .candy-gradient-raspberry-gold {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-grape) 55%, var(--color-accent) 100%);
+  color: var(--color-primary);
+  background: none;
+  -webkit-text-fill-color: currentColor;
+}
+
+/* Subtle same-hue raspberry gradient — for Hero headline only.
+ * Same family (dark→light raspberry), no rainbow. Reads as "polished gradient"
+ * without going rainbow per user feedback. */
+.candy-gradient-raspberry-subtle {
+  background: linear-gradient(135deg, #E11D6B 0%, #B3185C 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -301,6 +319,53 @@
 .btn-press:active {
   transform: scale(0.96);
 }
+
+/* ==================== Candy Button (Duolingo-style pressable) ====================
+ * DESIGN.md §5: solid raspberry with an offset bottom shadow that the button
+ * "sinks into" on press. Theme-aware via --color-primary-active. This is the
+ * primary CTA across the whole app; opt in with the `candy` Button variant.
+ * Overrides .btn-press's scale so the two effects don't fight. */
+.candy-btn {
+  background-color: var(--color-primary);
+  color: var(--color-primary-foreground);
+  box-shadow: 0 4px 0 var(--color-primary-active);
+  transition: transform 0.12s var(--ease-candy, cubic-bezier(.34,1.56,.64,1)),
+              box-shadow 0.12s ease, background-color 0.2s ease;
+}
+.candy-btn:hover {
+  background-color: var(--color-primary-hover);
+}
+.candy-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 var(--color-primary-active);
+}
+.candy-btn.btn-press:active {
+  /* cancel the generic scale press; the translate above is the candy press */
+  transform: translateY(2px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .candy-btn, .candy-btn:active { transform: none; }
+}
+
+/* ==================== Elastic card lift (DESIGN.md §5) ====================
+ * translate-y lift + elevation rise on hover, elastic easing. Pair with a
+ * shadow-candy-* resting shadow on the element. */
+.candy-lift {
+  transition: transform 0.2s var(--ease-candy, cubic-bezier(.34,1.56,.64,1)),
+              box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.candy-lift:hover {
+  transform: translateY(-4px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .candy-lift:hover { transform: none; }
+}
+
+/* Dark-mode elevation: remap the candy shadow utilities to their -dark values
+ * so a single `shadow-candy-N` class is correct in both themes. */
+.dark .shadow-candy-1 { box-shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 12px rgba(0,0,0,.45); }
+.dark .shadow-candy-2 { box-shadow: 0 2px 6px rgba(0,0,0,.45), 0 12px 28px rgba(0,0,0,.5); }
+.dark .shadow-candy-3 { box-shadow: 0 8px 20px rgba(0,0,0,.5), 0 28px 56px rgba(0,0,0,.6); }
 
 /* ==================== Card Hover Lift ==================== */
 .card-luxe {
@@ -527,5 +592,33 @@
 
 .duration-400 {
   transition-duration: 400ms;
+}
+
+/* ==================== react-masonry-css ==================== */
+/* CSS-columns masonry. Cards pack with NO gaps — column gap is the only
+   horizontal spacing; vertical spacing is added via card margin-bottom. */
+.my-masonry-grid {
+  display: flex;
+  margin-left: -16px;  /* negate left column padding for flush left edge */
+  width: auto;
+}
+.my-masonry-grid_column {
+  padding-left: 16px;  /* gutter */
+  background-clip: padding-box;
+}
+.my-masonry-grid_column > * {
+  margin-bottom: 16px; /* vertical gutter */
+}
+
+@media (max-width: 768px) {
+  .my-masonry-grid {
+    margin-left: -12px;
+  }
+  .my-masonry-grid_column {
+    padding-left: 12px;
+  }
+  .my-masonry-grid_column > * {
+    margin-bottom: 12px;
+  }
 }
 

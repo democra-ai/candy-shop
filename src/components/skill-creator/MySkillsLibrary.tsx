@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus, Trash2, Play, Calendar, Filter, ArrowLeft, Package } from 'lucide-react';
+import { Search, Plus, Trash2, Filter, Package } from 'lucide-react';
 import { storageUtils } from '../../utils/storage';
 import type { Skill, SkillCategory } from '../../types/skill-creator';
 import { SKILLS_DATA } from '../../data/skillsData';
+import { CandyCard } from '../home/CandyCard';
+import { skillToCard } from '../../utils/skillToCard';
+import { CreatorHeader } from './CreatorHeader';
+import { EmptyJar } from '../illustrations';
 
 interface MySkillsLibraryProps {
   onCreateNew: () => void;
@@ -24,6 +28,16 @@ const CATEGORY_LABELS: Record<SkillCategory, string> = {
   Custom: 'Custom',
 };
 
+const TABS = [
+  { id: 'all', label: 'All' },
+  { id: 'created', label: 'Created' },
+  { id: 'store', label: 'Purchased' },
+  { id: 'liked', label: 'Liked' },
+] as const;
+
+const INPUT_CLS =
+  'w-full h-10 px-3 bg-input border border-input-border rounded-xl text-sm text-foreground placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-ring transition-colors';
+
 export function MySkillsLibrary({ onCreateNew, onUseSkill, onBack }: MySkillsLibraryProps) {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -35,6 +49,7 @@ export function MySkillsLibrary({ onCreateNew, onUseSkill, onBack }: MySkillsLib
 
   useEffect(() => {
     loadSkills();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryFilter, activeTab]);
 
   const loadSkills = () => {
@@ -45,18 +60,18 @@ export function MySkillsLibrary({ onCreateNew, onUseSkill, onBack }: MySkillsLib
         const likedIds = storageUtils.getLikes();
         const likedSkills = SKILLS_DATA.filter(skill => likedIds.includes(skill.id));
         let filtered = likedSkills;
-        
+
         if (categoryFilter) {
           filtered = filtered.filter((s) => s.category === categoryFilter);
         }
-        
+
         setSkills(filtered as any[]);
       } else if (activeTab === 'all') {
         // Load all skills: created + purchased + liked
         const createdAndPurchased = storageUtils.getSkills();
         const likedIds = storageUtils.getLikes();
         const likedSkills = SKILLS_DATA.filter(skill => likedIds.includes(skill.id));
-        
+
         // Convert liked skills to Skill format for consistency
         const likedSkillsFormatted = likedSkills.map(skill => ({
           id: skill.id,
@@ -95,33 +110,33 @@ export function MySkillsLibrary({ onCreateNew, onUseSkill, onBack }: MySkillsLib
           createdAt: new Date(),
           updatedAt: new Date(),
         }));
-        
+
         // Combine all skills
         let allSkills: Skill[] = [...createdAndPurchased, ...likedSkillsFormatted];
-        
+
         // Remove duplicates (in case a skill is both purchased and liked)
         const uniqueSkills = Array.from(
           new Map(allSkills.map(skill => [skill.id, skill])).values()
         ) as Skill[];
-        
+
         if (categoryFilter) {
           allSkills = uniqueSkills.filter((s: Skill) => s.category === categoryFilter);
         } else {
           allSkills = uniqueSkills;
         }
-        
+
         setSkills(allSkills);
       } else {
         // Created or Purchased tab
         const data = storageUtils.getSkills();
         let filtered = data;
-        
+
         if (categoryFilter) {
           filtered = filtered.filter((s: Skill) => s.category === categoryFilter);
         }
 
         filtered = filtered.filter((s: Skill) => s.origin === activeTab);
-        
+
         setSkills(filtered);
       }
       setFeedback(null);
@@ -155,67 +170,60 @@ export function MySkillsLibrary({ onCreateNew, onUseSkill, onBack }: MySkillsLib
   });
 
   return (
-    <div className="w-full max-w-7xl mx-auto space-y-6">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-8 md:py-12 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          {onBack && (
-            <button
-              onClick={onBack}
-              className="flex items-center gap-2 text-foreground-secondary hover:text-foreground transition-colors duration-200 cursor-pointer p-2 rounded-lg hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-primary/30"
-              aria-label="Go back"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-          )}
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">My Skills Library</h1>
-            <p className="text-sm text-foreground-secondary mt-1">
-              Manage all your created AI skills
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={onCreateNew}
-          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary to-primary-active text-white font-medium rounded-lg hover:from-primary-hover hover:to-primary-active transition-all shadow-md"
-        >
-          <Plus className="w-5 h-5" />
-          Create New Skill
-        </button>
-      </div>
+      <CreatorHeader
+        eyebrow="the candy jar"
+        title="My library"
+        subtitle="Every candy you've made, bought or starred."
+        onBack={onBack}
+        action={
+          <button
+            onClick={onCreateNew}
+            className="candy-btn btn-press inline-flex items-center gap-1.5 h-10 px-5 font-semibold rounded-2xl"
+          >
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">New skill</span>
+          </button>
+        }
+      />
 
       {/* Feedback Messages */}
       {feedback && (
-        <div className={`p-4 rounded-lg ${feedback.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
-          <p className={`text-sm ${feedback.type === 'success' ? 'text-green-800' : 'text-red-800'}`}>
-            {feedback.message}
-          </p>
+        <div
+          className={`p-4 rounded-xl border text-sm ${
+            feedback.type === 'success'
+              ? 'bg-success/10 border-success/30 text-success'
+              : 'bg-error/10 border-error/30 text-error'
+          }`}
+        >
+          {feedback.message}
         </div>
       )}
 
       {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-4">
+      <div className="flex flex-col md:flex-row gap-3">
         {/* Search */}
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-foreground-tertiary" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground-tertiary" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search skills..."
-            className="w-full pl-10 pr-4 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            placeholder="Search your candy…"
+            className={`${INPUT_CLS} pl-9`}
           />
         </div>
 
         {/* Category Filter */}
         <div className="flex items-center gap-2">
-          <Filter className="w-5 h-5 text-foreground-tertiary" />
+          <Filter className="w-4 h-4 text-foreground-tertiary shrink-0" />
           <select
             value={categoryFilter || ''}
             onChange={(e) => setCategoryFilter(e.target.value || null)}
-            className="px-4 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer"
+            className={`${INPUT_CLS} cursor-pointer md:w-48`}
           >
-            <option value="">All Categories</option>
+            <option value="">All categories</option>
             {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
               <option key={key} value={key}>
                 {label}
@@ -226,51 +234,21 @@ export function MySkillsLibrary({ onCreateNew, onUseSkill, onBack }: MySkillsLib
       </div>
 
       {/* Tabs */}
-      < div className="flex items-center gap-1 border-b border-border" >
-        <button
-          onClick={() => { setActiveTab('all'); loadSkills(); }}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30 ${activeTab === 'all'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-foreground-secondary hover:text-foreground'
+      <div className="flex items-center gap-1 border-b border-border overflow-x-auto">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors duration-200 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-ring rounded-t ${
+              activeTab === tab.id
+                ? 'border-primary text-primary'
+                : 'border-transparent text-foreground-secondary hover:text-foreground'
             }`}
-          aria-label="All Skills"
-          aria-pressed={activeTab === 'all'}
-        >
-          All Skills
-        </button>
-        <button
-          onClick={() => { setActiveTab('created'); loadSkills(); }}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30 ${activeTab === 'created'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-foreground-secondary hover:text-foreground'
-            }`}
-          aria-label="Created skills"
-          aria-pressed={activeTab === 'created'}
-        >
-          Created
-        </button>
-        <button
-          onClick={() => { setActiveTab('store'); loadSkills(); }}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30 ${activeTab === 'store'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-foreground-secondary hover:text-foreground'
-            }`}
-          aria-label="Purchased skills"
-          aria-pressed={activeTab === 'store'}
-        >
-          Purchased
-        </button>
-        <button
-          onClick={() => { setActiveTab('liked'); loadSkills(); }}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30 ${activeTab === 'liked'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-foreground-secondary hover:text-foreground'
-            }`}
-          aria-label="Liked skills"
-          aria-pressed={activeTab === 'liked'}
-        >
-          Liked
-        </button>
+            aria-pressed={activeTab === tab.id}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Skills Grid */}
@@ -279,108 +257,71 @@ export function MySkillsLibrary({ onCreateNew, onUseSkill, onBack }: MySkillsLib
           <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
         </div>
       ) : filteredSkills.length === 0 ? (
-        <div className="text-center py-20">
-          <Package className="w-16 h-16 text-foreground-secondary mx-auto mb-4 opacity-50" />
-          <h3 className="text-xl font-medium text-foreground mb-2">
-            {searchQuery || categoryFilter 
-              ? 'No matching skills found' 
-              : activeTab === 'liked' 
-                ? 'No liked skills yet' 
-                : 'No skills created yet'}
-          </h3>
-          <p className="text-foreground-secondary mb-6">
+        <div className="text-center py-20 rounded-3xl border border-dashed border-border bg-secondary/40">
+          <div className="mx-auto mb-4 flex items-center justify-center">
+            {searchQuery || categoryFilter ? (
+              <div className="w-16 h-16 rounded-full bg-card border border-border flex items-center justify-center">
+                <Package className="w-7 h-7 text-foreground-tertiary" />
+              </div>
+            ) : (
+              <EmptyJar size={96} />
+            )}
+          </div>
+          <h3 className="font-candy text-xl font-bold text-foreground mb-2">
             {searchQuery || categoryFilter
-              ? 'Try adjusting your search criteria'
+              ? 'No matching candy'
               : activeTab === 'liked'
-                ? 'Like skills from the home page to see them here'
-                : 'Click the button above to create your first skill'}
+                ? 'No starred candy yet'
+                : 'Your jar is empty'}
+          </h3>
+          <p className="text-sm text-foreground-secondary mb-6 max-w-sm mx-auto">
+            {searchQuery || categoryFilter
+              ? 'Try adjusting your search or category.'
+              : activeTab === 'liked'
+                ? 'Star skills from the shop to keep them here.'
+                : 'Make your first skill and it lands right here.'}
           </p>
-          {!searchQuery && !categoryFilter && (
+          {!searchQuery && !categoryFilter && activeTab !== 'liked' && (
             <button
               onClick={onCreateNew}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary to-primary-active text-primary-foreground font-medium rounded-lg hover:from-primary-hover hover:to-primary-active transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50"
+              className="candy-btn btn-press inline-flex items-center gap-1.5 h-10 px-5 font-semibold rounded-2xl"
             >
-              <Plus className="w-5 h-5" />
-              Create Your First Skill
+              <Plus className="w-4 h-4" />
+              Make your first candy
             </button>
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredSkills.map((skill) => (
-            <div
-              key={skill.id}
-              className="bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden group"
-            >
-              {/* Top Bar */}
-              <div className="h-10 px-4 border-b border-border flex items-center bg-card relative">
-                <div className="flex items-center gap-1.5 absolute left-4">
-                  <div className="w-2.5 h-2.5 rounded-full bg-[#FF5F57]"></div>
-                  <div className="w-2.5 h-2.5 rounded-full bg-[#FEBC2E]"></div>
-                  <div className="w-2.5 h-2.5 rounded-full bg-[#28C840]"></div>
-                </div>
-                <div className="mx-auto text-xs font-mono text-foreground-tertiary font-medium">
-                  {skill.id.slice(0, 8)}.ts
-                </div>
-              </div>
-
-              {/* Content */}
-              <div className="p-5">
-                <div className="flex items-start gap-3 mb-3">
-                  <div className="text-3xl animate-candy-float">{skill.icon || '🤖'}</div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-bold text-foreground truncate">
-                      {skill.name}
-                    </h3>
-                    <p className="text-xs text-foreground-tertiary">
-                      {CATEGORY_LABELS[skill.category as SkillCategory]}
-                    </p>
-                  </div>
-                </div>
-
-                <p className="text-sm text-foreground-secondary line-clamp-3 mb-4">
-                  {skill.description}
-                </p>
-
-                <div className="flex items-center gap-2 text-xs text-foreground-tertiary mb-4">
-                  <Calendar className="w-3 h-3" />
-                  <span>
-                    {skill.createdAt 
-                      ? `Created on ${new Date(skill.createdAt).toLocaleDateString('en-US')}`
-                      : activeTab === 'liked' ? 'From Store' : 'Created recently'}
-                  </span>
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center gap-2">
-                  {activeTab === 'liked' ? (
-                    <button
-                      onClick={() => onUseSkill(skill as any)}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-primary-active text-white text-sm font-medium rounded-lg hover:from-primary-hover hover:to-primary-active transition-all"
-                    >
-                      <Play className="w-4 h-4" />
-                      View Details
-                    </button>
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => onUseSkill(skill)}
-                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-primary-active text-white text-sm font-medium rounded-lg hover:from-primary-hover hover:to-primary-active transition-all"
-                      >
-                        <Play className="w-4 h-4" />
-                        Use
-                      </button>
-                      <button
-                        onClick={() => setDeleteConfirm(skill.id)}
-                        className="p-2.5 text-foreground-tertiary hover:text-error hover:bg-error/10 rounded-lg transition-colors duration-200 cursor-pointer min-w-[40px] min-h-[40px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-error/30"
-                        aria-label={`Delete ${skill.name}`}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filteredSkills.map((skill, index) => (
+            <div key={skill.id} className="relative group/lib">
+              <CandyCard
+                skill={skillToCard({
+                  id: skill.id,
+                  name: skill.name,
+                  description: skill.description,
+                  category: skill.category,
+                  icon: skill.icon,
+                  tags: skill.tags,
+                  popularity: skill.popularity,
+                })}
+                index={index}
+                onSelect={() => onUseSkill(skill)}
+                onRun={() => onUseSkill(skill)}
+              />
+              {/* Delete affordance — only for skills the user owns (not store/liked) */}
+              {skill.origin !== 'store' && activeTab !== 'liked' && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeleteConfirm(skill.id);
+                  }}
+                  className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-card/90 backdrop-blur-sm border border-border text-foreground-tertiary opacity-0 group-hover/lib:opacity-100 hover:text-error hover:border-error/40 transition-all flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-error/30"
+                  aria-label={`Delete ${skill.name}`}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -388,24 +329,24 @@ export function MySkillsLibrary({ onCreateNew, onUseSkill, onBack }: MySkillsLib
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-card rounded-xl p-6 max-w-md w-full border border-border shadow-2xl" role="dialog" aria-modal="true" aria-label="Confirm delete">
-            <h3 className="text-lg font-bold text-foreground mb-2">
-              Confirm Delete
+        <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-card rounded-3xl p-6 max-w-md w-full border border-border shadow-candy-3 animate-zoom-in" role="dialog" aria-modal="true" aria-label="Confirm delete">
+            <h3 className="font-candy text-lg font-bold text-foreground mb-2">
+              Delete this candy?
             </h3>
             <p className="text-sm text-foreground-secondary mb-6">
-              Are you sure you want to delete this skill? This action cannot be undone.
+              This removes the skill from your jar for good. This can't be undone.
             </p>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setDeleteConfirm(null)}
-                className="flex-1 px-4 py-2.5 border border-border text-foreground rounded-lg hover:bg-secondary transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="flex-1 h-10 px-4 border border-border text-foreground font-semibold rounded-2xl hover:border-border-hover hover:shadow-candy-1 transition-all"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleDelete(deleteConfirm)}
-                className="flex-1 px-4 py-2.5 bg-error text-error-foreground rounded-lg hover:bg-error/90 transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-error/50"
+                className="btn-press flex-1 h-10 px-4 bg-error text-error-foreground font-semibold rounded-2xl hover:bg-error/90 transition-colors shadow-candy-1"
               >
                 Delete
               </button>

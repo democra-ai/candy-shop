@@ -1,6 +1,10 @@
 import { useState } from 'react';
-import { ArrowLeft, Github, Loader2 } from 'lucide-react';
+import { Github, Loader2 } from 'lucide-react';
 import type { Skill } from '../../types/skill-creator';
+import { CreatorHeader } from './CreatorHeader';
+import { getCandyIcon } from '../illustrations';
+import { getFlavor } from '../../utils/candyShells';
+import { useIsDark } from '../../hooks/useIsDark';
 
 interface GitHubImportFormProps {
   onImport: (skill: Partial<Skill>) => void;
@@ -17,6 +21,7 @@ interface SkillMarkdown {
 }
 
 export function GitHubImportForm({ onImport, onCancel }: GitHubImportFormProps) {
+  const isDark = useIsDark();
   const [githubUrl, setGithubUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -161,52 +166,46 @@ export function GitHubImportForm({ onImport, onCancel }: GitHubImportFormProps) 
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <button
-          onClick={onCancel}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-4"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          Back
-        </button>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Import Skill from GitHub</h1>
-        <p className="text-gray-600">
-          Import a skill from a GitHub repository containing a skill.md file
-        </p>
-      </div>
+      <CreatorHeader
+        eyebrow="import"
+        title="Import from GitHub"
+        subtitle="Pull a skill from a repo that ships a skill.md file."
+        onBack={onCancel}
+      />
 
       {/* Import Form */}
       {!preview && (
-        <div className="bg-white rounded-2xl shadow-xl p-8 space-y-6">
+        <div className="bg-card rounded-3xl shadow-candy-1 border border-border p-6 md:p-8 space-y-6">
           {/* URL Input */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              GitHub Repository URL
+            <label className="block text-sm font-medium text-foreground-secondary mb-2">
+              GitHub repository URL
             </label>
             <input
               type="text"
               value={githubUrl}
               onChange={(e) => setGithubUrl(e.target.value)}
-              placeholder="https://github.com/owner/repo or https://github.com/owner/repo/tree/branch"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
+              placeholder="https://github.com/owner/repo or .../tree/branch"
+              className="w-full h-10 px-3 bg-input border border-input-border rounded-xl text-sm text-foreground placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
             />
-            <p className="text-xs text-gray-500 mt-2">
-              The repository must contain a skill.md file in the root or specified branch
+            <p className="text-xs text-foreground-tertiary mt-2">
+              The repo must contain a skill.md file in the root or specified branch.
             </p>
           </div>
 
           {/* Error Message */}
           {error && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-800">{error}</p>
+            <div className="p-4 bg-error/10 border border-error/30 rounded-xl">
+              <p className="text-sm text-error">{error}</p>
             </div>
           )}
 
           {/* Example */}
-          <div className="p-4 bg-secondary/30 border border-border rounded-lg">
-            <p className="text-sm font-medium text-foreground mb-2">Example skill.md format:</p>
-            <pre className="text-xs text-foreground-secondary overflow-x-auto">
+          <div className="p-4 bg-secondary rounded-xl border border-border">
+            <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-foreground-tertiary mb-2">
+              example skill.md
+            </p>
+            <pre className="text-xs text-foreground-secondary font-mono overflow-x-auto">
               {`# Code Reviewer
 category: Development
 icon: 👀
@@ -225,27 +224,27 @@ You are an expert code reviewer...
           </div>
 
           {/* Actions */}
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-3 pt-2">
             <button
               onClick={onCancel}
-              className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex-1 h-10 px-5 rounded-2xl border border-border bg-card text-foreground font-semibold hover:border-border-hover hover:shadow-candy-1 transition-all"
             >
               Cancel
             </button>
             <button
               onClick={handleImport}
               disabled={!githubUrl.trim() || isLoading}
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-primary to-primary-active text-white font-medium rounded-lg hover:from-primary-hover hover:to-primary-active transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="candy-btn btn-press flex-1 h-10 px-5 rounded-2xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Importing...
+                  Importing…
                 </>
               ) : (
                 <>
                   <Github className="w-4 h-4" />
-                  Import Skill
+                  Import skill
                 </>
               )}
             </button>
@@ -255,35 +254,45 @@ You are an expert code reviewer...
 
       {/* Preview */}
       {preview && (
-        <div className="bg-white rounded-2xl shadow-xl p-8 space-y-6">
+        <div className="bg-card rounded-3xl shadow-candy-1 border border-border p-6 md:p-8 space-y-6">
           <div className="flex items-start gap-4">
-            <div className="text-4xl">{preview.icon}</div>
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold text-gray-900">{preview.name}</h2>
-              <p className="text-sm text-gray-500 mt-1">{preview.category}</p>
+            {(() => {
+              const f = getFlavor(preview.category, isDark);
+              const Candy = getCandyIcon(preview.category, isDark);
+              return (
+                <div className="flex items-center justify-center w-14 h-14 rounded-2xl shrink-0" style={{ background: f.tint }} aria-hidden="true">
+                  <Candy size={36} color={f.base} />
+                </div>
+              );
+            })()}
+            <div className="flex-1 min-w-0">
+              <h2 className="font-candy text-2xl font-bold text-foreground">{preview.name}</h2>
+              <span className="inline-flex items-center mt-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono uppercase tracking-wider bg-secondary text-foreground-secondary">
+                {preview.category}
+              </span>
             </div>
           </div>
 
           <div>
-            <h3 className="text-sm font-medium text-gray-700 mb-2">Description</h3>
-            <p className="text-gray-600">{preview.description}</p>
+            <h3 className="text-sm font-medium text-foreground-secondary mb-2">Description</h3>
+            <p className="text-sm text-foreground-secondary leading-relaxed">{preview.description}</p>
           </div>
 
           <div>
-            <h3 className="text-sm font-medium text-gray-700 mb-2">System Prompt</h3>
-            <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg whitespace-pre-wrap">
+            <h3 className="text-sm font-medium text-foreground-secondary mb-2">System prompt</h3>
+            <p className="text-sm text-foreground-secondary bg-secondary p-3 rounded-xl border border-border whitespace-pre-wrap font-mono">
               {preview.systemPrompt}
             </p>
           </div>
 
           {preview.capabilities.length > 0 && (
             <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-2">Capabilities</h3>
+              <h3 className="text-sm font-medium text-foreground-secondary mb-2">Capabilities</h3>
               <div className="flex flex-wrap gap-2">
                 {preview.capabilities.map((cap, index) => (
                   <span
                     key={index}
-                    className="px-3 py-1 bg-primary/20 text-primary-active text-sm rounded-full"
+                    className="px-2.5 py-0.5 bg-primary/10 text-primary text-[13px] rounded-full font-mono"
                   >
                     {cap}
                   </span>
@@ -293,21 +302,21 @@ You are an expert code reviewer...
           )}
 
           {/* Actions */}
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-3 pt-2">
             <button
               onClick={() => {
                 setPreview(null);
                 setError(null);
               }}
-              className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex-1 h-10 px-5 rounded-2xl border border-border bg-card text-foreground font-semibold hover:border-border-hover hover:shadow-candy-1 transition-all"
             >
               Back
             </button>
             <button
               onClick={handleConfirmImport}
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-primary to-primary-active text-white font-medium rounded-lg hover:from-primary-hover hover:to-primary-active transition-all"
+              className="candy-btn btn-press flex-1 h-10 px-5 rounded-2xl font-semibold"
             >
-              Confirm Import
+              Confirm import
             </button>
           </div>
         </div>

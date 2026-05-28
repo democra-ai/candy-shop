@@ -13,12 +13,12 @@ const badgeVariants = cva(
         success: 'bg-success/10 text-success',
         warning: 'bg-warning/10 text-warning',
         error: 'bg-error/10 text-error',
-        candy: 'candy-gradient text-white',
+        candy: 'bg-primary text-primary-foreground',
       },
       size: {
-        sm: 'px-2 py-0.5 text-xs rounded',
-        md: 'px-2.5 py-1 text-xs rounded',
-        lg: 'px-3 py-1.5 text-sm rounded-lg',
+        sm: 'px-2 py-0.5 text-xs rounded-full',
+        md: 'px-2.5 py-1 text-xs rounded-full',
+        lg: 'px-3 py-1.5 text-sm rounded-full',
       },
     },
     defaultVariants: {

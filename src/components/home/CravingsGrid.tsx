@@ -1,9 +1,12 @@
-import { Search, Clock, DollarSign, Tag, Zap, ChevronLeft, ChevronRight, Plus, Flame } from 'lucide-react';
+import { Search, Clock, DollarSign, Tag, Zap, ChevronLeft, ChevronRight, Plus, Flame, Sparkles } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { CRAVINGS_DATA, type Craving, type CravingUrgency } from '../../data/cravingsData';
 import { cn } from '../../utils/cn';
 import { useDebounce } from '../../hooks/useDebounce';
+import { useIsDark } from '../../hooks/useIsDark';
+import { getFlavor } from '../../utils/candyShells';
+import { getCandyIcon, Pip } from '../illustrations';
 
 interface CravingsGridProps {
   searchQuery: string;
@@ -41,17 +44,6 @@ const STATUS_CONFIG = {
   open: { label: 'Open', dot: 'bg-emerald-400 animate-pulse', text: 'text-emerald-400' },
   'in-progress': { label: 'In Progress', dot: 'bg-amber-400', text: 'text-amber-400' },
   fulfilled: { label: 'Fulfilled', dot: 'bg-gray-400', text: 'text-gray-400' },
-};
-
-const CATEGORY_COLORS: Record<string, string> = {
-  Development: 'text-blue-400',
-  Design: 'text-pink-400',
-  Marketing: 'text-orange-400',
-  Productivity: 'text-emerald-400',
-  Tools: 'text-violet-400',
-  Research: 'text-cyan-400',
-  Mobile: 'text-lime-400',
-  Writing: 'text-yellow-400',
 };
 
 function timeAgo(isoDate: string): string {
@@ -122,22 +114,27 @@ export function CravingsGrid({
   }, []);
 
   return (
-    <section className="py-20 bg-background" id="cravings-grid">
-      <div className="container max-w-7xl mx-auto px-4">
+    <section className="py-12 md:py-16 bg-background" id="cravings-grid">
+      <div className="container max-w-7xl mx-auto px-0">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
           <div>
-            <h2 className="text-3xl font-candy font-bold mb-2 text-foreground">
-              {tagFilter ? `Cravings: ${tagFilter}` : 'Fresh Cravings'}
+            <div className="flex items-center gap-2 mb-2">
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-blue-500/12 text-blue-500 text-[10px] font-mono font-bold uppercase tracking-widest border border-blue-500/25">
+                aisle 04
+              </span>
+            </div>
+            <h2 className="text-2xl md:text-3xl font-candy font-bold mb-2 text-foreground tracking-tight">
+              {tagFilter ? `Wishlist: ${tagFilter}` : 'The wishlist — fresh cravings'}
             </h2>
-            <div className="flex items-center gap-2 text-foreground-tertiary font-mono text-sm">
-              <span>$ ls ./requests</span>
+            <div className="flex items-center gap-2 text-foreground-tertiary font-mono text-xs uppercase tracking-widest">
+              <span>open requests from the community</span>
               {tagFilter && (
                 <button
                   onClick={() => setTagFilter(null)}
-                  className="px-2 py-0.5 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors flex items-center gap-1 text-xs"
+                  className="px-2 py-0.5 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors flex items-center gap-1 text-xs normal-case tracking-normal"
                 >
-                  --filter="{tagFilter}" ×
+                  {tagFilter} ×
                 </button>
               )}
             </div>
@@ -222,8 +219,8 @@ export function CravingsGrid({
         {/* Empty */}
         {!isDebouncing && filtered.length === 0 && (
           <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-20 h-20 rounded-2xl glass flex items-center justify-center mb-6 shadow-warm text-4xl">
-              😋
+            <div className="w-24 h-24 rounded-3xl bg-card border border-border flex items-center justify-center mb-6 shadow-candy-1 dark:shadow-candy-1-dark">
+              <Pip size={64} />
             </div>
             <h3 className="text-lg font-candy font-bold text-foreground mb-2">No cravings found</h3>
             <p className="text-foreground-secondary text-sm font-body max-w-md mb-6">
@@ -331,25 +328,32 @@ function CravingCard({
   onMatchCandy?: (tags: string[]) => void;
   onTagClick: (tag: string) => void;
 }) {
+  const isDark = useIsDark();
   const urgency = URGENCY_CONFIG[craving.urgency];
   const status = STATUS_CONFIG[craving.status];
-  const catColor = CATEGORY_COLORS[craving.category] || 'text-foreground-secondary';
+  const flavor = getFlavor(craving.category, isDark);
+  const Candy = getCandyIcon(craving.category, isDark);
 
   return (
     <div
       className={cn(
-        'group bg-card/80 glass rounded-xl border',
-        isUserPosted ? 'border-primary/30 ring-1 ring-primary/10' : 'border-border/50',
-        'hover:shadow-card-hover hover:border-primary/20',
-        'transition-all duration-300 flex flex-col h-full overflow-hidden',
-        'card-luxe gradient-border'
+        'group relative bg-card rounded-2xl border overflow-hidden',
+        isUserPosted ? 'border-primary/40' : 'border-border',
+        'shadow-candy-1 dark:shadow-candy-1-dark',
+        'hover:-translate-y-1 hover:shadow-candy-2 dark:hover:shadow-candy-2-dark',
+        'transition-[transform,box-shadow,border-color] duration-300 ease-candy flex flex-col h-full'
       )}
+      onMouseEnter={(e) => { if (!isUserPosted) e.currentTarget.style.borderColor = flavor.base; }}
+      onMouseLeave={(e) => { if (!isUserPosted) e.currentTarget.style.borderColor = ''; }}
     >
+      {/* thin flavor top-accent */}
+      <div className="absolute inset-x-0 top-0 h-[3px] opacity-80 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: flavor.base }} aria-hidden="true" />
+
       {/* Your Post Banner */}
       {isUserPosted && (
-        <div className="px-5 pt-3 pb-0 flex items-center gap-1.5">
-          <span className="text-[10px] font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full border border-primary/20 font-mono">
-            ✦ Your Post
+        <div className="px-5 pt-4 pb-0 flex items-center gap-1.5">
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full border border-primary/20 font-mono uppercase tracking-widest">
+            <Sparkles className="w-2.5 h-2.5" /> Your Post
           </span>
         </div>
       )}
@@ -357,10 +361,14 @@ function CravingCard({
       {/* Card Top Bar */}
       <div className={cn('px-5 pb-3', isUserPosted ? 'pt-2' : 'pt-5')}>
         <div className="flex items-start justify-between gap-3 mb-3">
-          {/* Emoji + Status */}
+          {/* Illustration well + Status */}
           <div className="flex items-center gap-3">
-            <span className="text-2xl animate-candy-float" style={{ animationDelay: '0.3s' }}>
-              {craving.emoji}
+            <span
+              className="flex items-center justify-center w-11 h-11 rounded-xl shrink-0 transition-transform duration-300 ease-candy group-hover:scale-105"
+              style={{ backgroundColor: flavor.tint }}
+              aria-hidden="true"
+            >
+              <Candy size={24} color={flavor.base} />
             </span>
             <div className="flex items-center gap-1.5">
               <span className={cn('w-1.5 h-1.5 rounded-full', status.dot)} />
@@ -382,12 +390,17 @@ function CravingCard({
         </div>
 
         {/* Title */}
-        <h3 className="font-bold text-foreground text-[15px] leading-snug font-candy line-clamp-2 mb-1">
+        <h3 className="font-semibold text-foreground text-[15px] leading-snug font-candy line-clamp-2 mb-1.5">
           {craving.title}
         </h3>
 
-        {/* Category */}
-        <span className={cn('text-[11px] font-medium', catColor)}>{craving.category}</span>
+        {/* Category chip */}
+        <span
+          className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold uppercase tracking-widest"
+          style={{ backgroundColor: flavor.tint, color: flavor.ink }}
+        >
+          {craving.category}
+        </span>
       </div>
 
       {/* Description */}

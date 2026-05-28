@@ -1,19 +1,20 @@
+import { ArrowUp } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { Logo, LogoMark } from '../illustrations';
 
 export function Footer() {
   const { t } = useLanguage();
 
   return (
     <footer className="relative mt-20">
-      <div className="h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+      <div className="h-px w-full bg-border" aria-hidden />
       <div className="glass-strong">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {/* Brand */}
             <div className="lg:col-span-1">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-2xl">🍬</span>
-                <span className="font-bold text-lg font-candy candy-gradient-text">Candy Shop</span>
+              <div className="flex items-center mb-3">
+                <Logo size={28} />
               </div>
               <p className="text-sm text-foreground-secondary leading-relaxed">
                 {t('footer.tagline')}
@@ -100,14 +101,14 @@ export function Footer() {
           {/* Bottom */}
           <div className="mt-10 pt-6 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2 text-sm text-foreground-tertiary">
-              <span className="animate-candy-float">🍭</span>
+              <LogoMark size={16} />
               <span>&copy; {new Date().getFullYear()} Candy Shop. All rights reserved.</span>
             </div>
             <button
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              className="text-sm text-foreground-tertiary hover:text-primary transition-colors"
+              className="inline-flex items-center gap-1 text-sm text-foreground-tertiary hover:text-primary transition-colors"
             >
-              {t('footer.backToTop')} &uarr;
+              {t('footer.backToTop')} <ArrowUp className="w-3 h-3" />
             </button>
           </div>
         </div>

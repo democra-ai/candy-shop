@@ -1,6 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Save, X, Edit2, Sparkles, AlertCircle } from 'lucide-react';
 import type { Skill, AnalysisResult, SkillCategory } from '../../types/skill-creator';
+import { getCandyIcon } from '../illustrations';
+import { getCandyColor } from '../../utils/candyShells';
+import { useIsDark } from '../../hooks/useIsDark';
+
+const INPUT_CLS =
+  'w-full h-10 px-3 bg-input border border-input-border rounded-xl text-sm text-foreground placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-ring transition-colors';
+const INPUT_ERR =
+  'w-full h-10 px-3 bg-input border border-error rounded-xl text-sm text-foreground placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-error/40 transition-colors';
+const READONLY_CLS = 'px-3 py-2 bg-secondary rounded-xl border border-border text-sm text-foreground';
 
 interface SkillPreviewEditorProps {
   skill: Partial<Skill>;
@@ -38,6 +47,7 @@ export function SkillPreviewEditor({
   onSave,
   onCancel,
 }: SkillPreviewEditorProps) {
+  const isDark = useIsDark();
   const [skill, setSkill] = useState(initialSkill);
   const [originalSkill] = useState(initialSkill);
   const [isSaving, setIsSaving] = useState(false);
@@ -96,42 +106,42 @@ export function SkillPreviewEditor({
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary-active flex items-center justify-center">
-            <Sparkles className="w-6 h-6 text-white" />
+          <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center">
+            <Sparkles className="w-6 h-6 text-primary-foreground" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Skill Preview</h2>
-            <p className="text-sm text-gray-500">
-              {isEditing ? 'Edit your skill configuration' : 'View the generated skill'}
+            <h2 className="font-candy text-2xl font-bold text-foreground">Skill preview</h2>
+            <p className="text-sm text-foreground-secondary">
+              {isEditing ? 'Edit your skill configuration' : 'Review the generated skill'}
             </p>
           </div>
         </div>
 
         <button
           onClick={() => setIsEditing(!isEditing)}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          className="inline-flex items-center gap-2 h-10 px-4 text-sm font-semibold text-foreground bg-card border border-border rounded-2xl hover:border-border-hover hover:shadow-candy-1 transition-all shrink-0"
         >
           <Edit2 className="w-4 h-4" />
-          {isEditing ? 'Preview Mode' : 'Edit Mode'}
+          {isEditing ? 'Preview mode' : 'Edit mode'}
         </button>
       </div>
 
       {/* Main Content */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="bg-card rounded-3xl border border-border shadow-candy-1 overflow-hidden">
         {/* Skill Card Preview */}
-        <div className="p-6 bg-gradient-to-br from-gray-50 to-white border-b border-gray-200">
+        <div className="p-6 bg-secondary border-b border-border">
           <div className="max-w-md mx-auto">
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
               {/* Top Bar */}
-              <div className="h-10 px-4 border-b border-gray-100 flex items-center bg-white relative">
+              <div className="h-10 px-4 border-b border-border flex items-center relative">
                 <div className="flex items-center gap-1.5 absolute left-4">
                   <div className="w-2.5 h-2.5 rounded-full bg-[#FF5F57]"></div>
                   <div className="w-2.5 h-2.5 rounded-full bg-[#FEBC2E]"></div>
                   <div className="w-2.5 h-2.5 rounded-full bg-[#28C840]"></div>
                 </div>
-                <div className="mx-auto text-xs font-mono text-gray-400 font-medium">
+                <div className="mx-auto text-xs font-mono text-foreground-tertiary font-medium">
                   {skill.id || 'new-skill'}.ts
                 </div>
               </div>
@@ -144,7 +154,7 @@ export function SkillPreviewEditor({
                     {skill.name?.replace(/\s+/g, '') || 'NewSkill'}
                   </span>
                 </div>
-                <div className="text-gray-400 italic text-xs leading-5 border-l-2 border-gray-100 pl-3 py-1 mt-3">
+                <div className="text-foreground-tertiary italic text-xs leading-5 border-l-2 border-border pl-3 py-1 mt-3">
                   /** <br />
                   &nbsp;* {skill.description || 'Skill description'} <br />
                   &nbsp;*/
@@ -152,9 +162,12 @@ export function SkillPreviewEditor({
               </div>
 
               {/* Footer */}
-              <div className="h-10 px-4 border-t border-gray-100 bg-[#FAFAFA] flex items-center justify-between text-xs font-mono text-gray-500">
+              <div className="h-10 px-4 border-t border-border bg-secondary flex items-center justify-between text-xs font-mono text-foreground-tertiary">
                 <span>{CATEGORY_LABELS[skill.category as SkillCategory] || 'Category'}</span>
-                <span className="text-primary animate-candy-float inline-block">{skill.icon || '🤖'}</span>
+                {(() => {
+                  const Candy = getCandyIcon(skill.category, isDark);
+                  return <Candy size={18} color={getCandyColor(skill.category, isDark)} />;
+                })()}
               </div>
             </div>
           </div>
@@ -164,24 +177,22 @@ export function SkillPreviewEditor({
         <div className="p-6 space-y-6">
           {/* Name */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Skill Name *</label>
+            <label className="block text-sm font-medium text-foreground-secondary mb-2">Skill name *</label>
             {isEditing ? (
               <input
                 type="text"
                 value={skill.name || ''}
                 onChange={(e) => setSkill({ ...skill, name: e.target.value })}
-                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring ${
-                  errors.name ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className={errors.name ? INPUT_ERR : INPUT_CLS}
                 placeholder="e.g., Data Analysis Expert"
               />
             ) : (
-              <div className="px-4 py-2 bg-gray-50 rounded-lg text-gray-900">
+              <div className={READONLY_CLS}>
                 {skill.name || 'Not set'}
               </div>
             )}
             {errors.name && (
-              <p className="mt-1 text-xs text-red-600 flex items-center gap-1">
+              <p className="mt-1.5 text-xs text-error flex items-center gap-1">
                 <AlertCircle className="w-3 h-3" />
                 {errors.name}
               </p>
@@ -190,26 +201,24 @@ export function SkillPreviewEditor({
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Skill Description *
+            <label className="block text-sm font-medium text-foreground-secondary mb-2">
+              Skill description *
             </label>
             {isEditing ? (
               <textarea
                 value={skill.description || ''}
                 onChange={(e) => setSkill({ ...skill, description: e.target.value })}
                 rows={4}
-                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring resize-none ${
-                  errors.description ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="Describe what this skill can do..."
+                className={`${errors.description ? INPUT_ERR : INPUT_CLS} h-auto py-2.5 resize-none`}
+                placeholder="Describe what this skill can do…"
               />
             ) : (
-              <div className="px-4 py-2 bg-gray-50 rounded-lg text-gray-900 whitespace-pre-wrap">
+              <div className={`${READONLY_CLS} whitespace-pre-wrap`}>
                 {skill.description || 'Not set'}
               </div>
             )}
             {errors.description && (
-              <p className="mt-1 text-xs text-red-600 flex items-center gap-1">
+              <p className="mt-1.5 text-xs text-error flex items-center gap-1">
                 <AlertCircle className="w-3 h-3" />
                 {errors.description}
               </p>
@@ -218,14 +227,12 @@ export function SkillPreviewEditor({
 
           {/* Category */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
+            <label className="block text-sm font-medium text-foreground-secondary mb-2">Category *</label>
             {isEditing ? (
               <select
                 value={skill.category || ''}
                 onChange={(e) => setSkill({ ...skill, category: e.target.value as SkillCategory })}
-                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring ${
-                  errors.category ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className={errors.category ? INPUT_ERR : INPUT_CLS}
               >
                 <option value="">Select a category</option>
                 {CATEGORIES.map((cat) => (
@@ -235,12 +242,12 @@ export function SkillPreviewEditor({
                 ))}
               </select>
             ) : (
-              <div className="px-4 py-2 bg-gray-50 rounded-lg text-gray-900">
+              <div className={READONLY_CLS}>
                 {skill.category ? CATEGORY_LABELS[skill.category as SkillCategory] : 'Not set'}
               </div>
             )}
             {errors.category && (
-              <p className="mt-1 text-xs text-red-600 flex items-center gap-1">
+              <p className="mt-1.5 text-xs text-error flex items-center gap-1">
                 <AlertCircle className="w-3 h-3" />
                 {errors.category}
               </p>
@@ -248,20 +255,22 @@ export function SkillPreviewEditor({
           </div>
 
           {/* Analysis Context */}
-          <div className="bg-secondary/30 rounded-lg p-4 border border-border">
-            <h4 className="text-sm font-medium text-foreground mb-2">AI Analysis Results</h4>
+          <div className="bg-secondary rounded-xl p-4 border border-border">
+            <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-foreground-tertiary mb-2">
+              AI analysis
+            </p>
             <div className="space-y-2 text-xs text-foreground-secondary">
               <div>
-                <span className="font-medium">Work Domain:</span>{' '}
-                {analysisContext.workDomain.join(', ')}
+                <span className="font-medium text-foreground">Work domain:</span>{' '}
+                {analysisContext.workDomain.join(', ') || '—'}
               </div>
               <div>
-                <span className="font-medium">Technical Skills:</span>{' '}
-                {analysisContext.technicalSkills.join(', ')}
+                <span className="font-medium text-foreground">Technical skills:</span>{' '}
+                {analysisContext.technicalSkills.join(', ') || '—'}
               </div>
               <div>
-                <span className="font-medium">Confidence:</span>{' '}
-                {(analysisContext.confidence * 100).toFixed(0)}%
+                <span className="font-medium text-foreground">Confidence:</span>{' '}
+                <span className="font-mono">{(analysisContext.confidence * 100).toFixed(0)}%</span>
               </div>
             </div>
           </div>
@@ -272,25 +281,25 @@ export function SkillPreviewEditor({
       <div className="flex items-center justify-end gap-3">
         <button
           onClick={handleCancel}
-          className="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          className="inline-flex items-center h-10 px-5 text-sm font-semibold text-foreground bg-card border border-border rounded-2xl hover:border-border-hover hover:shadow-candy-1 transition-all"
         >
-          <X className="w-4 h-4 inline mr-2" />
+          <X className="w-4 h-4 mr-2" />
           Cancel
         </button>
         <button
           onClick={handleSave}
           disabled={isSaving || Object.keys(errors).length > 0 || !hasChanges}
-          className="px-6 py-2 text-sm font-medium text-white bg-gradient-to-r from-primary to-primary-active rounded-lg hover:from-primary-hover hover:to-primary-active transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="candy-btn btn-press inline-flex items-center h-10 px-5 text-sm font-semibold rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSaving ? (
             <>
-              <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-              Saving...
+              <span className="inline-block w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mr-2" />
+              Saving…
             </>
           ) : (
             <>
-              <Save className="w-4 h-4 inline mr-2" />
-              Save Skill
+              <Save className="w-4 h-4 mr-2" />
+              Save skill
             </>
           )}
         </button>

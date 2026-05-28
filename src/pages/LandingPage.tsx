@@ -76,7 +76,7 @@ export function LandingPage() {
     <div>
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 candy-gradient opacity-5" />
+        <div className="absolute inset-0 bg-primary/5" />
         <div className="absolute top-20 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl" />
         <div className="absolute bottom-10 right-10 w-96 h-96 bg-accent/10 rounded-full blur-3xl" />
 
@@ -86,10 +86,10 @@ export function LandingPage() {
               {REGISTRY_STATS.totalSkills.toLocaleString()}+ Skills Available
             </Badge>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold font-candy leading-tight mb-6">
-              <span className="candy-gradient-text">The Sweetest</span>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold font-candy leading-tight mb-6 text-primary">
+              The Sweetest
               <br />
-              AI Skills Marketplace
+              <span className="text-foreground">AI Skills Marketplace</span>
             </h1>
 
             <p className="text-lg sm:text-xl text-foreground-secondary max-w-2xl mx-auto mb-10 leading-relaxed">
@@ -127,7 +127,7 @@ export function LandingPage() {
             ].map((stat) => (
               <Card key={stat.label} variant="glass" className="text-center py-6 px-4">
                 <CardContent className="p-0">
-                  <div className="text-3xl font-bold candy-gradient-text font-candy">{stat.value}</div>
+                  <div className="text-3xl font-bold text-primary font-candy">{stat.value}</div>
                   <div className="text-sm text-foreground-secondary mt-1">{stat.label}</div>
                 </CardContent>
               </Card>
@@ -218,7 +218,7 @@ export function LandingPage() {
 
       {/* CTA */}
       <section className="py-24 relative">
-        <div className="absolute inset-0 candy-gradient opacity-5" />
+        <div className="absolute inset-0 bg-primary/5" />
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative">
           <h2 className="text-3xl sm:text-4xl font-bold font-candy mb-4">
             Ready to Find Your Sweet Spot?

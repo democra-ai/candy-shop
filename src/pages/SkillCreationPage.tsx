@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
+import { EmptyJar, Pip } from '../components/illustrations';
 import { SkillCreationMethodSelector } from '../components/skill-creator/SkillCreationMethodSelector';
 import { SkillCreatorPage } from './SkillCreatorPage';
 import { ManualSkillForm } from '../components/skill-creator/ManualSkillForm';
@@ -59,24 +61,29 @@ export function SkillCreationPage({ onComplete, onCancel }: SkillCreationPagePro
   };
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 md:py-12 space-y-6">
       {/* Feedback Messages */}
       {feedback && (
-        <div className={`p-4 rounded-lg ${feedback.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
-          <p className={`text-sm ${feedback.type === 'success' ? 'text-green-800' : 'text-red-800'}`}>
-            {feedback.message}
-          </p>
+        <div
+          className={`p-4 rounded-xl border text-sm ${
+            feedback.type === 'success'
+              ? 'bg-success/10 border-success/30 text-success'
+              : 'bg-error/10 border-error/30 text-error'
+          }`}
+        >
+          {feedback.message}
         </div>
       )}
 
       {/* Method Selection */}
       {method === 'select' && (
-        <div>
+        <div className="space-y-6">
           <button
             onClick={onCancel}
-            className="flex items-center gap-2 text-foreground-secondary hover:text-foreground transition-colors mb-6"
+            className="inline-flex items-center gap-1.5 text-sm text-foreground-secondary hover:text-foreground transition-colors"
           >
-            ← Back
+            <ArrowLeft className="w-4 h-4" />
+            Back to shop
           </button>
           <SkillCreationMethodSelector onSelectMethod={handleMethodSelect} />
         </div>
@@ -109,9 +116,20 @@ export function SkillCreationPage({ onComplete, onCancel }: SkillCreationPagePro
 
       {/* Workflow Builder */}
       {method === 'workflow' && (
-        <div className="h-[calc(100vh-12rem)] bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="flex items-center justify-center h-full text-gray-500">
-            Workflow Builder Coming Soon
+        <div className="space-y-6">
+          <button
+            onClick={handleBack}
+            className="inline-flex items-center gap-1.5 text-sm text-foreground-secondary hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </button>
+          <div className="h-[calc(100vh-16rem)] bg-card rounded-3xl shadow-candy-1 border border-border overflow-hidden">
+            <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-6">
+              <EmptyJar size={96} />
+              <p className="font-candy text-lg font-bold text-foreground">Workflow Builder</p>
+              <p className="text-sm text-foreground-secondary">A fresh batch is baking — coming soon.</p>
+            </div>
           </div>
         </div>
       )}
@@ -121,11 +139,12 @@ export function SkillCreationPage({ onComplete, onCancel }: SkillCreationPagePro
         <div className="space-y-6">
           <button
             onClick={handleBack}
-            className="flex items-center gap-2 text-foreground-secondary hover:text-foreground transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm text-foreground-secondary hover:text-foreground transition-colors"
           >
-            ← Back
+            <ArrowLeft className="w-4 h-4" />
+            Back
           </button>
-          <div className="bg-card rounded-2xl shadow-xl border border-border p-8">
+          <div className="bg-card rounded-3xl shadow-candy-1 border border-border p-6 md:p-8">
             <SkillPreviewEditor
               skill={skillToPreview}
               analysisContext={skillToPreview.analysisContext || {
@@ -150,16 +169,16 @@ export function SkillCreationPage({ onComplete, onCancel }: SkillCreationPagePro
 
       {/* Complete */}
       {method === 'complete' && (
-        <div className="bg-card rounded-2xl shadow-xl border border-border p-8">
+        <div className="bg-card rounded-3xl shadow-candy-1 border border-border p-6 md:p-8">
           <div className="text-center py-12">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <span className="text-4xl">✨</span>
+            <div className="flex items-center justify-center mx-auto mb-6">
+              <Pip size={104} />
             </div>
-            <h2 className="text-2xl font-bold text-foreground mb-2">
-              Skill Created Successfully!
+            <h2 className="font-candy text-2xl font-bold text-foreground mb-2">
+              Fresh batch is ready!
             </h2>
             <p className="text-foreground-secondary">
-              Redirecting to skills library...
+              Wrapping it up and taking you to your library…
             </p>
           </div>
         </div>
