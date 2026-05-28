@@ -1,10 +1,7 @@
 import { useMemo } from 'react';
-import { LayoutGrid } from 'lucide-react';
 import { SKILLS_DATA, SKILL_CATEGORIES, REGISTRY_STATS } from '../../data/skillsData';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { cn } from '../../utils/cn';
-import { useIsDark } from '../../hooks/useIsDark';
-import { getFlavor } from '../../utils/candyShells';
 
 export interface CategoryData {
   name: string;
@@ -13,153 +10,225 @@ export interface CategoryData {
   color: string;
 }
 
-/**
- * "Browse by flavor" selector (DESIGN.md v2). A refined horizontal row of
- * flavor tiles (pattern borrowed from Figma Community / Vercel template
- * filters): each tile is a soft per-flavor tint well with a consistent-size
- * candy emoji in a card chip, the name in font-candy, and a mono count badge.
- * A flavor accent bar on the left reads the selection; the active tile gets a
- * flavor ring + filled bar. Functional filter — clicking sets the category.
- */
+// Each category gets its own candy "flavor" — bold gradient + emoji set
+const FLAVOR_MAP: Record<string, {
+  bg: string;
+  border: string;
+  ring: string;
+  emoji: string;
+  emojiBg: string;
+  label: string;
+}> = {
+  Development: {
+    bg: 'from-indigo-400 via-blue-500 to-cyan-400',
+    border: 'border-indigo-300',
+    ring: 'ring-indigo-300/50',
+    emoji: '🍭',
+    emojiBg: 'bg-white/30',
+    label: 'Blueberry Pop',
+  },
+  Design: {
+    bg: 'from-pink-400 via-rose-500 to-fuchsia-400',
+    border: 'border-pink-300',
+    ring: 'ring-pink-300/50',
+    emoji: '🍬',
+    emojiBg: 'bg-white/30',
+    label: 'Strawberry Swirl',
+  },
+  Marketing: {
+    bg: 'from-orange-400 via-amber-500 to-yellow-400',
+    border: 'border-orange-300',
+    ring: 'ring-orange-300/50',
+    emoji: '🧁',
+    emojiBg: 'bg-white/30',
+    label: 'Caramel Crunch',
+  },
+  Productivity: {
+    bg: 'from-emerald-400 via-teal-500 to-green-400',
+    border: 'border-emerald-300',
+    ring: 'ring-emerald-300/50',
+    emoji: '🍫',
+    emojiBg: 'bg-white/30',
+    label: 'Mint Chocolate',
+  },
+  Tools: {
+    bg: 'from-violet-400 via-purple-500 to-fuchsia-500',
+    border: 'border-violet-300',
+    ring: 'ring-violet-300/50',
+    emoji: '🍰',
+    emojiBg: 'bg-white/30',
+    label: 'Grape Gummy',
+  },
+  Research: {
+    bg: 'from-cyan-400 via-sky-500 to-blue-400',
+    border: 'border-cyan-300',
+    ring: 'ring-cyan-300/50',
+    emoji: '🍡',
+    emojiBg: 'bg-white/30',
+    label: 'Cotton Candy',
+  },
+  Mobile: {
+    bg: 'from-lime-400 via-green-500 to-emerald-400',
+    border: 'border-lime-300',
+    ring: 'ring-lime-300/50',
+    emoji: '🍪',
+    emojiBg: 'bg-white/30',
+    label: 'Apple Sour',
+  },
+  Writing: {
+    bg: 'from-yellow-400 via-amber-500 to-orange-400',
+    border: 'border-yellow-300',
+    ring: 'ring-yellow-300/50',
+    emoji: '🍩',
+    emojiBg: 'bg-white/30',
+    label: 'Honey Glaze',
+  },
+};
 
-export function Categories({
-  onSelectCategory,
-  activeCategory,
-}: {
-  onSelectCategory: (category: string | null) => void;
-  activeCategory?: string | null;
-}) {
+const DEFAULT_FLAVOR = {
+  bg: 'from-slate-400 via-gray-500 to-zinc-400',
+  border: 'border-slate-300',
+  ring: 'ring-slate-300/50',
+  emoji: '🍮',
+  emojiBg: 'bg-white/30',
+  label: 'House Special',
+};
+
+export function Categories({ onSelectCategory, activeCategory }: { onSelectCategory: (category: string | null) => void; activeCategory?: string | null }) {
   const { t } = useLanguage();
-  const isDark = useIsDark();
 
   const categories = useMemo<CategoryData[]>(() => {
-    return SKILL_CATEGORIES.map((cat) => ({
+    return SKILL_CATEGORIES.map(cat => ({
       ...cat,
-      count: SKILLS_DATA.filter((skill) => skill.category === cat.name).length,
-    })).filter((cat) => cat.count > 0);
+      count: SKILLS_DATA.filter(skill => skill.category === cat.name).length
+    })).filter(cat => cat.count > 0);
   }, []);
 
   const isAllActive = !activeCategory;
 
   return (
-    <section className="py-8 md:py-12 relative" id="categories-section">
-      <div className="relative container max-w-7xl mx-auto px-0">
-        {/* header */}
-        <div className="flex items-end justify-between gap-4 mb-5 md:mb-6">
-          <div className="flex flex-col gap-1.5">
-            <span className="font-mono text-[10px] md:text-[11px] uppercase tracking-[0.16em] text-violet-500/90">
-              browse by flavor
-            </span>
-            <h2 className="text-2xl md:text-3xl font-candy font-bold text-foreground tracking-tight leading-none">
-              {t('categories.title') || 'Skill directories'}
-            </h2>
+    <section className="py-14 relative" id="categories-section">
+      <div className="container max-w-7xl mx-auto px-4">
+        {/* Section eyebrow */}
+        <div className="flex items-end justify-between gap-4 mb-8">
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">🍫</span>
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-candy font-bold text-foreground leading-tight">
+                Browse by Flavor
+              </h2>
+              <p className="text-xs sm:text-sm font-mono text-foreground-tertiary">
+                Eight aisles · pick a flavor and dig in
+              </p>
+            </div>
           </div>
-          <p className="text-foreground-tertiary font-mono text-[11px] uppercase tracking-widest hidden md:block">
-            {SKILL_CATEGORIES.length} flavors
-          </p>
-        </div>
 
-        {/* flavor tile row — wraps on small screens */}
-        <div className="flex flex-wrap gap-2.5 md:gap-3">
-          {/* ALL tile — brand-raspberry accent + grid glyph */}
           <button
             onClick={() => onSelectCategory(null)}
-            aria-pressed={isAllActive}
             className={cn(
-              'group relative overflow-hidden flex items-center gap-3 text-left',
-              'rounded-2xl pl-3.5 pr-4 py-3 border',
-              'shadow-candy-1 dark:shadow-candy-1-dark',
-              'hover:-translate-y-0.5 hover:shadow-candy-2 dark:hover:shadow-candy-2-dark',
-              'transition-[transform,box-shadow,border-color] duration-200 ease-candy cursor-pointer',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:ring-rose-300',
+              'hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-mono font-bold transition-all duration-300 border-2 btn-press',
               isAllActive
-                ? 'border-rose-400 ring-2 ring-offset-2 ring-offset-background ring-rose-400'
-                : 'border-border bg-card hover:border-rose-300',
+                ? 'bg-foreground text-background border-foreground shadow-candy'
+                : 'bg-card border-border/60 text-foreground-secondary hover:border-primary/40 hover:text-foreground'
             )}
-            style={isAllActive ? { backgroundColor: isDark ? '#3A2030' : '#FDE6EE' } : undefined}
           >
-            {/* left accent bar */}
-            <span
-              className={cn(
-                'absolute left-0 inset-y-0 w-1 rounded-r bg-rose-500 transition-opacity',
-                isAllActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
-              )}
-              aria-hidden="true"
-            />
-            <span
-              className={cn(
-                'flex items-center justify-center w-10 h-10 rounded-xl shrink-0 transition-transform duration-200 ease-candy group-hover:scale-105',
-                isAllActive ? 'bg-card' : 'bg-secondary',
-              )}
-            >
-              <LayoutGrid className="w-[18px] h-[18px] text-rose-500" />
-            </span>
-            <span className="flex flex-col min-w-0">
-              <span className="font-candy font-bold text-sm leading-tight text-foreground">
-                All flavors
-              </span>
-              <span className="font-mono text-[11px] font-bold leading-tight text-rose-500">
-                {REGISTRY_STATS.totalSkills.toLocaleString()}
-              </span>
-            </span>
+            🍬 All Flavors · {REGISTRY_STATS.totalSkills.toLocaleString()}
+          </button>
+        </div>
+
+        {/* Bento tile grid — asymmetric on lg */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 auto-rows-[minmax(140px,auto)]">
+          {/* Mobile "All Flavors" tile */}
+          <button
+            onClick={() => onSelectCategory(null)}
+            className={cn(
+              'sm:hidden col-span-2 group relative overflow-hidden rounded-3xl border-2 p-5 text-left transition-all duration-300 btn-press',
+              isAllActive
+                ? 'bg-foreground text-background border-foreground shadow-candy-lg'
+                : 'bg-gradient-to-br from-rose-100 via-amber-50 to-mint/20 border-rose-200 hover:shadow-warm-lg'
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-3xl">🍬</span>
+              <div>
+                <div className="font-candy font-bold text-base">All Flavors</div>
+                <div className="text-xs font-mono opacity-80">{REGISTRY_STATS.totalSkills.toLocaleString()} skills</div>
+              </div>
+            </div>
           </button>
 
-          {categories.map((cat) => {
-            const flavor = getFlavor(cat.name, isDark);
+          {categories.map((cat, i) => {
+            const flavor = FLAVOR_MAP[cat.name] || DEFAULT_FLAVOR;
             const isActive = activeCategory === cat.name;
+            // Asymmetric sizing: every 5th tile is bigger (lg only)
+            const isBig = i === 0 || i === 4;
+
             return (
               <button
                 key={cat.name}
                 onClick={() => onSelectCategory(cat.name)}
-                aria-pressed={isActive}
                 className={cn(
-                  'group relative overflow-hidden flex items-center gap-3 text-left',
-                  'rounded-2xl pl-3.5 pr-4 py-3 border',
-                  'shadow-candy-1 dark:shadow-candy-1-dark',
-                  'hover:-translate-y-0.5 hover:shadow-candy-2 dark:hover:shadow-candy-2-dark',
-                  'transition-[transform,box-shadow,border-color] duration-200 ease-candy cursor-pointer',
-                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                  'group relative overflow-hidden rounded-3xl border-2 text-left transition-all duration-300 btn-press',
+                  'shadow-candy hover:shadow-candy-lg hover:-translate-y-1',
+                  'focus:outline-none focus:ring-4',
+                  `bg-gradient-to-br ${flavor.bg}`,
+                  flavor.border,
                   flavor.ring,
-                  isActive ? 'ring-2 ring-offset-2 ring-offset-background' : 'bg-card border-border',
+                  isActive ? 'ring-4 scale-[1.02]' : 'ring-0',
+                  isBig ? 'lg:col-span-2 lg:row-span-1' : ''
                 )}
-                style={isActive
-                  ? { backgroundColor: flavor.tint, borderColor: flavor.base, ['--tw-ring-color' as string]: flavor.base }
-                  : undefined}
-                onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.borderColor = flavor.base; }}
-                onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.borderColor = ''; }}
               >
-                {/* left flavor accent bar */}
-                <span
-                  className={cn(
-                    'absolute left-0 inset-y-0 w-1 rounded-r transition-opacity',
-                    isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
-                  )}
-                  style={{ backgroundColor: flavor.base }}
-                  aria-hidden="true"
+                {/* Sprinkle dots overlay */}
+                <div className="absolute inset-0 pointer-events-none opacity-30" aria-hidden="true"
+                  style={{
+                    backgroundImage: 'radial-gradient(circle, white 1px, transparent 1.5px)',
+                    backgroundSize: '24px 24px',
+                  }}
                 />
-                {/* candy emoji — consistent size, in a tinted/card well */}
-                <span
-                  className="flex items-center justify-center w-10 h-10 rounded-xl text-[22px] leading-none shrink-0 transition-transform duration-200 ease-candy group-hover:scale-105 group-hover:-rotate-3"
-                  style={{ backgroundColor: isActive ? 'var(--color-card)' : flavor.tint }}
-                  aria-hidden="true"
-                >
-                  {cat.icon}
-                </span>
-                <span className="flex flex-col min-w-0">
-                  <span className="font-candy font-bold text-sm leading-tight text-foreground whitespace-nowrap">
-                    {cat.name}
-                  </span>
-                  <span
-                    className="font-mono text-[11px] font-bold leading-tight"
-                    style={{ color: flavor.ink }}
-                  >
-                    {cat.count}
-                  </span>
-                </span>
+                {/* Glossy top sheen */}
+                <div className="absolute top-0 inset-x-0 h-1/2 bg-gradient-to-b from-white/30 to-transparent pointer-events-none" />
+
+                <div className={cn('relative p-5 sm:p-6 flex flex-col justify-between', isBig ? 'min-h-[180px]' : 'min-h-[140px]')}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className={cn(
+                      'flex items-center justify-center rounded-2xl backdrop-blur-sm border-2 border-white/60 shadow-lg shrink-0',
+                      flavor.emojiBg,
+                      isBig ? 'w-16 h-16 text-4xl' : 'w-12 h-12 text-2xl'
+                    )}>
+                      {flavor.emoji}
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full bg-white/40 backdrop-blur-sm text-[10px] font-mono font-bold text-white border border-white/60">
+                      {cat.count}
+                    </span>
+                  </div>
+
+                  <div className="mt-3">
+                    <h3 className={cn(
+                      'font-candy font-bold text-white drop-shadow-md leading-tight',
+                      isBig ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-xl'
+                    )}>
+                      {cat.name}
+                    </h3>
+                    <p className="mt-1 text-[11px] font-mono text-white/80 uppercase tracking-wider">
+                      {flavor.label}
+                    </p>
+                  </div>
+
+                  {isActive && (
+                    <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-white text-[10px] font-mono font-bold text-foreground shadow-md">
+                      ✓ tasting
+                    </div>
+                  )}
+                </div>
               </button>
             );
           })}
         </div>
+
+        {/* Sub-label */}
+        <p className="mt-6 text-center text-xs font-mono text-foreground-tertiary">
+          {t('categories.subtitle')}
+        </p>
       </div>
     </section>
   );

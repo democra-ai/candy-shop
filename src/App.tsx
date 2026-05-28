@@ -13,7 +13,6 @@ import { Categories } from './components/home/Categories';
 import { ExternalResources } from './components/home/ExternalResources';
 import { FAQ } from './components/home/FAQ';
 import { MostPopularRail } from './components/home/MostPopularRail';
-import { ShopWindow } from './components/home/ShopWindow';
 // EditorPicks intentionally not mounted — its content now lives in the bento Hero
 // (featured raspberry cell) and Aisle 1 (MostPopularRail).
 import { AuthModal } from './components/auth/AuthModal';
@@ -252,7 +251,6 @@ function HomePage({
 
         {activeTab === 'candy' && (
           <>
-            <ShopWindow onRunSkill={onRunSkill} />
             <MostPopularRail onRunSkill={onRunSkill} />
             <Categories
               activeCategory={candyTagFilter}

@@ -346,8 +346,6 @@ function CravingCard({
       onMouseEnter={(e) => { if (!isUserPosted) e.currentTarget.style.borderColor = flavor.base; }}
       onMouseLeave={(e) => { if (!isUserPosted) e.currentTarget.style.borderColor = ''; }}
     >
-      {/* thin flavor top-accent */}
-      <div className="absolute inset-x-0 top-0 h-[3px] opacity-80 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: flavor.base }} aria-hidden="true" />
 
       {/* Your Post Banner */}
       {isUserPosted && (

@@ -112,12 +112,6 @@ export function MostPopularRail({ onRunSkill }: MostPopularRailProps) {
               onMouseEnter={(e) => { e.currentTarget.style.borderColor = heroFlavor.base; }}
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = ''; }}
             >
-              {/* flavor top-accent */}
-              <div
-                className="absolute inset-x-0 top-0 h-1 opacity-90 group-hover:opacity-100 transition-opacity"
-                style={{ backgroundColor: heroFlavor.base }}
-                aria-hidden="true"
-              />
               {/* faint oversized emoji watermark, bottom-right */}
               <span
                 className="pointer-events-none absolute -bottom-6 -right-3 text-[120px] leading-none opacity-[0.07] select-none rotate-[-8deg]"
