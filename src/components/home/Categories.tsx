@@ -14,10 +14,12 @@ export interface CategoryData {
 }
 
 /**
- * Aisle 2 — "By Flavor" (DESIGN.md v2). Clean-canvas flavor tiles: each tile is a
- * neutral `bg-card` surface; the category candy ILLUSTRATION in a flavor well +
- * a tint count chip carry the color. Active tile gets a flavor border + ring.
- * No saturated full-fill blocks, no emoji.
+ * "Browse by flavor" selector (DESIGN.md v2). A refined horizontal row of
+ * flavor tiles (pattern borrowed from Figma Community / Vercel template
+ * filters): each tile is a soft per-flavor tint well with a consistent-size
+ * candy emoji in a card chip, the name in font-candy, and a mono count badge.
+ * A flavor accent bar on the left reads the selection; the active tile gets a
+ * flavor ring + filled bar. Functional filter — clicking sets the category.
  */
 
 export function Categories({
@@ -40,55 +42,66 @@ export function Categories({
   const isAllActive = !activeCategory;
 
   return (
-    <section className="py-10 relative" id="categories-section">
+    <section className="py-8 md:py-12 relative" id="categories-section">
       <div className="relative container max-w-7xl mx-auto px-0">
-        {/* Aisle eyebrow header */}
-        <div className="flex items-end justify-between gap-4 mb-5">
-          <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-violet-500/12 text-violet-500 text-[10px] font-mono font-bold uppercase tracking-widest border border-violet-500/25">
-              aisle 02
+        {/* header */}
+        <div className="flex items-end justify-between gap-4 mb-5 md:mb-6">
+          <div className="flex flex-col gap-1.5">
+            <span className="font-mono text-[10px] md:text-[11px] uppercase tracking-[0.16em] text-violet-500/90">
+              browse by flavor
             </span>
-            <h2 className="text-2xl md:text-3xl font-candy font-bold text-foreground tracking-tight">
-              {t('categories.title') || 'By flavor'}
+            <h2 className="text-2xl md:text-3xl font-candy font-bold text-foreground tracking-tight leading-none">
+              {t('categories.title') || 'Skill directories'}
             </h2>
           </div>
           <p className="text-foreground-tertiary font-mono text-[11px] uppercase tracking-widest hidden md:block">
-            {SKILL_CATEGORIES.length} categories · pick a flavor
+            {SKILL_CATEGORIES.length} flavors
           </p>
         </div>
 
-        {/* Tile grid — 9 tiles (ALL + 8 categories) in a clean 3/5/9 grid.
-            grid-flow-dense backstops any future tile count mismatch. */}
-        <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-2.5 md:gap-3 grid-flow-dense">
-          {/* ALL tile — neutral surface, brand-raspberry accent + grid glyph */}
+        {/* flavor tile row — wraps on small screens */}
+        <div className="flex flex-wrap gap-2.5 md:gap-3">
+          {/* ALL tile — brand-raspberry accent + grid glyph */}
           <button
             onClick={() => onSelectCategory(null)}
+            aria-pressed={isAllActive}
             className={cn(
-              'group relative overflow-hidden rounded-2xl text-left p-3 md:p-4',
-              'aspect-[1.1/1] md:aspect-square bg-card border border-border',
+              'group relative overflow-hidden flex items-center gap-3 text-left',
+              'rounded-2xl pl-3.5 pr-4 py-3 border',
               'shadow-candy-1 dark:shadow-candy-1-dark',
               'hover:-translate-y-0.5 hover:shadow-candy-2 dark:hover:shadow-candy-2-dark',
               'transition-[transform,box-shadow,border-color] duration-200 ease-candy cursor-pointer',
               'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:ring-rose-300',
-              isAllActive && 'ring-2 ring-offset-2 ring-offset-background ring-rose-400 border-rose-400',
+              isAllActive
+                ? 'border-rose-400 ring-2 ring-offset-2 ring-offset-background ring-rose-400'
+                : 'border-border bg-card hover:border-rose-300',
             )}
+            style={isAllActive ? { backgroundColor: isDark ? '#3A2030' : '#FDE6EE' } : undefined}
           >
-            <div className="relative h-full flex flex-col justify-between">
-              <span
-                className="flex items-center justify-center w-11 h-11 md:w-12 md:h-12 rounded-xl"
-                style={{ backgroundColor: 'var(--color-secondary)' }}
-              >
-                <LayoutGrid className="w-5 h-5 text-primary" />
+            {/* left accent bar */}
+            <span
+              className={cn(
+                'absolute left-0 inset-y-0 w-1 rounded-r bg-rose-500 transition-opacity',
+                isAllActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+              )}
+              aria-hidden="true"
+            />
+            <span
+              className={cn(
+                'flex items-center justify-center w-10 h-10 rounded-xl shrink-0 transition-transform duration-200 ease-candy group-hover:scale-105',
+                isAllActive ? 'bg-card' : 'bg-secondary',
+              )}
+            >
+              <LayoutGrid className="w-[18px] h-[18px] text-rose-500" />
+            </span>
+            <span className="flex flex-col min-w-0">
+              <span className="font-candy font-bold text-sm leading-tight text-foreground">
+                All flavors
               </span>
-              <div>
-                <div className="font-candy font-bold leading-tight text-sm md:text-base text-foreground">
-                  All flavors
-                </div>
-                <div className="mt-1 inline-block px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold bg-secondary text-foreground-secondary">
-                  {REGISTRY_STATS.totalSkills.toLocaleString()}
-                </div>
-              </div>
-            </div>
+              <span className="font-mono text-[11px] font-bold leading-tight text-rose-500">
+                {REGISTRY_STATS.totalSkills.toLocaleString()}
+              </span>
+            </span>
           </button>
 
           {categories.map((cat) => {
@@ -98,42 +111,51 @@ export function Categories({
               <button
                 key={cat.name}
                 onClick={() => onSelectCategory(cat.name)}
+                aria-pressed={isActive}
                 className={cn(
-                  'group relative overflow-hidden rounded-2xl text-left p-3 md:p-4',
-                  'aspect-[1.1/1] md:aspect-square bg-card border border-border',
+                  'group relative overflow-hidden flex items-center gap-3 text-left',
+                  'rounded-2xl pl-3.5 pr-4 py-3 border',
                   'shadow-candy-1 dark:shadow-candy-1-dark',
                   'hover:-translate-y-0.5 hover:shadow-candy-2 dark:hover:shadow-candy-2-dark',
                   'transition-[transform,box-shadow,border-color] duration-200 ease-candy cursor-pointer',
                   'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                   flavor.ring,
-                  isActive && 'ring-2 ring-offset-2 ring-offset-background',
+                  isActive ? 'ring-2 ring-offset-2 ring-offset-background' : 'bg-card border-border',
                 )}
                 style={isActive
-                  ? { borderColor: flavor.base, ['--tw-ring-color' as string]: flavor.base }
+                  ? { backgroundColor: flavor.tint, borderColor: flavor.base, ['--tw-ring-color' as string]: flavor.base }
                   : undefined}
                 onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.borderColor = flavor.base; }}
                 onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.borderColor = ''; }}
               >
-                <div className="relative h-full flex flex-col justify-between">
-                  <span
-                    className="flex items-center justify-center w-11 h-11 md:w-12 md:h-12 rounded-xl text-2xl md:text-[26px] leading-none transition-transform duration-200 ease-candy group-hover:scale-105 group-hover:-rotate-3"
-                    style={{ backgroundColor: flavor.tint }}
-                    aria-hidden="true"
-                  >
-                    {cat.icon}
+                {/* left flavor accent bar */}
+                <span
+                  className={cn(
+                    'absolute left-0 inset-y-0 w-1 rounded-r transition-opacity',
+                    isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+                  )}
+                  style={{ backgroundColor: flavor.base }}
+                  aria-hidden="true"
+                />
+                {/* candy emoji — consistent size, in a tinted/card well */}
+                <span
+                  className="flex items-center justify-center w-10 h-10 rounded-xl text-[22px] leading-none shrink-0 transition-transform duration-200 ease-candy group-hover:scale-105 group-hover:-rotate-3"
+                  style={{ backgroundColor: isActive ? 'var(--color-card)' : flavor.tint }}
+                  aria-hidden="true"
+                >
+                  {cat.icon}
+                </span>
+                <span className="flex flex-col min-w-0">
+                  <span className="font-candy font-bold text-sm leading-tight text-foreground whitespace-nowrap">
+                    {cat.name}
                   </span>
-                  <div>
-                    <div className="font-candy font-bold leading-tight text-xs md:text-sm text-foreground">
-                      {cat.name}
-                    </div>
-                    <div
-                      className="mt-1 inline-block px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold"
-                      style={{ backgroundColor: flavor.tint, color: flavor.ink }}
-                    >
-                      {cat.count}
-                    </div>
-                  </div>
-                </div>
+                  <span
+                    className="font-mono text-[11px] font-bold leading-tight"
+                    style={{ color: flavor.ink }}
+                  >
+                    {cat.count}
+                  </span>
+                </span>
               </button>
             );
           })}
