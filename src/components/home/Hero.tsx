@@ -57,15 +57,8 @@ export function Hero({ activeTab, onTabChange, onPostCraving, onPostCandy }: Her
 
   return (
     <section className="relative pt-10 pb-16 lg:pt-16 lg:pb-24 overflow-hidden">
-      {/* Floating candy sticks scattered across the backdrop. */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden select-none" aria-hidden="true">
-        <span className="absolute top-4 left-[6%] text-5xl opacity-20 motion-safe:animate-candy-float" style={{ animationDelay: '0s' }}>🍭</span>
-        <span className="absolute top-10 right-[10%] text-4xl opacity-[0.18] motion-safe:animate-candy-float" style={{ animationDelay: '1.4s' }}>🍬</span>
-        <span className="absolute top-[42%] left-[3%] text-3xl opacity-[0.14] motion-safe:animate-candy-float hidden sm:block" style={{ animationDelay: '2.6s' }}>🍭</span>
-        <span className="absolute bottom-10 right-[6%] text-4xl opacity-[0.16] motion-safe:animate-candy-float hidden sm:block" style={{ animationDelay: '0.8s' }}>🍡</span>
-        <span className="absolute bottom-6 left-[18%] text-3xl opacity-[0.12] motion-safe:animate-candy-float hidden md:block" style={{ animationDelay: '3.2s' }}>🍭</span>
-        <span className="absolute top-[28%] right-[22%] text-2xl opacity-[0.10] motion-safe:animate-candy-float hidden md:block" style={{ animationDelay: '2s' }}>🍬</span>
-      </div>
+      {/* Background candy sprinkles are provided page-wide by the .sprinkle-pattern
+          layer in Layout (capsules + dots), which shows through here. */}
 
       <div className="flex flex-col items-center text-center gap-8 relative">
         {/* Badge */}
