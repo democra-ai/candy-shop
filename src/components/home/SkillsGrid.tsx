@@ -182,7 +182,7 @@ export function SkillsGrid({
 
   return (
     <>
-      <section className="py-12 md:py-16 bg-background" id="skills-grid">
+      <section className="py-12 md:py-16" id="skills-grid">
         <div className="container max-w-7xl mx-auto px-0">
           {/* Compact section header: title left, search + CTAs right */}
           <div className="flex items-center justify-between gap-4 mb-8 flex-wrap">
@@ -426,7 +426,7 @@ function RegistryBrowser() {
   };
 
   return (
-    <section className="py-16 bg-background" id="registry-browser" ref={listRef}>
+    <section className="py-16" id="registry-browser" ref={listRef}>
       <div className="container max-w-7xl mx-auto px-4">
         {/* Expand/Collapse Header */}
         <button
