@@ -34,8 +34,9 @@
     --color-background-secondary: #FFF3E6;
     --color-background-tertiary: #FBF0FA;
 
-    /* Card — pure glossy white */
-    --color-card: #FFFFFF;
+    /* Card — warm off-white so panels blend with the cream backdrop
+       instead of glaring as stark white rectangles. */
+    --color-card: #FFFCF7;
     --color-card-foreground: #1F1320;
 
     /* Text — deep plum-ink */

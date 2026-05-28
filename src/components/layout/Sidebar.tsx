@@ -501,7 +501,7 @@ export function Sidebar({
 
   return (
     <>
-      <div className="fixed top-0 left-0 right-0 z-30 h-14 glass border-b border-border/50 flex items-center justify-between px-4">
+      <div className="fixed top-0 left-0 right-0 z-30 h-14 bg-card border-b border-border flex items-center justify-between px-4">
         <button
           onClick={() => setMobileOpen(true)}
           className={cn(
@@ -546,8 +546,8 @@ export function Sidebar({
 
       <aside
         className={cn(
-          'lg:hidden fixed inset-y-0 left-0 z-40 flex flex-col w-72 glass',
-          'after:content-[""] after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-border/50',
+          'lg:hidden fixed inset-y-0 left-0 z-40 flex flex-col w-72 bg-card',
+          'after:content-[""] after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-border',
           'transform transition-transform duration-300',
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         )}
@@ -558,8 +558,8 @@ export function Sidebar({
       <aside
         className={cn(
           'hidden lg:flex flex-col fixed inset-y-0 left-0 z-40',
-          'glass transition-all duration-300',
-          'after:content-[""] after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-border/50',
+          'bg-card transition-all duration-300',
+          'after:content-[""] after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-border',
           collapsed ? 'w-16' : 'w-64'
         )}
       >

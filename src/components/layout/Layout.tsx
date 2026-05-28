@@ -173,10 +173,19 @@ export function Layout({
 
   return (
     <div className="min-h-screen bg-background relative">
-      {/* Subtle mesh gradient background */}
-      <div className="fixed inset-0 bg-candy-mesh pointer-events-none" aria-hidden="true" />
-      {/* Sprinkle dot pattern */}
-      <div className="fixed inset-0 sprinkle-pattern pointer-events-none" aria-hidden="true" />
+      {/* Subtle mesh gradient background — promoted to its own compositor layer
+          (translateZ) so the fixed backdrop doesn't repaint as content scrolls. */}
+      <div
+        className="fixed inset-0 bg-candy-mesh pointer-events-none"
+        aria-hidden="true"
+        style={{ transform: 'translateZ(0)', willChange: 'transform' }}
+      />
+      {/* Sprinkle dot pattern — same stable-layer treatment. */}
+      <div
+        className="fixed inset-0 sprinkle-pattern pointer-events-none"
+        aria-hidden="true"
+        style={{ transform: 'translateZ(0)', willChange: 'transform' }}
+      />
 
       <Sidebar
         onOpenAuth={onOpenAuth}

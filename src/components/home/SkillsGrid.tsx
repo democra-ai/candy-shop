@@ -433,7 +433,7 @@ function RegistryBrowser() {
           onClick={handleExpand}
           className="w-full group"
         >
-          <div className="flex items-center justify-between p-6 glass rounded-2xl border border-border/50 hover:border-primary/30 transition-all duration-300 hover:shadow-warm-lg">
+          <div className="flex items-center justify-between p-6 bg-secondary rounded-2xl border border-border hover:border-primary/30 transition-all duration-300 hover:shadow-warm-lg">
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-violet-500/20 to-indigo-500/20 flex items-center justify-center border border-violet-500/20">
                 <Database className="w-7 h-7 text-violet-400" />

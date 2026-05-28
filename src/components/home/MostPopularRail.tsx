@@ -104,13 +104,14 @@ export function MostPopularRail({ onRunSkill }: MostPopularRailProps) {
                     className={cn(
                       'group relative shrink-0 snap-start text-left',
                       'w-[240px] sm:w-[260px] h-[210px]',
-                      'rounded-2xl p-4 pt-5 overflow-hidden bg-card border border-border',
+                      'rounded-2xl p-4 pt-5 overflow-hidden border border-border',
                       'shadow-candy-1 dark:shadow-candy-1-dark',
                       'hover:-translate-y-1 hover:shadow-candy-2 dark:hover:shadow-candy-2-dark',
                       'transition-[transform,box-shadow,border-color] duration-300 ease-candy cursor-pointer',
                       'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                       flavor.ring,
                     )}
+                    style={{ backgroundColor: flavor.tint }}
                     onMouseEnter={(e) => { e.currentTarget.style.borderColor = flavor.base; }}
                     onMouseLeave={(e) => { e.currentTarget.style.borderColor = ''; }}
                   >
@@ -129,18 +130,17 @@ export function MostPopularRail({ onRunSkill }: MostPopularRailProps) {
                           {isHotRank && <Flame className="w-3 h-3" />}
                         </div>
                         <div
-                          className="flex items-center justify-center w-11 h-11 rounded-xl text-2xl leading-none transition-transform duration-300 ease-candy group-hover:scale-105"
-                          style={{ backgroundColor: flavor.tint }}
+                          className="flex items-center justify-center w-11 h-11 rounded-xl text-2xl leading-none transition-transform duration-300 ease-candy group-hover:scale-105 bg-card"
                           aria-hidden="true"
                         >
                           {emoji}
                         </div>
                       </div>
 
-                      {/* category chip */}
+                      {/* category chip — solid so it stays distinct on the tinted card */}
                       <span
-                        className="mt-3 inline-flex items-center w-fit px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold uppercase tracking-widest truncate max-w-full"
-                        style={{ backgroundColor: flavor.tint, color: flavor.ink }}
+                        className="mt-3 inline-flex items-center w-fit px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold uppercase tracking-widest truncate max-w-full bg-card"
+                        style={{ color: flavor.ink }}
                       >
                         {skill.category}
                       </span>

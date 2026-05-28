@@ -72,32 +72,32 @@ export function ShopWindow({ onRunSkill }: ShopWindowProps) {
               className={cn(
                 'group relative col-span-2 md:col-span-3 md:row-span-2 row-span-1',
                 'rounded-3xl p-6 md:p-8 overflow-hidden text-left',
-                'min-h-[280px] md:min-h-0 bg-card border border-border',
+                'min-h-[280px] md:min-h-0 border border-border',
                 shadow1,
                 'hover:shadow-candy-2 dark:hover:shadow-candy-2-dark',
                 'hover:-translate-y-1 transition-[transform,box-shadow,border-color] duration-300 ease-candy cursor-pointer',
                 'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                 featuredFlavor.ring,
               )}
+              style={{ backgroundColor: featuredFlavor.tint }}
               onMouseEnter={(e) => { e.currentTarget.style.borderColor = featuredFlavor.base; }}
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = ''; }}
             >
               {/* thin flavor top-accent */}
               <div className="absolute inset-x-0 top-0 h-1 opacity-90" style={{ backgroundColor: featuredFlavor.base }} aria-hidden="true" />
 
-              {/* Sparkle ribbon */}
+              {/* Sparkle ribbon — solid card chip so it reads distinct on the tinted cell */}
               <div
-                className="absolute top-5 left-5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-widest"
-                style={{ backgroundColor: featuredFlavor.tint, color: featuredFlavor.ink }}
+                className="absolute top-5 left-5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-widest bg-card"
+                style={{ color: featuredFlavor.ink }}
               >
                 <Sparkles className="w-3 h-3" />
                 editor's pick · today
               </div>
 
-              {/* Big candy emoji in a tinted well — the color carrier */}
+              {/* Big candy emoji in a solid well — distinct against the tinted cell */}
               <div
-                className="absolute right-6 top-16 flex items-center justify-center w-24 h-24 md:w-28 md:h-28 rounded-3xl text-6xl md:text-7xl leading-none transition-transform duration-300 ease-candy group-hover:scale-105 group-hover:-rotate-3"
-                style={{ backgroundColor: featuredFlavor.tint }}
+                className="absolute right-6 top-16 flex items-center justify-center w-24 h-24 md:w-28 md:h-28 rounded-3xl text-6xl md:text-7xl leading-none transition-transform duration-300 ease-candy group-hover:scale-105 group-hover:-rotate-3 bg-card"
                 aria-hidden="true"
               >
                 {featuredEmoji}
@@ -106,8 +106,8 @@ export function ShopWindow({ onRunSkill }: ShopWindowProps) {
               {/* Content */}
               <div className="relative h-full flex flex-col justify-end pt-16">
                 <span
-                  className="inline-block w-fit px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase tracking-widest mb-2"
-                  style={{ backgroundColor: featuredFlavor.tint, color: featuredFlavor.ink }}
+                  className="inline-block w-fit px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase tracking-widest mb-2 bg-card"
+                  style={{ color: featuredFlavor.ink }}
                 >
                   {featured.category}
                 </span>
@@ -131,17 +131,17 @@ export function ShopWindow({ onRunSkill }: ShopWindowProps) {
             <div
               className={cn(
                 'relative col-span-2 md:col-span-2 row-span-1 rounded-3xl p-5 overflow-hidden',
-                'min-h-[160px] bg-card border border-border', shadow1,
+                'min-h-[160px] border border-border', shadow1,
               )}
+              style={{ backgroundColor: mascotFlavor.tint }}
             >
               <div className="absolute top-4 right-4 inline-flex items-center gap-1 text-[10px] font-mono font-bold uppercase tracking-widest text-foreground-tertiary">
                 <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: mascotFlavor.base }} />
                 live
               </div>
-              {/* Mascot — gentle idle bob (the single idle animation for this view) */}
+              {/* Mascot — gentle idle bob; solid well stays distinct on the tinted cell */}
               <div
-                className="flex items-center justify-center w-[72px] h-[72px] md:w-[84px] md:h-[84px] rounded-3xl text-5xl md:text-6xl leading-none motion-safe:animate-float"
-                style={{ backgroundColor: mascotFlavor.tint }}
+                className="flex items-center justify-center w-[72px] h-[72px] md:w-[84px] md:h-[84px] rounded-3xl text-5xl md:text-6xl leading-none motion-safe:animate-float bg-card"
                 aria-hidden="true"
               >
                 🍭
@@ -157,10 +157,13 @@ export function ShopWindow({ onRunSkill }: ShopWindowProps) {
             </div>
 
             {/* Cell 3 — Today's new arrivals (clean card + caramel accents) */}
-            <div className={cn(
-              'relative col-span-1 md:col-span-1 row-span-1 rounded-3xl p-4 overflow-hidden min-h-[160px]',
-              'bg-card border border-border', shadow1,
-            )}>
+            <div
+              className={cn(
+                'relative col-span-1 md:col-span-1 row-span-1 rounded-3xl p-4 overflow-hidden min-h-[160px]',
+                'border border-border', shadow1,
+              )}
+              style={{ backgroundColor: arrivalsFlavor.tint }}
+            >
               <div className="absolute top-3 right-3 text-[10px] font-mono font-bold uppercase tracking-widest" style={{ color: arrivalsFlavor.ink }}>
                 new
               </div>
@@ -191,10 +194,13 @@ export function ShopWindow({ onRunSkill }: ShopWindowProps) {
             </div>
 
             {/* Cell 4 — Hot Out The Oven (clean wide strip + raspberry accents) */}
-            <div className={cn(
-              'relative col-span-2 md:col-span-6 row-span-1 rounded-3xl p-4 md:p-5 overflow-hidden min-h-[140px]',
-              'bg-card border border-border', shadow1,
-            )}>
+            <div
+              className={cn(
+                'relative col-span-2 md:col-span-6 row-span-1 rounded-3xl p-4 md:p-5 overflow-hidden min-h-[140px]',
+                'border border-border', shadow1,
+              )}
+              style={{ backgroundColor: hotFlavor.tint }}
+            >
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Flame className="w-4 h-4" style={{ color: hotFlavor.base }} />
@@ -216,7 +222,7 @@ export function ShopWindow({ onRunSkill }: ShopWindowProps) {
                       onClick={() => handleRun(s)}
                       className={cn(
                         'group/chip shrink-0 flex items-center gap-2.5 pl-2 pr-3 py-2 rounded-2xl',
-                        'bg-secondary/50 border border-border hover:border-[color:var(--chip-accent)] hover:bg-secondary',
+                        'bg-card border border-border hover:border-[color:var(--chip-accent)]',
                         'transition-all duration-200 ease-candy cursor-pointer',
                         'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-offset-background',
                         f.ring,
