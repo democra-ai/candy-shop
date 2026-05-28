@@ -173,9 +173,9 @@ export default {
         // Solid raspberry — no rainbow gradient (user feedback round N+1)
         'candy-gradient': 'linear-gradient(135deg, #E11D6B 0%, #C8175A 100%)',
         'candy-gradient-soft': 'linear-gradient(135deg, rgba(225,29,107,0.08) 0%, rgba(225,29,107,0.04) 100%)',
-        // Warm candy mesh — soft raspberry / grape / mint blooms at low opacity.
-        // A subtle dimensional backdrop (NOT a saturated rainbow gradient/text).
-        'candy-mesh': 'radial-gradient(at 18% 12%, rgba(225,29,107,0.11) 0px, transparent 45%), radial-gradient(at 84% 8%, rgba(124,58,237,0.09) 0px, transparent 48%), radial-gradient(at 50% 96%, rgba(24,195,166,0.08) 0px, transparent 50%)',
+        // Warm cream mesh — soft caramel/honey blooms with a faint raspberry
+        // whisper. Keeps the backdrop golden-warm (not pink), low opacity.
+        'candy-mesh': 'radial-gradient(at 16% 10%, rgba(242,167,66,0.10) 0px, transparent 46%), radial-gradient(at 86% 14%, rgba(242,167,66,0.07) 0px, transparent 48%), radial-gradient(at 55% 96%, rgba(225,29,107,0.04) 0px, transparent 50%)',
         'candy-conic': 'linear-gradient(135deg, #E11D6B 0%, #C8175A 100%)',
       },
     },
