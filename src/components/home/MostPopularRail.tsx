@@ -22,7 +22,7 @@ import { cn } from '../../utils/cn';
 import { SkillModal } from '../common/SkillModal';
 import { useIsDark } from '../../hooks/useIsDark';
 import { getFlavor } from '../../utils/candyShells';
-import { getCandyIcon } from '../illustrations';
+import { getCandyEmoji } from '../../utils/candy';
 
 interface MostPopularRailProps {
   onRunSkill: (skill: Skill) => void;
@@ -93,7 +93,7 @@ export function MostPopularRail({ onRunSkill }: MostPopularRailProps) {
             >
               {popular.map((skill, i) => {
                 const flavor = getFlavor(skill.category, isDark);
-                const Candy = getCandyIcon(skill.category, isDark);
+                const emoji = getCandyEmoji(skill.id);
                 const rating = skill.rating ?? 4.5 + (i % 5) * 0.1;
                 const authorHandle = skill.developer ?? skill.repo?.split('/')[0];
                 const isHotRank = i < 3;
@@ -129,11 +129,11 @@ export function MostPopularRail({ onRunSkill }: MostPopularRailProps) {
                           {isHotRank && <Flame className="w-3 h-3" />}
                         </div>
                         <div
-                          className="flex items-center justify-center w-11 h-11 rounded-xl transition-transform duration-300 ease-candy group-hover:scale-105"
+                          className="flex items-center justify-center w-11 h-11 rounded-xl text-2xl leading-none transition-transform duration-300 ease-candy group-hover:scale-105"
                           style={{ backgroundColor: flavor.tint }}
                           aria-hidden="true"
                         >
-                          <Candy size={26} color={flavor.base} />
+                          {emoji}
                         </div>
                       </div>
 

@@ -6,7 +6,7 @@ import { cn } from '../../utils/cn';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useIsDark } from '../../hooks/useIsDark';
 import { getFlavor } from '../../utils/candyShells';
-import { getCandyIcon, Pip } from '../illustrations';
+import { getCandyEmoji } from '../../utils/candy';
 
 interface CravingsGridProps {
   searchQuery: string;
@@ -219,8 +219,8 @@ export function CravingsGrid({
         {/* Empty */}
         {!isDebouncing && filtered.length === 0 && (
           <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-24 h-24 rounded-3xl bg-card border border-border flex items-center justify-center mb-6 shadow-candy-1 dark:shadow-candy-1-dark">
-              <Pip size={64} />
+            <div className="w-24 h-24 rounded-3xl bg-card border border-border flex items-center justify-center text-5xl leading-none mb-6 shadow-candy-1 dark:shadow-candy-1-dark">
+              🍬
             </div>
             <h3 className="text-lg font-candy font-bold text-foreground mb-2">No cravings found</h3>
             <p className="text-foreground-secondary text-sm font-body max-w-md mb-6">
@@ -332,7 +332,7 @@ function CravingCard({
   const urgency = URGENCY_CONFIG[craving.urgency];
   const status = STATUS_CONFIG[craving.status];
   const flavor = getFlavor(craving.category, isDark);
-  const Candy = getCandyIcon(craving.category, isDark);
+  const emoji = getCandyEmoji(craving.id);
 
   return (
     <div
@@ -364,11 +364,11 @@ function CravingCard({
           {/* Illustration well + Status */}
           <div className="flex items-center gap-3">
             <span
-              className="flex items-center justify-center w-11 h-11 rounded-xl shrink-0 transition-transform duration-300 ease-candy group-hover:scale-105"
+              className="flex items-center justify-center w-11 h-11 rounded-xl text-2xl leading-none shrink-0 transition-transform duration-300 ease-candy group-hover:scale-105"
               style={{ backgroundColor: flavor.tint }}
               aria-hidden="true"
             >
-              <Candy size={24} color={flavor.base} />
+              {emoji}
             </span>
             <div className="flex items-center gap-1.5">
               <span className={cn('w-1.5 h-1.5 rounded-full', status.dot)} />

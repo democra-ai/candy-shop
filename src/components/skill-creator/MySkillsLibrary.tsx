@@ -6,7 +6,6 @@ import { SKILLS_DATA } from '../../data/skillsData';
 import { CandyCard } from '../home/CandyCard';
 import { skillToCard } from '../../utils/skillToCard';
 import { CreatorHeader } from './CreatorHeader';
-import { EmptyJar } from '../illustrations';
 
 interface MySkillsLibraryProps {
   onCreateNew: () => void;
@@ -264,7 +263,9 @@ export function MySkillsLibrary({ onCreateNew, onUseSkill, onBack }: MySkillsLib
                 <Package className="w-7 h-7 text-foreground-tertiary" />
               </div>
             ) : (
-              <EmptyJar size={96} />
+              <div className="w-24 h-24 rounded-3xl bg-card border border-border flex items-center justify-center text-5xl leading-none" aria-hidden="true">
+                🍬
+              </div>
             )}
           </div>
           <h3 className="font-candy text-xl font-bold text-foreground mb-2">

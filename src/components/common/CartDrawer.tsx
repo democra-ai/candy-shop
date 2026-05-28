@@ -7,7 +7,7 @@ import { cn } from '../../utils/cn';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useIsDark } from '../../hooks/useIsDark';
 import { getFlavor } from '../../utils/candyShells';
-import { EmptyJar, getCandyIcon } from '../illustrations';
+import { getCandyEmoji } from '../../utils/candy';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -117,7 +117,7 @@ export function CartDrawer({
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {cartItems.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center py-16">
-              <EmptyJar size={96} className="mb-4" />
+              <div className="text-6xl leading-none mb-4" aria-hidden="true">🛍️</div>
               <p className="font-candy text-lg font-bold text-foreground">Your bag is empty</p>
               <p className="text-sm text-foreground-secondary mt-1">Add a treat or two from the shop.</p>
               <button
@@ -133,11 +133,10 @@ export function CartDrawer({
               <div className="space-y-3">
                 {cartItems.map(item => {
                   const f = getFlavor(item.category, isDark);
-                  const Candy = getCandyIcon(item.category, isDark);
                   return (
                   <div key={item.id} className="flex items-center gap-3 p-3 bg-secondary/40 border border-border rounded-xl hover:border-border-hover transition-colors">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: f.tint }} aria-hidden="true">
-                      <Candy size={24} color={f.base} />
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-2xl leading-none shrink-0" style={{ background: f.tint }} aria-hidden="true">
+                      {getCandyEmoji(item.id)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <h4 className="font-bold text-foreground text-sm truncate">{item.name}</h4>

@@ -3,7 +3,6 @@ import { Plus, Boxes } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { REGISTRY_STATS } from '../../data/skillsData';
 import { CRAVINGS_DATA } from '../../data/cravingsData';
-import { LogoMark, Pip, Sprinkles, getCandyIcon } from '../illustrations';
 import { getFlavor } from '../../utils/candyShells';
 import { useIsDark } from '../../hooks/useIsDark';
 
@@ -23,8 +22,7 @@ export function Hero({ activeTab, onTabChange, onPostCraving, onPostCandy }: Her
   const { t, language } = useLanguage();
   const isDark = useIsDark();
 
-  // Candy illustration for the "Find Candy" tab; Pip mascot for cravings.
-  const CandyTabIcon = getCandyIcon('Development', isDark); // brand raspberry chocolate bar
+  // Candy emoji for the "Find Candy" tab; lollipop mascot for cravings.
   const raspberry = getFlavor('Development', isDark); // brand flavor tokens
   const blueberry = getFlavor('Research', isDark);    // craving accent (blue family)
 
@@ -59,21 +57,10 @@ export function Hero({ activeTab, onTabChange, onPostCraving, onPostCandy }: Her
 
   return (
     <section className="relative pt-10 pb-16 lg:pt-16 lg:pb-24 overflow-hidden">
-      {/* Subtle brand sprinkles — single-hue, very low opacity. Replaces the old
-          scattered emoji. Two quiet clusters in the upper corners only. */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
-        <Sprinkles
-          width={360}
-          color={raspberry.base}
-          opacity={isDark ? 0.10 : 0.12}
-          className="absolute -top-6 -left-10 hidden sm:block"
-        />
-        <Sprinkles
-          width={320}
-          color={raspberry.base}
-          opacity={isDark ? 0.08 : 0.10}
-          className="absolute top-4 -right-12 hidden sm:block rotate-180"
-        />
+      {/* Subtle floating candy emoji — two quiet glyphs in the upper corners. */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden select-none" aria-hidden="true">
+        <span className="absolute top-2 left-4 sm:left-10 text-5xl opacity-20 motion-safe:animate-candy-float hidden sm:block">🍭</span>
+        <span className="absolute top-8 right-4 sm:right-12 text-4xl opacity-20 motion-safe:animate-candy-float hidden sm:block">🍬</span>
       </div>
 
       <div className="flex flex-col items-center text-center gap-8 relative">
@@ -112,7 +99,7 @@ export function Hero({ activeTab, onTabChange, onPostCraving, onPostCandy }: Her
                 : 'text-foreground-secondary hover:text-foreground hover:bg-secondary/60'}
             `}
           >
-            <CandyTabIcon size={20} color={isCandy ? '#fff' : raspberry.base} />
+            <span className="text-xl leading-none" aria-hidden="true">🍭</span>
             <span>Find Candy</span>
             <span className={`
               text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full
@@ -133,7 +120,7 @@ export function Hero({ activeTab, onTabChange, onPostCraving, onPostCandy }: Her
             `}
             style={!isCandy ? { backgroundColor: blueberry.base } : undefined}
           >
-            <Pip size={20} color={!isCandy ? '#fff' : blueberry.base} />
+            <span className="text-xl leading-none" aria-hidden="true">🍬</span>
             <span>Find Craving</span>
             <span className={`
               text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full
@@ -173,9 +160,7 @@ export function Hero({ activeTab, onTabChange, onPostCraving, onPostCandy }: Her
                   }
             }
           >
-            {isCandy
-              ? <CandyTabIcon size={20} color="#fff" />
-              : <Pip size={20} color="#fff" />}
+            <span className="text-xl leading-none" aria-hidden="true">{isCandy ? '🍭' : '🍬'}</span>
             {isCandy ? 'Browse Candy' : 'Browse Cravings'}
           </button>
 
@@ -205,7 +190,7 @@ export function Hero({ activeTab, onTabChange, onPostCraving, onPostCandy }: Her
             onClick={() => onTabChange('candy')}
             className={`flex items-center gap-2 transition-colors ${isCandy ? 'text-primary' : 'text-foreground-secondary hover:text-foreground'}`}
           >
-            <CandyTabIcon size={18} color={isCandy ? raspberry.base : 'currentColor'} />
+            <span className="text-base leading-none" aria-hidden="true">🍭</span>
             <span className="font-bold">{REGISTRY_STATS.totalSkills.toLocaleString()}</span>
             <span className="text-foreground-tertiary">skills</span>
           </button>
@@ -220,7 +205,7 @@ export function Hero({ activeTab, onTabChange, onPostCraving, onPostCandy }: Her
             onClick={() => onTabChange('craving')}
             className={`flex items-center gap-2 transition-colors ${!isCandy ? 'text-primary' : 'text-foreground-secondary hover:text-foreground'}`}
           >
-            <LogoMark size={18} color={!isCandy ? blueberry.base : 'currentColor'} />
+            <span className="text-base leading-none" aria-hidden="true">🍬</span>
             <span className="font-bold">{TOTAL_CRAVINGS}</span>
             <span className="text-foreground-tertiary">cravings</span>
           </button>

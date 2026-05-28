@@ -3,7 +3,6 @@ import { ArrowUp } from 'lucide-react';
 import type { User } from '../../lib/supabaseClient';
 import { Sidebar } from './Sidebar';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { LogoMark } from '../illustrations';
 
 // Candy-flavor primaries. `id` keys are stable (Raspberry=rose, Grape=violet,
 // Mint=emerald, Caramel=amber, Blueberry=blue, Cotton Candy=indigo); the hues
@@ -212,7 +211,7 @@ export function Layout({
           <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-3 text-sm text-foreground-secondary font-body">
-                <LogoMark size={22} />
+                <span className="text-xl leading-none" aria-hidden="true">🍭</span>
                 <p className="font-candy font-bold text-foreground">{t('footer.tagline')}</p>
                 <span className="text-foreground-tertiary font-mono text-[11px] hidden md:inline">
                   · handmade in small batches

@@ -1,7 +1,6 @@
 import { BookOpen } from 'lucide-react';
 import { ModalShell } from '../ui/ModalShell';
 import { Button } from '../ui/Button';
-import { LogoMark } from '../illustrations';
 
 interface DocsModalProps {
   isOpen: boolean;
@@ -34,7 +33,7 @@ export function DocsModal({ isOpen, onClose }: DocsModalProps) {
         </p>
 
         <h3 className="flex items-center gap-2 text-foreground">
-          <LogoMark size={20} />
+          <span className="text-xl leading-none" aria-hidden="true">🍭</span>
           What is this?
         </h3>
         <p>

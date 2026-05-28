@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { Flame, Zap, Clock, DollarSign, Tag, Send } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { ModalShell } from '../ui/ModalShell';
-import { LogoMark } from '../illustrations';
 import type { Craving, CravingCategory, CravingUrgency } from '../../data/cravingsData';
 
 const CATEGORIES: CravingCategory[] = [
@@ -102,7 +101,7 @@ export function PostCravingModal({ isOpen, onClose, onSubmit }: PostCravingModal
     >
       {/* Header */}
       <div className="flex items-center gap-3 px-6 py-4 border-b border-border shrink-0">
-        <LogoMark size={28} />
+        <span className="text-2xl leading-none" aria-hidden="true">🍬</span>
         <div>
           <h2 id="post-craving-title" className="font-candy font-bold text-foreground text-lg">
             Post a Craving

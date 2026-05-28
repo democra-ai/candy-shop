@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { EmptyJar, Pip } from '../components/illustrations';
 import { SkillCreationMethodSelector } from '../components/skill-creator/SkillCreationMethodSelector';
 import { SkillCreatorPage } from './SkillCreatorPage';
 import { ManualSkillForm } from '../components/skill-creator/ManualSkillForm';
@@ -126,7 +125,7 @@ export function SkillCreationPage({ onComplete, onCancel }: SkillCreationPagePro
           </button>
           <div className="h-[calc(100vh-16rem)] bg-card rounded-3xl shadow-candy-1 border border-border overflow-hidden">
             <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-6">
-              <EmptyJar size={96} />
+              <div className="text-6xl leading-none" aria-hidden="true">🍬</div>
               <p className="font-candy text-lg font-bold text-foreground">Workflow Builder</p>
               <p className="text-sm text-foreground-secondary">A fresh batch is baking — coming soon.</p>
             </div>
@@ -171,8 +170,8 @@ export function SkillCreationPage({ onComplete, onCancel }: SkillCreationPagePro
       {method === 'complete' && (
         <div className="bg-card rounded-3xl shadow-candy-1 border border-border p-6 md:p-8">
           <div className="text-center py-12">
-            <div className="flex items-center justify-center mx-auto mb-6">
-              <Pip size={104} />
+            <div className="flex items-center justify-center mx-auto mb-6 text-7xl leading-none" aria-hidden="true">
+              🍭
             </div>
             <h2 className="font-candy text-2xl font-bold text-foreground mb-2">
               Fresh batch is ready!

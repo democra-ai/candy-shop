@@ -10,7 +10,7 @@ import { SKILLS_DATA } from '../data/skillsData';
 import { storageUtils } from '../utils/storage';
 import { useIsDark } from '../hooks/useIsDark';
 import { getFlavor } from '../utils/candyShells';
-import { getCandyIcon } from '../components/illustrations';
+import { getCandyEmoji } from '../utils/candy';
 
 export function CravingDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -34,7 +34,7 @@ export function CravingDetailPage() {
   }
 
   const flavor = getFlavor(craving.category, isDark);
-  const Candy = getCandyIcon(craving.category, isDark);
+  const emoji = getCandyEmoji(craving.id);
 
   // Urgency uses semantic tokens: high = error, medium = warning, low = info.
   const urgencyConfig = {
@@ -86,7 +86,7 @@ export function CravingDetailPage() {
                 className="flex items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-3xl shrink-0 bg-card shadow-candy-1"
                 aria-hidden="true"
               >
-                <Candy size={52} color={flavor.base} />
+                <span className="text-5xl leading-none">{emoji}</span>
               </div>
               <div className="flex-1 min-w-0">
                 <span

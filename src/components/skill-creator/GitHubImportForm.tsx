@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Github, Loader2 } from 'lucide-react';
 import type { Skill } from '../../types/skill-creator';
 import { CreatorHeader } from './CreatorHeader';
-import { getCandyIcon } from '../illustrations';
+import { getCandyEmoji } from '../../utils/candy';
 import { getFlavor } from '../../utils/candyShells';
 import { useIsDark } from '../../hooks/useIsDark';
 
@@ -258,10 +258,9 @@ You are an expert code reviewer...
           <div className="flex items-start gap-4">
             {(() => {
               const f = getFlavor(preview.category, isDark);
-              const Candy = getCandyIcon(preview.category, isDark);
               return (
-                <div className="flex items-center justify-center w-14 h-14 rounded-2xl shrink-0" style={{ background: f.tint }} aria-hidden="true">
-                  <Candy size={36} color={f.base} />
+                <div className="flex items-center justify-center w-14 h-14 rounded-2xl text-4xl leading-none shrink-0" style={{ background: f.tint }} aria-hidden="true">
+                  {getCandyEmoji(preview.name)}
                 </div>
               );
             })()}

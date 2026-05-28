@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, CheckCircle } from 'lucide-react';
-import { Pip } from '../components/illustrations';
 import { SkillCreationMethodSelector } from '../components/skill-creator/SkillCreationMethodSelector';
 import { FileUploadZone } from '../components/skill-creator/FileUploadZone';
 import { AnalysisProgress } from '../components/skill-creator/AnalysisProgress';
@@ -328,8 +327,8 @@ export function SkillCreatorPage({ onComplete, onCancel }: SkillCreatorPageProps
 
         {step === 'complete' && (
           <div className="text-center py-12">
-            <div className="flex items-center justify-center mx-auto mb-6">
-              <Pip size={104} />
+            <div className="flex items-center justify-center mx-auto mb-6 text-7xl leading-none" aria-hidden="true">
+              🍭
             </div>
             <h2 className="font-candy text-2xl font-bold text-foreground mb-2">Fresh batch is ready!</h2>
             <p className="text-foreground-secondary">Taking you to your library…</p>

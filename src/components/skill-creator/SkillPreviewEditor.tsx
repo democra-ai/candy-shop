@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Save, X, Edit2, Sparkles, AlertCircle } from 'lucide-react';
 import type { Skill, AnalysisResult, SkillCategory } from '../../types/skill-creator';
-import { getCandyIcon } from '../illustrations';
-import { getCandyColor } from '../../utils/candyShells';
-import { useIsDark } from '../../hooks/useIsDark';
+import { getCandyEmoji } from '../../utils/candy';
 
 const INPUT_CLS =
   'w-full h-10 px-3 bg-input border border-input-border rounded-xl text-sm text-foreground placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-ring transition-colors';
@@ -47,7 +45,6 @@ export function SkillPreviewEditor({
   onSave,
   onCancel,
 }: SkillPreviewEditorProps) {
-  const isDark = useIsDark();
   const [skill, setSkill] = useState(initialSkill);
   const [originalSkill] = useState(initialSkill);
   const [isSaving, setIsSaving] = useState(false);
@@ -164,10 +161,7 @@ export function SkillPreviewEditor({
               {/* Footer */}
               <div className="h-10 px-4 border-t border-border bg-secondary flex items-center justify-between text-xs font-mono text-foreground-tertiary">
                 <span>{CATEGORY_LABELS[skill.category as SkillCategory] || 'Category'}</span>
-                {(() => {
-                  const Candy = getCandyIcon(skill.category, isDark);
-                  return <Candy size={18} color={getCandyColor(skill.category, isDark)} />;
-                })()}
+                <span className="text-lg leading-none" aria-hidden="true">{getCandyEmoji(skill.id ?? skill.name ?? '')}</span>
               </div>
             </div>
           </div>

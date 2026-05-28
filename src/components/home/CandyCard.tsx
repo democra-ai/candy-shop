@@ -1,22 +1,21 @@
 /**
- * CandyCard — dense product tile for the candy jar (DESIGN.md v2 §2).
+ * CandyCard — dense product tile for the candy jar.
  *
- * The calibrated way: the card is a CLEAN canvas (`bg-card`). Color is carried
- * by the custom SVG candy ILLUSTRATION sitting in a soft flavor "well", plus a
- * thin flavor top-accent and a flavor `tint`/`ink` category chip — never a
- * saturated full-card fill.
+ * The boutique way: the whole card is flooded with a MUTED PASTEL fill from
+ * `getShell(category, isDark)` (dusty rose / sage / lavender in light; deep
+ * same-hue tones in dark), with dark same-hue INK text on top. A candy EMOJI
+ * carries the playful glyph — no SVG illustration.
  *
  * Composition:
- *   Top accent  : 3px flavor bar across the card top (hover-brightens)
- *   Top row     : illustration well · category chip · pick/paid/hosted badge
+ *   Top row     : big emoji · category chip · pick/paid/hosted badge
  *   Title       : 2 lines max, line-clamp-2 with ellipsis, Fredoka
- *   Description : 2 lines line-clamp, secondary text
+ *   Description : 2 lines line-clamp, secondary ink
  *   Tags        : #tag #tag #tag — first 3 tags, mono (optional)
  *   Meta        : @author · ★ rating · installs (single mono row)
- *   Action      : single RUN pill bottom-right (flavor base)
+ *   Action      : single RUN pill bottom-right (accent ink)
  *
  * Elevation: resting shadow-candy-1, hover shadow-candy-2 + -translate-y-1 with
- * ease-candy + a flavor-base border. Light + dark both read premium via getFlavor.
+ * ease-candy. Light + dark both read premium via getShell.
  *
  * Like / cart actions live inside the SkillModal (open on click), not the card.
  * Props are STABLE — callers (SkillsGrid, ShopWindow, MostPopularRail, detail
@@ -27,8 +26,8 @@ import { Star, Play, Sparkles, Zap, Users } from 'lucide-react';
 import type { Skill } from '../../data/skillsData';
 import { cn } from '../../utils/cn';
 import { useIsDark } from '../../hooks/useIsDark';
-import { getFlavor } from '../../utils/candyShells';
-import { getCandyIcon } from '../illustrations';
+import { getShell } from '../../utils/candyShells';
+import { getCandyEmoji } from '../../utils/candy';
 
 interface CandyCardProps {
   skill: Skill;
@@ -71,9 +70,9 @@ export function CandyCard({
   onRun,
 }: CandyCardProps) {
   const isDark = useIsDark();
-  const flavor = getFlavor(skill.category, isDark);
+  const shell = getShell(skill.category, isDark);
   const rating = deriveRating(skill);
-  const Candy = getCandyIcon(skill.category, isDark);
+  const emoji = getCandyEmoji(skill.id);
   const isUserCandy = skill.id.startsWith('user-candy-');
   const isManaged = skill.executionModel === 'managed';
   const isPaid = skill.price !== undefined && skill.price > 0;
@@ -85,14 +84,11 @@ export function CandyCard({
   const visibleTags = (skill.tags ?? []).filter((t) => t && t.length > 0).slice(0, 3);
 
   // ── Badge logic: ONE category chip + ONE optional status badge
-  let statusBadge: { label: string; icon?: typeof Sparkles; tone: 'solid' | 'ghost' } | null = null;
-  if (isUserCandy)           statusBadge = { label: 'yours',  icon: Sparkles, tone: 'solid' };
-  else if (skill.editorPick) statusBadge = { label: 'pick',   icon: Sparkles, tone: 'solid' };
-  else if (isPaid)           statusBadge = { label: `$${(skill.price! / 100).toFixed(0)}`, tone: 'solid' };
-  else if (isManaged)        statusBadge = { label: 'hosted', icon: Zap,      tone: 'ghost' };
-
-  const iconBox = isFeatured ? 'w-14 h-14' : 'w-12 h-12';
-  const iconSize = isFeatured ? 34 : 28;
+  let statusBadge: { label: string; icon?: typeof Sparkles } | null = null;
+  if (isUserCandy)           statusBadge = { label: 'yours',  icon: Sparkles };
+  else if (skill.editorPick) statusBadge = { label: 'pick',   icon: Sparkles };
+  else if (isPaid)           statusBadge = { label: `$${(skill.price! / 100).toFixed(0)}` };
+  else if (isManaged)        statusBadge = { label: 'hosted', icon: Zap };
 
   return (
     <article
@@ -108,61 +104,43 @@ export function CandyCard({
       aria-label={`Open ${skill.name}`}
       className={cn(
         'group relative w-full cursor-pointer overflow-hidden',
-        'rounded-2xl bg-card',
-        'border border-border',
+        'rounded-2xl border border-black/5 dark:border-white/5',
         isDark ? 'shadow-candy-1-dark hover:shadow-candy-2-dark' : 'shadow-candy-1 hover:shadow-candy-2',
-        'hover:-translate-y-1 transition-[transform,box-shadow,border-color] duration-300 ease-candy',
+        'hover:-translate-y-1 transition-[transform,box-shadow] duration-300 ease-candy',
         'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-        flavor.ring,
+        shell.ring,
       )}
-      style={{
-        // Hover border shifts to the flavor base (set via CSS var so :hover can use it).
-        ['--flavor' as string]: flavor.base,
-      }}
-      onMouseEnter={(e) => { e.currentTarget.style.borderColor = flavor.base; }}
-      onMouseLeave={(e) => { e.currentTarget.style.borderColor = ''; }}
+      style={{ backgroundColor: shell.bg, color: shell.text }}
     >
-      {/* Thin flavor top-accent — the only saturated edge; brightens on hover */}
-      <div
-        className="absolute inset-x-0 top-0 h-[3px] opacity-80 group-hover:opacity-100 transition-opacity"
-        style={{ backgroundColor: flavor.base }}
-        aria-hidden="true"
-      />
-
       <div
         className={cn(
           'flex flex-col gap-2.5',
-          isFeatured ? 'p-5 md:p-6 pt-5 md:pt-6' : 'p-4 md:p-[18px]'
+          isFeatured ? 'p-5 md:p-6' : 'p-4 md:p-[18px]'
         )}
       >
-        {/* ── Top row: illustration well · category chip · status badge ── */}
+        {/* ── Top row: emoji · category chip · status badge ── */}
         <div className="flex items-center gap-2.5 min-w-0">
-          <div
+          <span
             className={cn(
-              'flex items-center justify-center rounded-xl shrink-0',
-              'transition-transform duration-300 ease-candy group-hover:scale-105',
-              iconBox
+              'shrink-0 leading-none select-none',
+              'transition-transform duration-300 ease-candy group-hover:scale-110',
+              isFeatured ? 'text-5xl' : 'text-[40px]'
             )}
-            style={{ backgroundColor: flavor.tint }}
             aria-hidden="true"
           >
-            <Candy size={iconSize} color={flavor.base} />
-          </div>
+            {emoji}
+          </span>
           <div className="flex flex-col items-start gap-1 min-w-0">
             <span
               className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold uppercase tracking-widest truncate max-w-full"
-              style={{ backgroundColor: flavor.tint, color: flavor.ink }}
+              style={{ backgroundColor: shell.chipBg, color: shell.text }}
             >
               {skill.category}
             </span>
             {statusBadge && (
               <span
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-widest"
-                style={
-                  statusBadge.tone === 'solid'
-                    ? { backgroundColor: flavor.base, color: '#fff' }
-                    : { backgroundColor: flavor.tint, color: flavor.ink }
-                }
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-widest text-white"
+                style={{ backgroundColor: shell.accent }}
               >
                 {statusBadge.icon && <statusBadge.icon className="w-2.5 h-2.5" />}
                 {statusBadge.label}
@@ -174,9 +152,10 @@ export function CandyCard({
         {/* ── Title: 2 lines max, line-clamp-2 with ellipsis ── */}
         <h3
           className={cn(
-            'font-candy font-semibold leading-[1.15] line-clamp-2 text-foreground',
+            'font-candy font-semibold leading-[1.15] line-clamp-2',
             isFeatured ? 'text-xl md:text-2xl' : 'text-base md:text-[17px]'
           )}
+          style={{ color: shell.text }}
           title={skill.name}
         >
           {skill.name}
@@ -185,16 +164,20 @@ export function CandyCard({
         {/* ── Description: 2 lines line-clamp ── */}
         <p
           className={cn(
-            'font-body line-clamp-2 leading-snug text-foreground-secondary',
+            'font-body line-clamp-2 leading-snug opacity-80',
             isFeatured ? 'text-sm' : 'text-xs md:text-[13px]'
           )}
+          style={{ color: shell.text }}
         >
           {description}
         </p>
 
         {/* ── Tags row (optional) ── */}
         {visibleTags.length > 0 && (
-          <div className="flex flex-wrap gap-x-2 gap-y-1 text-[10px] md:text-[11px] font-mono leading-tight min-w-0 text-foreground-tertiary">
+          <div
+            className="flex flex-wrap gap-x-2 gap-y-1 text-[10px] md:text-[11px] font-mono leading-tight min-w-0 opacity-65"
+            style={{ color: shell.text }}
+          >
             {visibleTags.map((tag) => (
               <span key={tag} className="truncate max-w-[110px]">#{tag.toLowerCase()}</span>
             ))}
@@ -203,14 +186,17 @@ export function CandyCard({
 
         {/* ── Meta + action row ── */}
         <div className="flex items-center justify-between gap-2 pt-1 mt-auto">
-          <div className="flex items-center gap-1.5 text-[10px] md:text-[11px] font-mono min-w-0 flex-1 text-foreground-tertiary">
+          <div
+            className="flex items-center gap-1.5 text-[10px] md:text-[11px] font-mono min-w-0 flex-1 opacity-75"
+            style={{ color: shell.text }}
+          >
             {authorHandle && (
               <>
                 <span className="truncate max-w-[88px]">@{authorHandle}</span>
                 <span aria-hidden className="opacity-50">·</span>
               </>
             )}
-            <span className="flex items-center gap-0.5 shrink-0" style={{ color: flavor.ink }}>
+            <span className="flex items-center gap-0.5 shrink-0" style={{ color: shell.accent }}>
               <Star className="w-2.5 h-2.5 fill-current" />
               <span className="font-bold">{rating.toFixed(1)}</span>
             </span>
@@ -221,11 +207,11 @@ export function CandyCard({
             </span>
           </div>
 
-          {/* Action — single RUN pill in the flavor base. Like / cart live in SkillModal. */}
+          {/* Action — single RUN pill in the accent ink. Like / cart live in SkillModal. */}
           <button
             onClick={(e) => { e.stopPropagation(); onRun(); }}
             className="inline-flex items-center justify-center gap-1 h-7 px-3 rounded-full text-[10px] font-body font-bold uppercase tracking-wider transition-transform duration-150 ease-candy active:scale-95 shrink-0 text-white"
-            style={{ backgroundColor: flavor.base }}
+            style={{ backgroundColor: shell.accent }}
             aria-label={`Run ${skill.name}`}
           >
             <Play className="w-2.5 h-2.5 fill-current" />

@@ -5,7 +5,7 @@ import { cn } from '../../utils/cn';
 import { SkillModal } from '../common/SkillModal';
 import { useIsDark } from '../../hooks/useIsDark';
 import { getFlavor } from '../../utils/candyShells';
-import { Pip, Sprinkles, getCandyIcon } from '../illustrations';
+import { getCandyEmoji } from '../../utils/candy';
 
 interface ShopWindowProps {
   onRunSkill?: (skill: Skill) => void;
@@ -40,7 +40,7 @@ export function ShopWindow({ onRunSkill }: ShopWindowProps) {
 
   // Flavor tokens for the featured cell + the section mascot accent.
   const featuredFlavor = getFlavor(featured.category, isDark);
-  const FeaturedCandy = getCandyIcon(featured.category, isDark);
+  const featuredEmoji = getCandyEmoji(featured.id);
   const mascotFlavor = getFlavor('Design', isDark); // grape — friendly mascot well
   const arrivalsFlavor = getFlavor('Marketing', isDark); // caramel
   const hotFlavor = getFlavor('Development', isDark); // raspberry brand
@@ -84,13 +84,6 @@ export function ShopWindow({ onRunSkill }: ShopWindowProps) {
             >
               {/* thin flavor top-accent */}
               <div className="absolute inset-x-0 top-0 h-1 opacity-90" style={{ backgroundColor: featuredFlavor.base }} aria-hidden="true" />
-              {/* faint sprinkles in the corner — single-hue accent */}
-              <Sprinkles
-                width={260}
-                color={featuredFlavor.base}
-                opacity={isDark ? 0.10 : 0.12}
-                className="absolute -right-6 -top-2 pointer-events-none"
-              />
 
               {/* Sparkle ribbon */}
               <div
@@ -101,13 +94,13 @@ export function ShopWindow({ onRunSkill }: ShopWindowProps) {
                 editor's pick · today
               </div>
 
-              {/* Big candy illustration in a tinted well — the color carrier */}
+              {/* Big candy emoji in a tinted well — the color carrier */}
               <div
-                className="absolute right-6 top-16 flex items-center justify-center w-24 h-24 md:w-28 md:h-28 rounded-3xl transition-transform duration-300 ease-candy group-hover:scale-105 group-hover:-rotate-3"
+                className="absolute right-6 top-16 flex items-center justify-center w-24 h-24 md:w-28 md:h-28 rounded-3xl text-6xl md:text-7xl leading-none transition-transform duration-300 ease-candy group-hover:scale-105 group-hover:-rotate-3"
                 style={{ backgroundColor: featuredFlavor.tint }}
                 aria-hidden="true"
               >
-                <FeaturedCandy size={64} color={featuredFlavor.base} />
+                {featuredEmoji}
               </div>
 
               {/* Content */}
@@ -145,13 +138,13 @@ export function ShopWindow({ onRunSkill }: ShopWindowProps) {
                 <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: mascotFlavor.base }} />
                 live
               </div>
-              {/* Pip — gentle idle bob (the single idle animation for this view) */}
+              {/* Mascot — gentle idle bob (the single idle animation for this view) */}
               <div
-                className="flex items-center justify-center w-[72px] h-[72px] md:w-[84px] md:h-[84px] rounded-3xl motion-safe:animate-float"
+                className="flex items-center justify-center w-[72px] h-[72px] md:w-[84px] md:h-[84px] rounded-3xl text-5xl md:text-6xl leading-none motion-safe:animate-float"
                 style={{ backgroundColor: mascotFlavor.tint }}
                 aria-hidden="true"
               >
-                <Pip size={64} color={mascotFlavor.base} />
+                🍭
               </div>
               <div className="absolute bottom-5 left-5 right-5">
                 <p className="text-[10px] font-mono uppercase tracking-widest mb-1 text-foreground-tertiary">
@@ -181,16 +174,15 @@ export function ShopWindow({ onRunSkill }: ShopWindowProps) {
                 <div className="flex -space-x-2 mt-2">
                   {newArrivals.slice(0, 5).map((s) => {
                     const f = getFlavor(s.category, isDark);
-                    const Candy = getCandyIcon(s.category, isDark);
                     return (
                       <button
                         key={s.id}
                         onClick={() => handleRun(s)}
                         title={s.name}
-                        className="w-9 h-9 rounded-full flex items-center justify-center hover:scale-110 hover:z-10 transition-transform cursor-pointer ring-2 ring-card"
+                        className="w-9 h-9 rounded-full flex items-center justify-center text-lg leading-none hover:scale-110 hover:z-10 transition-transform cursor-pointer ring-2 ring-card"
                         style={{ backgroundColor: f.tint }}
                       >
-                        <Candy size={20} color={f.base} />
+                        {getCandyEmoji(s.id)}
                       </button>
                     );
                   })}
@@ -218,7 +210,6 @@ export function ShopWindow({ onRunSkill }: ShopWindowProps) {
               <div className="flex gap-2 md:gap-3 overflow-x-auto scrollbar-hide -mx-1 px-1 pb-1">
                 {freshBatch.map((s) => {
                   const f = getFlavor(s.category, isDark);
-                  const Candy = getCandyIcon(s.category, isDark);
                   return (
                     <button
                       key={s.id}
@@ -233,10 +224,10 @@ export function ShopWindow({ onRunSkill }: ShopWindowProps) {
                       style={{ ['--chip-accent' as string]: f.base }}
                     >
                       <span
-                        className="flex items-center justify-center w-8 h-8 rounded-xl shrink-0"
+                        className="flex items-center justify-center w-8 h-8 rounded-xl text-lg leading-none shrink-0"
                         style={{ backgroundColor: f.tint }}
                       >
-                        <Candy size={20} color={f.base} />
+                        {getCandyEmoji(s.id)}
                       </span>
                       <div className="text-left min-w-0">
                         <div className="text-xs font-candy font-bold truncate max-w-[140px] text-foreground">

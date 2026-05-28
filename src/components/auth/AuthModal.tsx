@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { Mail, Loader2 } from 'lucide-react';
 import { ModalShell } from '../ui/ModalShell';
-import { Counter } from '../illustrations';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -35,8 +34,8 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   return (
     <ModalShell open={isOpen} onClose={onClose} label="Sign in" maxWidth="sm">
       <div className="text-center mb-8">
-        <div className="mx-auto mb-4 flex items-center justify-center">
-          <Counter size={88} />
+        <div className="mx-auto mb-4 flex items-center justify-center text-6xl leading-none" aria-hidden="true">
+          🍬
         </div>
         <h2 className="text-2xl font-candy font-bold text-foreground">
           Welcome Back

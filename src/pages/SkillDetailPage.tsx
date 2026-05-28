@@ -14,7 +14,7 @@ import { useRatings } from '../hooks/api/useRatings';
 import { useDownloads } from '../hooks/api/useDownloads';
 import { useIsDark } from '../hooks/useIsDark';
 import { getFlavor } from '../utils/candyShells';
-import { getCandyIcon } from '../components/illustrations';
+import { getCandyEmoji } from '../utils/candy';
 import { toast } from 'sonner';
 
 interface SkillDetailPageProps {
@@ -48,7 +48,7 @@ export function SkillDetailPage({ cart, onToggleCart, onRunSkill, userId }: Skil
   }
 
   const flavor = getFlavor(skill.category, isDark);
-  const Candy = getCandyIcon(skill.category, isDark);
+  const emoji = getCandyEmoji(skill.id);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(skill.installCommand);
@@ -97,10 +97,10 @@ export function SkillDetailPage({ cart, onToggleCart, onRunSkill, userId }: Skil
           >
             <div className="flex items-start gap-4">
               <div
-                className="flex items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-3xl shrink-0 bg-card shadow-candy-1"
+                className="flex items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-3xl shrink-0 bg-card shadow-candy-1 text-5xl leading-none"
                 aria-hidden="true"
               >
-                <Candy size={52} color={flavor.base} />
+                {emoji}
               </div>
               <div className="flex-1 min-w-0">
                 <span

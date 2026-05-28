@@ -1,6 +1,5 @@
 import { ArrowUp } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { Logo, LogoMark } from '../illustrations';
 
 export function Footer() {
   const { t } = useLanguage();
@@ -13,8 +12,11 @@ export function Footer() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {/* Brand */}
             <div className="lg:col-span-1">
-              <div className="flex items-center mb-3">
-                <Logo size={28} />
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-2xl leading-none" aria-hidden="true">🍭</span>
+                <span className="font-candy font-semibold text-lg tracking-tight text-foreground">
+                  <span className="text-primary">Candy</span> Shop
+                </span>
               </div>
               <p className="text-sm text-foreground-secondary leading-relaxed">
                 {t('footer.tagline')}
@@ -101,7 +103,7 @@ export function Footer() {
           {/* Bottom */}
           <div className="mt-10 pt-6 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2 text-sm text-foreground-tertiary">
-              <LogoMark size={16} />
+              <span className="text-base leading-none" aria-hidden="true">🍭</span>
               <span>&copy; {new Date().getFullYear()} Candy Shop. All rights reserved.</span>
             </div>
             <button

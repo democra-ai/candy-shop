@@ -2,9 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Tag, Send, Terminal } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { ModalShell } from '../ui/ModalShell';
-import { LogoMark, getCandyIcon } from '../illustrations';
-import { getFlavor } from '../../utils/candyShells';
-import { useIsDark } from '../../hooks/useIsDark';
+import { getCandyEmoji } from '../../utils/candy';
 import type { Skill, SkillCategory } from '../../data/skillsData';
 
 const CATEGORIES: SkillCategory[] = [
@@ -49,7 +47,6 @@ export function PostCandyModal({ isOpen, onClose, onSubmit }: PostCandyModalProp
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
-  const isDark = useIsDark();
 
   useEffect(() => {
     if (isOpen) {
@@ -110,7 +107,7 @@ export function PostCandyModal({ isOpen, onClose, onSubmit }: PostCandyModalProp
     >
       {/* Header */}
       <div className="flex items-center gap-3 px-6 py-4 border-b border-border shrink-0">
-        <LogoMark size={28} />
+        <span className="text-2xl leading-none" aria-hidden="true">🍭</span>
         <div>
           <h2 id="post-candy-title" className="font-candy font-bold text-foreground text-lg">
             Post a Candy
@@ -168,8 +165,6 @@ export function PostCandyModal({ isOpen, onClose, onSubmit }: PostCandyModalProp
           <label className="block text-sm font-medium text-foreground mb-1.5">Category</label>
           <div className="grid grid-cols-4 gap-1.5">
             {CATEGORIES.map(c => {
-              const Candy = getCandyIcon(c, isDark);
-              const f = getFlavor(c, isDark);
               const active = category === c;
               return (
                 <button
@@ -183,7 +178,7 @@ export function PostCandyModal({ isOpen, onClose, onSubmit }: PostCandyModalProp
                       : 'bg-secondary/40 text-foreground-secondary border-border hover:bg-secondary hover:border-border-hover'
                   )}
                 >
-                  <Candy size={24} color={active ? undefined : f.base} />
+                  <span className="text-2xl leading-none" aria-hidden="true">{getCandyEmoji(c)}</span>
                   <span>{c}</span>
                 </button>
               );

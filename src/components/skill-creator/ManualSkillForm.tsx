@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import type { Skill, SkillCategory } from '../../types/skill-creator';
 import { CreatorHeader } from './CreatorHeader';
-import { getCandyIcon } from '../illustrations';
+import { getCandyEmoji } from '../../utils/candy';
 import { getFlavor } from '../../utils/candyShells';
 import { useIsDark } from '../../hooks/useIsDark';
 
@@ -157,15 +157,14 @@ export function ManualSkillForm({ onSave, onCancel }: ManualSkillFormProps) {
           <div className="flex items-center gap-3">
             {(() => {
               const f = getFlavor(category, isDark);
-              const Candy = getCandyIcon(category, isDark);
               return (
                 <div
-                  className="flex items-center justify-center w-11 h-11 rounded-xl shrink-0"
+                  className="flex items-center justify-center w-11 h-11 rounded-xl text-2xl leading-none shrink-0"
                   style={{ background: f.tint }}
                   aria-hidden="true"
                   title="Your candy"
                 >
-                  <Candy size={26} color={f.base} />
+                  {getCandyEmoji(category)}
                 </div>
               );
             })()}

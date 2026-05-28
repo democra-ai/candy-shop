@@ -7,7 +7,7 @@ import { storageUtils } from '../../utils/storage';
 import { cn } from '../../utils/cn';
 import { useIsDark } from '../../hooks/useIsDark';
 import { getFlavor } from '../../utils/candyShells';
-import { getCandyIcon } from '../illustrations';
+import { getCandyEmoji } from '../../utils/candy';
 import { ModalShell } from '../ui/ModalShell';
 
 // Generate pseudo-stable values from skill data
@@ -97,7 +97,7 @@ export function SkillModal({ skill, onClose, onRun, isLiked, onLike, isInCart, o
   if (!skill) return null;
 
   const flavor = getFlavor(skill.category, isDark);
-  const Candy = getCandyIcon(skill.category, isDark);
+  const emoji = getCandyEmoji(skill.id);
   const rating = deriveRating(skill);
   const developer = deriveDeveloper(skill);
   const version = deriveVersion(skill);
@@ -200,10 +200,10 @@ export function SkillModal({ skill, onClose, onRun, isLiked, onLike, isInCart, o
         style={{ backgroundColor: flavor.tint, color: flavor.ink }}
       >
         <div
-          className="flex items-center justify-center w-20 h-20 rounded-3xl mb-3 bg-card shadow-candy-1"
+          className="flex items-center justify-center w-20 h-20 rounded-3xl mb-3 bg-card shadow-candy-1 text-5xl leading-none"
           aria-hidden="true"
         >
-          <Candy size={52} color={flavor.base} />
+          {emoji}
         </div>
         <span
           className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-mono font-medium uppercase tracking-widest mb-2"
@@ -302,7 +302,7 @@ export function SkillModal({ skill, onClose, onRun, isLiked, onLike, isInCart, o
                     {showcase.image ? (
                       <img src={showcase.image} alt={showcase.title} className="w-full h-full object-cover" />
                     ) : (
-                      <span aria-hidden="true"><Candy size={36} color={flavor.base} /></span>
+                      <span aria-hidden="true" className="text-4xl leading-none">{emoji}</span>
                     )}
                   </div>
                   <div className="p-2.5">

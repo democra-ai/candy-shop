@@ -5,7 +5,6 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { cn } from '../../utils/cn';
 import { useIsDark } from '../../hooks/useIsDark';
 import { getFlavor } from '../../utils/candyShells';
-import { getCandyIcon } from '../illustrations';
 
 export interface CategoryData {
   name: string;
@@ -94,7 +93,6 @@ export function Categories({
 
           {categories.map((cat) => {
             const flavor = getFlavor(cat.name, isDark);
-            const Candy = getCandyIcon(cat.name, isDark);
             const isActive = activeCategory === cat.name;
             return (
               <button
@@ -118,11 +116,11 @@ export function Categories({
               >
                 <div className="relative h-full flex flex-col justify-between">
                   <span
-                    className="flex items-center justify-center w-11 h-11 md:w-12 md:h-12 rounded-xl transition-transform duration-200 ease-candy group-hover:scale-105 group-hover:-rotate-3"
+                    className="flex items-center justify-center w-11 h-11 md:w-12 md:h-12 rounded-xl text-2xl md:text-[26px] leading-none transition-transform duration-200 ease-candy group-hover:scale-105 group-hover:-rotate-3"
                     style={{ backgroundColor: flavor.tint }}
                     aria-hidden="true"
                   >
-                    <Candy size={30} color={flavor.base} />
+                    {cat.icon}
                   </span>
                   <div>
                     <div className="font-candy font-bold leading-tight text-xs md:text-sm text-foreground">
