@@ -72,6 +72,7 @@ import {
 import {
   streamOpenCodeRun,
   getOCBudget,
+  warmOpenCode,
   type OCBudget,
 } from '../../lib/cfOpenCodeClient';
 
@@ -1050,7 +1051,12 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       // Pre-boot the warm container so the first turn has no cold start.
       warmClaudeAgent();
     }
-    if (runtimeMode === 'opencode') getOCBudget().then(setOcBudget);
+    if (runtimeMode === 'opencode') {
+      getOCBudget().then(setOcBudget);
+      // Pre-boot the OpenCode container + opencode-server so the first turn
+      // skips the cold start (container wake + provider init). Best-effort.
+      warmOpenCode();
+    }
   }, [runtimeMode]);
 
   // Skill loading state

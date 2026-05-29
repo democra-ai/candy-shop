@@ -67,6 +67,27 @@ export async function getOCBudget(): Promise<OCBudget | null> {
   } catch { return null; }
 }
 
+/**
+ * Best-effort pre-warm of the OpenCode sandbox. POSTs the sentinel
+ * `task: '__warm__'` to /oc/run, which boots the Durable Object container +
+ * opencode-server WITHOUT submitting a prompt (no model tokens spent). This
+ * pays the cold-start cost (container wake + provider init) up front so the
+ * user's first real run streams quickly instead of dying on the cold-start
+ * stall. Mirrors `warmClaudeAgent` — every failure is swallowed, never throws.
+ */
+export async function warmOpenCode(): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/oc/run`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task: '__warm__' }),
+    }).catch(() => {});
+  } catch {
+    /* best-effort */
+  }
+}
+
 export async function streamOpenCodeRun(
   params: { task: string; repo?: string; skillMd?: string; model?: string; fresh?: boolean },
   cb: OCStreamCallbacks = {},
