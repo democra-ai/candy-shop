@@ -497,6 +497,8 @@ function AppContent() {
       color: storeSkill.color,
       tags: storeSkill.tags || [],
       skillMdUrl: storeSkill.skillMdUrl,
+      format: storeSkill.format,
+      artifactUrl: storeSkill.artifactUrl,
       config: {
         capabilities: [],
         systemPrompt: '',

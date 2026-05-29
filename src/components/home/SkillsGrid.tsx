@@ -1,7 +1,7 @@
 import { Search, X, ChevronLeft, ChevronRight, Plus, Database, ExternalLink, Download, Loader2 } from 'lucide-react';
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import Masonry from 'react-masonry-css';
-import { SKILLS_DATA, REGISTRY_STATS, loadFullRegistry, type Skill, type RegistryEntry } from '../../data/skillsData';
+import { SKILLS_DATA, REGISTRY_STATS, loadFullRegistry, getFormat, type Skill, type RegistryEntry, type ItemFormat } from '../../data/skillsData';
 import { SkillModal } from '../common/SkillModal';
 import { storageUtils } from '../../utils/storage';
 import { cn } from '../../utils/cn';
@@ -35,6 +35,17 @@ interface SkillsGridProps {
   onPostCraving?: () => void;
 }
 
+// Format filter options for the compact segmented control above the grid.
+// `null` = "All". The rest map 1:1 to ItemFormat. Labels stay tight.
+const FORMAT_FILTERS: { id: ItemFormat | null; label: string }[] = [
+  { id: null, label: 'All' },
+  { id: 'claude-skill', label: 'Skills' },
+  { id: 'n8n', label: 'n8n' },
+  { id: 'dify', label: 'Dify' },
+  { id: 'langgraph', label: 'LangGraph' },
+  { id: 'workflow', label: 'Workflows' },
+];
+
 const POPULAR_TAGS = (() => {
   const tagCounts: Record<string, number> = {};
   SKILLS_DATA.forEach(s => s.tags.forEach(t => { tagCounts[t] = (tagCounts[t] || 0) + 1; }));
@@ -61,6 +72,8 @@ export function SkillsGrid({
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const isDebouncing = searchQuery !== debouncedSearchQuery;
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
+  // Format filter (multi-format browse) — null = all formats.
+  const [formatFilter, setFormatFilter] = useState<ItemFormat | null>(null);
   const [likedSkills, setLikedSkills] = useState<Set<string>>(() => new Set(storageUtils.getLikes()));
   const searchInputRef = useRef<HTMLInputElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -75,7 +88,7 @@ export function SkillsGrid({
   // Reset visible count when filters change
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [debouncedSearchQuery, tagFilter]);
+  }, [debouncedSearchQuery, tagFilter, formatFilter]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -121,7 +134,9 @@ export function SkillsGrid({
       const matchesTag = tagFilter ?
         (skill.tags.includes(tagFilter) || skill.category === tagFilter) : true;
 
-      return matchesSearch && matchesTag;
+      const matchesFormat = formatFilter ? getFormat(skill) === formatFilter : true;
+
+      return matchesSearch && matchesTag && matchesFormat;
     });
     // User-posted candies always float to top, then sort by popularity
     return filtered.sort((a, b) => {
@@ -130,7 +145,17 @@ export function SkillsGrid({
       if (aUser !== bUser) return bUser - aUser;
       return (b.popularity || 0) - (a.popularity || 0);
     });
-  }, [debouncedSearchQuery, tagFilter, allSkills]);
+  }, [debouncedSearchQuery, tagFilter, formatFilter, allSkills]);
+
+  // Per-format counts (over the full catalog) for the filter chip badges.
+  const formatCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const s of allSkills) {
+      const f = getFormat(s);
+      counts[f] = (counts[f] || 0) + 1;
+    }
+    return counts;
+  }, [allSkills]);
 
   // Slice the filtered list down to what's currently visible (infinite scroll)
   const visibleSkills = useMemo(
@@ -242,6 +267,41 @@ export function SkillsGrid({
             </div>
           </div>
 
+          {/* ── Format filter — compact segmented chip row. Lets shoppers
+                narrow the jar to Claude skills, n8n, Dify, LangGraph, or
+                generic workflows. Wired into the same filter memo as
+                search + tag. ── */}
+          <div className="flex items-center gap-1.5 mb-6 flex-wrap" role="group" aria-label="Filter by format">
+            {FORMAT_FILTERS.map((opt) => {
+              const active = formatFilter === opt.id;
+              const count = opt.id === null
+                ? Object.values(formatCounts).reduce((a, b) => a + b, 0)
+                : (formatCounts[opt.id] ?? 0);
+              return (
+                <button
+                  key={opt.id ?? 'all'}
+                  onClick={() => setFormatFilter(opt.id)}
+                  aria-pressed={active}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[12px] font-mono font-medium',
+                    'transition-colors duration-200 ease-candy btn-press border',
+                    active
+                      ? 'bg-primary text-primary-foreground border-primary shadow-candy-1'
+                      : 'bg-card text-foreground-secondary border-border hover:border-border-hover hover:text-foreground'
+                  )}
+                >
+                  {opt.label}
+                  <span className={cn(
+                    'tabular-nums text-[10px]',
+                    active ? 'text-primary-foreground/70' : 'text-foreground-tertiary'
+                  )}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
           {/* Skeleton — masonry-shaped skeletons during debounce */}
           {isDebouncing && (
             <Masonry
@@ -336,6 +396,14 @@ export function SkillsGrid({
                     className="px-4 py-2 text-sm font-body font-medium bg-gradient-to-r from-primary to-primary-hover text-primary-foreground rounded-xl shadow-candy hover:shadow-candy-lg transition-all btn-press"
                   >
                     {t('skills.showAll')}
+                  </button>
+                )}
+                {formatFilter && (
+                  <button
+                    onClick={() => setFormatFilter(null)}
+                    className="px-4 py-2 text-sm font-body font-medium glass text-foreground rounded-xl hover:shadow-warm-lg transition-all btn-press"
+                  >
+                    All formats
                   </button>
                 )}
               </div>

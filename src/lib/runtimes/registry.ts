@@ -1,0 +1,100 @@
+/**
+ * Runtime registry — the execution-dispatch abstraction for the multi-format
+ * marketplace (Phase 1).
+ *
+ * Each `ItemFormat` maps to a `RuntimeDescriptor` that says how to label it,
+ * which candy flavor accent carries its color, and — crucially — which runner
+ * executes it:
+ *
+ *   runner: 'cc-sandbox'   → the existing Claude Code / Workers AI / OpenCode
+ *                            flow (cf-cc / cf-ai / opencode). Unchanged.
+ *   runner: 'coming-soon'  → execution engine not built yet. The run page shows
+ *                            a clean "import / execution coming soon" panel with
+ *                            the format identity, an `importHint`, and links to
+ *                            the artifact + docs.
+ *
+ * Only the `accentFlavor` names must exist in `candyShells.ts` (`Flavor`).
+ */
+
+import type { ItemFormat, Skill } from '../../data/skillsData';
+import { getFormat } from '../../data/skillsData';
+import type { Flavor } from '../../utils/candyShells';
+
+/** Where (and whether) an item of a given format actually executes. */
+export type RuntimeRunner = 'cc-sandbox' | 'coming-soon';
+
+export interface RuntimeDescriptor {
+  /** The format this descriptor describes. */
+  format: ItemFormat;
+  /** Full human label, e.g. "n8n Workflow". */
+  label: string;
+  /** Compact label for chips / segmented controls, e.g. "n8n". */
+  shortLabel: string;
+  /** Candy flavor that carries this format's accent color (see candyShells). */
+  accentFlavor: Flavor;
+  /** Execution runner: the live cc-sandbox flow, or a "coming soon" panel. */
+  runner: RuntimeRunner;
+  /** One-line guidance shown on the coming-soon panel (how to run it today). */
+  importHint?: string;
+  /** External docs / homepage for the format's tooling. */
+  docsUrl?: string;
+}
+
+export const RUNTIME_REGISTRY: Record<ItemFormat, RuntimeDescriptor> = {
+  'claude-skill': {
+    format: 'claude-skill',
+    label: 'Claude Skill',
+    shortLabel: 'Skill',
+    accentFlavor: 'Raspberry',
+    runner: 'cc-sandbox',
+  },
+  n8n: {
+    format: 'n8n',
+    label: 'n8n Workflow',
+    shortLabel: 'n8n',
+    accentFlavor: 'Mint',
+    runner: 'coming-soon',
+    importHint: 'Import this workflow JSON into your n8n instance',
+    docsUrl: 'https://n8n.io',
+  },
+  dify: {
+    format: 'dify',
+    label: 'Dify App',
+    shortLabel: 'Dify',
+    accentFlavor: 'Blueberry',
+    runner: 'coming-soon',
+    importHint: 'Import this DSL into Dify',
+    docsUrl: 'https://dify.ai',
+  },
+  langgraph: {
+    format: 'langgraph',
+    label: 'LangGraph',
+    shortLabel: 'LangGraph',
+    accentFlavor: 'Grape',
+    runner: 'coming-soon',
+    importHint: 'Run with LangGraph (Python)',
+    docsUrl: 'https://langchain-ai.github.io/langgraph/',
+  },
+  workflow: {
+    format: 'workflow',
+    label: 'Workflow',
+    shortLabel: 'Workflow',
+    accentFlavor: 'Caramel',
+    runner: 'coming-soon',
+  },
+};
+
+/** Resolve a format to its runtime descriptor (always defined). */
+export function getRuntime(format: ItemFormat): RuntimeDescriptor {
+  return RUNTIME_REGISTRY[format] ?? RUNTIME_REGISTRY['claude-skill'];
+}
+
+// Re-export getFormat from the data layer so callers can do the common
+// `getRuntime(getFormat(skill))` chain from a single import.
+export { getFormat };
+
+/** Convenience: resolve a skill (or anything with an optional `format`)
+ *  straight to its runtime descriptor. */
+export function getRuntimeForSkill(skill: Pick<Skill, 'format'>): RuntimeDescriptor {
+  return getRuntime(getFormat(skill));
+}

@@ -40,10 +40,15 @@ import {
   ArrowLeft,
   PanelLeftClose,
   PanelLeftOpen,
+  Workflow,
+  BookOpen,
 } from 'lucide-react';
 import type { Skill } from '../../types/skill-creator';
 import { getCandyIcon } from '../illustrations';
 import { SKILLS_DATA } from '../../data/skillsData';
+import { getRuntime, getFormat } from '../../lib/runtimes/registry';
+import { getFlavor } from '../../utils/candyShells';
+import { useIsDark } from '../../hooks/useIsDark';
 import { storageUtils } from '../../utils/storage';
 import {
   opencode,
@@ -973,6 +978,15 @@ function SessionSidebar({
 // ---------------------------------------------------------------------------
 
 export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
+  // ── Run-dispatch by format/runtime (declared first; used by effects below) ─
+  // claude-skill → runner 'cc-sandbox' → the existing cf-cc/cf-ai/opencode chat
+  // flow, UNCHANGED. Every other format → runner 'coming-soon' → a clean
+  // import/coming-soon panel (early-return before the chat UI).
+  const executorIsDark = useIsDark();
+  const itemFormat = getFormat(skill);
+  const runtimeDescriptor = getRuntime(itemFormat);
+  const isComingSoon = runtimeDescriptor.runner === 'coming-soon';
+
   // Connection state
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(true);
@@ -1045,6 +1059,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
     return () => window.clearInterval(id);
   }, [sandboxPhase]);
   useEffect(() => {
+    if (isComingSoon) return; // no runtime to warm for import-only formats
     if (runtimeMode === 'cf-ai') getCFBudget().then(setCfBudget);
     if (runtimeMode === 'cf-cc') {
       getCCBudget().then(setCcBudget);
@@ -1057,7 +1072,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       // skips the cold start (container wake + provider init). Best-effort.
       warmOpenCode();
     }
-  }, [runtimeMode]);
+  }, [runtimeMode, isComingSoon]);
 
   // Skill loading state
   const [skillInstructions, setSkillInstructions] = useState<string | null>(null);
@@ -1076,6 +1091,11 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
   // ── Connect on mount ────────────────────────────────────────────────────
 
   useEffect(() => {
+    // coming-soon formats never touch the sandbox — skip connecting/warming.
+    if (isComingSoon) {
+      setConnecting(false);
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {
@@ -1142,7 +1162,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       cancelled = true;
       opencode.cleanup();
     };
-  }, [skill]);
+  }, [skill, isComingSoon]);
 
   // ── Auto-scroll ─────────────────────────────────────────────────────────
 
@@ -2238,6 +2258,126 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
   const SkillCandy = getCandyIcon(skill.category);
   // The model label depends on runtime mode (Workers AI runs Llama, not GLM).
   const modelLabel = runtimeMode === 'cf-ai' ? 'Llama 3.1 8B' : 'GLM-4.5';
+
+  // ── Coming-soon dispatch ──────────────────────────────────────────────────
+  // Non-claude formats (n8n / dify / langgraph / workflow) have no in-platform
+  // runtime yet. Instead of the chat console + runtime picker, show a clean,
+  // on-brand import panel: format identity + importHint + open-artifact / docs
+  // + a "coming soon" note. The claude-skill chat path below is untouched.
+  if (isComingSoon) {
+    const accent = getFlavor(runtimeDescriptor.accentFlavor, executorIsDark);
+    return (
+      <div className="h-screen w-full flex flex-col bg-background animate-fade-in overflow-hidden">
+        <header className="relative shrink-0 bg-card border-b border-border z-20">
+          <div className="absolute inset-x-0 top-0 h-[3px]" style={{ backgroundColor: accent.base }} />
+          <div className="flex items-center gap-3 px-3 sm:px-5 h-16">
+            <button
+              onClick={onClose}
+              className="group inline-flex items-center gap-1.5 pl-2 pr-3 h-9 rounded-xl bg-secondary/70 hover:bg-secondary text-foreground-secondary hover:text-foreground transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring shrink-0 font-body"
+              aria-label="Back to Candy Shop"
+              title="Back to Candy Shop"
+            >
+              <ArrowLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-0.5" />
+              <span className="hidden sm:inline text-[13px] font-medium">Candy Shop</span>
+            </button>
+            <div className="h-7 w-px bg-border/70 mx-0.5 hidden sm:block" />
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="grid place-items-center w-9 h-9 rounded-xl bg-secondary ring-1 ring-border/60 shrink-0 overflow-hidden">
+                <SkillCandy size={26} />
+              </span>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <h1 className="text-[15px] leading-tight font-semibold text-foreground font-candy truncate">{skill.name}</h1>
+                  <span
+                    className="hidden sm:inline-flex items-center px-2 h-[18px] rounded-full border text-[10px] font-bold font-mono uppercase tracking-wide shrink-0"
+                    style={{ backgroundColor: accent.tint, color: accent.ink, borderColor: accent.base }}
+                  >
+                    {runtimeDescriptor.label}
+                  </span>
+                </div>
+                <div className="mt-0.5 text-[11px] text-foreground-tertiary font-mono">import · execution coming soon</div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div className="flex-1 overflow-y-auto bg-background">
+          <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-10 sm:py-14">
+            {/* Format identity hero */}
+            <div
+              className="rounded-3xl p-6 sm:p-7 border flex items-start gap-4"
+              style={{ backgroundColor: accent.tint, color: accent.ink, borderColor: accent.base }}
+            >
+              <span
+                className="grid place-items-center w-14 h-14 rounded-2xl shrink-0 text-white shadow-candy-1"
+                style={{ backgroundColor: accent.base }}
+                aria-hidden="true"
+              >
+                <Workflow className="w-7 h-7" />
+              </span>
+              <div className="min-w-0">
+                <div className="font-mono text-[11px] uppercase tracking-[0.18em] opacity-80">{runtimeDescriptor.label}</div>
+                <h2 className="font-candy font-bold text-2xl leading-tight mt-1">{skill.name}</h2>
+                {runtimeDescriptor.importHint && (
+                  <p className="text-sm mt-2 leading-relaxed opacity-90 font-body">{runtimeDescriptor.importHint}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Coming-soon note */}
+            <div className="mt-5 rounded-2xl border border-border bg-card p-5 shadow-candy-1">
+              <p className="text-foreground font-body leading-relaxed">
+                In-platform execution for <strong>{runtimeDescriptor.label}</strong> is coming soon. For now,
+                open the artifact and run it in your own environment{runtimeDescriptor.docsUrl ? ' (see the docs link below)' : ''}.
+              </p>
+
+              {/* Actions */}
+              <div className="flex flex-wrap items-center gap-2.5 mt-5">
+                {skill.artifactUrl && (
+                  <a
+                    href={skill.artifactUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-5 h-11 rounded-2xl text-sm font-body font-semibold text-white transition-transform duration-150 ease-candy active:scale-95"
+                    style={{ backgroundColor: accent.base }}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    {itemFormat === 'n8n' ? 'Import to n8n' : itemFormat === 'dify' ? 'Import to Dify' : 'Open artifact'}
+                  </a>
+                )}
+                {runtimeDescriptor.docsUrl && (
+                  <a
+                    href={runtimeDescriptor.docsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-5 h-11 rounded-2xl text-sm font-body font-medium bg-secondary border border-border text-foreground-secondary hover:text-foreground hover:border-border-hover transition-colors"
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    {runtimeDescriptor.label} docs
+                  </a>
+                )}
+                {githubUrl && (
+                  <a
+                    href={githubUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-5 h-11 rounded-2xl text-sm font-body font-medium bg-secondary border border-border text-foreground-secondary hover:text-foreground hover:border-border-hover transition-colors"
+                  >
+                    <Github className="w-4 h-4" />
+                    Source
+                  </a>
+                )}
+              </div>
+            </div>
+
+            {skill.description && (
+              <p className="mt-5 text-sm text-foreground-secondary leading-relaxed font-body">{skill.description}</p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen w-full flex flex-col bg-background animate-fade-in overflow-hidden">

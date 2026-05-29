@@ -27,6 +27,13 @@ export interface Skill {
   skillMdUrl?: string;
   greeting?: string;
 
+  // ── Multi-format (Phase 1) ─────────────────────────────
+  /** Runtime/format of this item. Undefined ⇒ 'claude-skill'. Mirrors the
+   *  marketplace `ItemFormat` so the executor can dispatch by runner. */
+  format?: import('../data/skillsData').ItemFormat;
+  /** URL to the non-claude artifact (workflow JSON / dify DSL / langgraph repo). */
+  artifactUrl?: string;
+
   // Timestamps
   createdAt: Date;
   updatedAt: Date;

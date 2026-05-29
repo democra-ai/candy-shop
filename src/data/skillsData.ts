@@ -9,6 +9,21 @@ export type SkillCategory =
   | 'Mobile'
   | 'Writing';
 
+// ── Item format (multi-format marketplace) ──────────────────
+/**
+ * The runtime/format dimension. The marketplace is no longer Claude-skill-only:
+ * an item can be a Claude skill, an n8n workflow, a dify app, a LangGraph/
+ * LangChain graph, or a generic workflow. `undefined` is treated as
+ * `'claude-skill'` everywhere via `getFormat()` so all existing items keep
+ * working unchanged.
+ */
+export type ItemFormat = 'claude-skill' | 'n8n' | 'dify' | 'langgraph' | 'workflow';
+
+/** Resolve a skill's format, defaulting undefined → 'claude-skill'. */
+export function getFormat(skill: Pick<Skill, 'format'>): ItemFormat {
+  return skill.format ?? 'claude-skill';
+}
+
 // ── Lineage & Provenance ────────────────────────────────────
 /** How this skill relates to other skills in the ecosystem */
 export type SkillLineageType = 'original' | 'fork' | 'remix' | 'licensed_derivative';
@@ -60,6 +75,13 @@ export interface Skill {
   skillMdUrl: string;
   config: Record<string, unknown>;
   greeting?: string;
+  // ── Multi-format (Phase 1) ──────────────────────────────
+  /** Runtime/format of this item. Undefined ⇒ 'claude-skill' (see getFormat). */
+  format?: ItemFormat;
+  /** URL to the non-claude artifact (n8n workflow JSON, dify DSL, LangGraph
+   *  repo/file, generic workflow). Analogous to skillMdUrl but for other
+   *  formats — drives the "Open artifact" / import CTAs. */
+  artifactUrl?: string;
   // Extended fields for detail view
   rating?: number;
   ratingCount?: number;
@@ -3477,5 +3499,157 @@ export const SKILLS_DATA: Skill[] = [
     rating: 4.8,
     developer: 'Candy Shop',
     version: 'v1.0',
+  },
+
+  // ── Multi-format examples (Phase 1) ────────────────────────────────
+  // Realistic items across the new formats so the format badges, filter, and
+  // format-aware detail render immediately. Clearly labeled as examples.
+  // ── n8n workflows ──
+  {
+    id: 'example-n8n-rss-to-slack',
+    name: 'RSS Digest → Slack',
+    description: 'Example n8n workflow: poll RSS feeds on a schedule, summarize new items, and post a daily digest to a Slack channel.',
+    category: 'Productivity',
+    icon: '📰',
+    color: 'bg-emerald-100 border-emerald-200 text-emerald-700',
+    installCommand: '# Import the workflow JSON into your n8n instance',
+    popularity: 6400,
+    repo: 'n8n-io/n8n',
+    skillMdUrl: '',
+    config: {}, tags: ['n8n', 'Slack', 'RSS', 'Automation'],
+    format: 'n8n',
+    artifactUrl: 'https://raw.githubusercontent.com/n8n-io/n8n/master/packages/cli/templates/workflows/EmailSummary.json',
+    developer: 'n8n Community',
+    version: 'example',
+    rating: 4.5,
+  },
+  {
+    id: 'example-n8n-lead-enrichment',
+    name: 'Lead Enrichment Pipeline',
+    description: 'Example n8n workflow: capture a webhook lead, enrich it via HTTP lookups, score it, and upsert to your CRM.',
+    category: 'Marketing',
+    icon: '🧲',
+    color: 'bg-orange-100 border-orange-200 text-orange-700',
+    installCommand: '# Import the workflow JSON into your n8n instance',
+    popularity: 5200,
+    repo: 'n8n-io/n8n',
+    skillMdUrl: '',
+    config: {}, tags: ['n8n', 'CRM', 'Webhook', 'Sales'],
+    format: 'n8n',
+    artifactUrl: 'https://raw.githubusercontent.com/n8n-io/n8n/master/packages/cli/templates/workflows/HackerNews.json',
+    developer: 'n8n Community',
+    version: 'example',
+    rating: 4.3,
+  },
+  // ── Dify apps ──
+  {
+    id: 'example-dify-support-agent',
+    name: 'Support Triage Agent',
+    description: 'Example Dify app (DSL): a customer-support agent that classifies tickets, drafts replies, and routes escalations using your knowledge base.',
+    category: 'Productivity',
+    icon: '🎫',
+    color: 'bg-blue-100 border-blue-200 text-blue-700',
+    installCommand: '# Import the DSL into Dify → Studio → Import DSL',
+    popularity: 4800,
+    repo: 'langgenius/dify',
+    skillMdUrl: '',
+    config: {}, tags: ['Dify', 'Support', 'Agent', 'RAG'],
+    format: 'dify',
+    artifactUrl: 'https://github.com/langgenius/dify/tree/main/web/app/components/app/configuration',
+    developer: 'Dify Community',
+    version: 'example',
+    rating: 4.6,
+  },
+  {
+    id: 'example-dify-content-pipeline',
+    name: 'Blog Content Pipeline',
+    description: 'Example Dify app (DSL): a multi-step workflow that researches a topic, outlines, drafts, and SEO-polishes a blog post end to end.',
+    category: 'Writing',
+    icon: '✍️',
+    color: 'bg-pink-100 border-pink-200 text-pink-700',
+    installCommand: '# Import the DSL into Dify → Studio → Import DSL',
+    popularity: 4100,
+    repo: 'langgenius/dify',
+    skillMdUrl: '',
+    config: {}, tags: ['Dify', 'Content', 'SEO', 'Workflow'],
+    format: 'dify',
+    artifactUrl: 'https://docs.dify.ai/guides/application-orchestrate/creating-an-application',
+    developer: 'Dify Community',
+    version: 'example',
+    rating: 4.4,
+  },
+  // ── LangGraph graphs ──
+  {
+    id: 'example-langgraph-research-agent',
+    name: 'Deep Research Agent',
+    description: 'Example LangGraph graph (Python): a plan-and-execute research agent with web search, reflection, and a report-writing node.',
+    category: 'Research',
+    icon: '🔬',
+    color: 'bg-sky-100 border-sky-200 text-sky-700',
+    installCommand: '# Clone the repo and run with: langgraph dev',
+    popularity: 7600,
+    repo: 'langchain-ai/langgraph',
+    skillMdUrl: '',
+    config: {}, tags: ['LangGraph', 'Agent', 'Research', 'Python'],
+    format: 'langgraph',
+    artifactUrl: 'https://github.com/langchain-ai/langgraph/tree/main/examples',
+    developer: 'LangChain',
+    version: 'example',
+    rating: 4.7,
+  },
+  {
+    id: 'example-langgraph-sql-agent',
+    name: 'SQL Q&A Graph',
+    description: 'Example LangGraph graph (Python): a stateful agent that inspects a database schema, writes SQL, self-checks results, and answers in natural language.',
+    category: 'Development',
+    icon: '🗃️',
+    color: 'bg-violet-100 border-violet-200 text-violet-700',
+    installCommand: '# Clone the repo and run with: langgraph dev',
+    popularity: 5900,
+    repo: 'langchain-ai/langgraph',
+    skillMdUrl: '',
+    config: {}, tags: ['LangGraph', 'SQL', 'Agent', 'Python'],
+    format: 'langgraph',
+    artifactUrl: 'https://github.com/langchain-ai/langgraph/tree/main/examples/sql-agent',
+    developer: 'LangChain',
+    version: 'example',
+    rating: 4.5,
+  },
+  // ── Generic workflows ──
+  {
+    id: 'example-workflow-pr-review',
+    name: 'PR Review Checklist',
+    description: 'Example workflow: a structured, multi-step pull-request review routine — static checks, test gate, security pass, and reviewer sign-off.',
+    category: 'Development',
+    icon: '🔁',
+    color: 'bg-amber-100 border-amber-200 text-amber-700',
+    installCommand: '# Open the workflow definition to adapt to your stack',
+    popularity: 3300,
+    repo: 'candyshop-examples/workflows',
+    skillMdUrl: '',
+    config: {}, tags: ['Workflow', 'CI', 'Review'],
+    format: 'workflow',
+    artifactUrl: 'https://github.com/candyshop-examples/workflows',
+    developer: 'Candy Shop',
+    version: 'example',
+    rating: 4.2,
+  },
+  {
+    id: 'example-workflow-incident-response',
+    name: 'Incident Response Runbook',
+    description: 'Example workflow: a generic on-call runbook — detect, triage, mitigate, communicate, and post-mortem — usable across tools.',
+    category: 'Tools',
+    icon: '🚨',
+    color: 'bg-stone-100 border-stone-200 text-stone-700',
+    installCommand: '# Open the workflow definition to adapt to your stack',
+    popularity: 2900,
+    repo: 'candyshop-examples/workflows',
+    skillMdUrl: '',
+    config: {}, tags: ['Workflow', 'Ops', 'Runbook'],
+    format: 'workflow',
+    artifactUrl: 'https://github.com/candyshop-examples/workflows',
+    developer: 'Candy Shop',
+    version: 'example',
+    rating: 4.1,
   },
 ];

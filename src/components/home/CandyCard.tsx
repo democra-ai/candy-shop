@@ -24,10 +24,12 @@
 
 import { Star, Play, Sparkles, Zap, Users } from 'lucide-react';
 import type { Skill } from '../../data/skillsData';
+import { getFormat } from '../../data/skillsData';
 import { cn } from '../../utils/cn';
 import { useIsDark } from '../../hooks/useIsDark';
-import { getShell } from '../../utils/candyShells';
+import { getShell, getFlavor } from '../../utils/candyShells';
 import { getCandyEmoji } from '../../utils/candy';
+import { getRuntime } from '../../lib/runtimes/registry';
 
 interface CandyCardProps {
   skill: Skill;
@@ -73,6 +75,15 @@ export function CandyCard({
   const shell = getShell(skill.category, isDark);
   const rating = deriveRating(skill);
   const emoji = getCandyEmoji(skill.id);
+
+  // ── Format chip: non-claude formats get a clear type chip (n8n / Dify /
+  //    LangGraph / Workflow) in the format's accent flavor. claude-skill is the
+  //    default and stays unbadged so existing skill cards look unchanged.
+  const format = getFormat(skill);
+  const runtime = getRuntime(format);
+  const formatFlavor = getFlavor(runtime.accentFlavor, isDark);
+  const showFormatChip = format !== 'claude-skill';
+
   const isUserCandy = skill.id.startsWith('user-candy-');
   const isManaged = skill.executionModel === 'managed';
   const isPaid = skill.price !== undefined && skill.price > 0;
@@ -131,12 +142,29 @@ export function CandyCard({
             {emoji}
           </span>
           <div className="flex flex-col items-start gap-1 min-w-0">
-            <span
-              className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold uppercase tracking-widest truncate max-w-full"
-              style={{ backgroundColor: shell.chipBg, color: shell.text }}
-            >
-              {skill.category}
-            </span>
+            <div className="flex items-center gap-1 min-w-0 flex-wrap">
+              <span
+                className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold uppercase tracking-widest truncate max-w-full"
+                style={{ backgroundColor: shell.chipBg, color: shell.text }}
+              >
+                {skill.category}
+              </span>
+              {/* Format type chip — only for non-claude formats so users can
+                  tell n8n / Dify / LangGraph / Workflow apart at a glance. */}
+              {showFormatChip && (
+                <span
+                  className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-widest truncate max-w-full border"
+                  style={{
+                    backgroundColor: formatFlavor.tint,
+                    color: formatFlavor.ink,
+                    borderColor: formatFlavor.base,
+                  }}
+                  title={runtime.label}
+                >
+                  {runtime.shortLabel}
+                </span>
+              )}
+            </div>
             {statusBadge && (
               <span
                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-widest text-white"

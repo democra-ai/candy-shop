@@ -1,14 +1,15 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Star, Download, Play, Copy, Check, ExternalLink, Tag, MessageSquare, Zap, Shield, GitFork, Cloud, Link2, BadgeCheck } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { ArrowLeft, Star, Download, Play, Copy, Check, ExternalLink, Tag, MessageSquare, Zap, Shield, GitFork, Cloud, Link2, BadgeCheck, Workflow, BookOpen, Loader2, AlertCircle } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { StarRating } from '../components/ui/StarRating';
 import { LineageBadge, PricingBadge, ExecutionModelBadge, ManifestVisibilityBadge } from '../components/common/LineageBadge';
 import { CandyCard } from '../components/home/CandyCard';
-import { SKILLS_DATA } from '../data/skillsData';
+import { SKILLS_DATA, getFormat } from '../data/skillsData';
 import type { Skill as StoreSkill } from '../data/skillsData';
+import { getRuntime } from '../lib/runtimes/registry';
 import { useStars } from '../hooks/api/useStars';
 import { useRatings } from '../hooks/api/useRatings';
 import { useDownloads } from '../hooks/api/useDownloads';
@@ -22,6 +23,202 @@ interface SkillDetailPageProps {
   onToggleCart: (id: string) => void;
   onRunSkill: (skill: StoreSkill) => void;
   userId?: string;
+}
+
+// ── n8n workflow node parsing ──────────────────────────────────────────────
+interface N8nNode { name: string; type: string }
+
+/** Extract a tidy {name,type} list from an n8n workflow JSON payload. n8n
+ *  exports put nodes under `.nodes`; we tolerate a bare array too. Node `type`
+ *  is like "n8n-nodes-base.httpRequest" — we keep the last dotted segment. */
+function parseN8nNodes(json: unknown): N8nNode[] {
+  const raw =
+    json && typeof json === 'object' && Array.isArray((json as { nodes?: unknown[] }).nodes)
+      ? (json as { nodes: unknown[] }).nodes
+      : Array.isArray(json)
+        ? (json as unknown[])
+        : [];
+  return raw
+    .map((n) => {
+      const o = (n ?? {}) as Record<string, unknown>;
+      const type = typeof o.type === 'string' ? o.type : 'unknown';
+      return {
+        name: typeof o.name === 'string' ? o.name : 'Unnamed node',
+        type: type.split('.').pop() || type,
+      };
+    })
+    .filter((n) => n.name);
+}
+
+/**
+ * FormatDetailSection — the format-aware body for non-claude items.
+ *
+ * Claude skills keep the existing SKILL.md / install view (rendered by the
+ * parent). For other formats this renders an appropriate section:
+ *   - n8n       → fetch the workflow JSON and list its nodes + "Import to n8n"
+ *   - langgraph → graph/repo link + "run with LangGraph" note
+ *   - dify      → DSL outline + "Import to Dify"
+ *   - workflow  → generic steps
+ * All share the same identity header (label + importHint + docs + artifact).
+ * Phase 1 keeps parsing light — if the artifact can't be parsed we still show
+ * the format identity, importHint, docsUrl, and an "Open artifact" link.
+ */
+function FormatDetailSection({ skill, accent }: { skill: StoreSkill; accent: { base: string; tint: string; ink: string } }) {
+  const format = getFormat(skill);
+  const runtime = getRuntime(format);
+  const artifactUrl = skill.artifactUrl;
+
+  // n8n: best-effort fetch + parse of the workflow JSON node list.
+  const [n8nNodes, setN8nNodes] = useState<N8nNode[] | null>(null);
+  const [n8nState, setN8nState] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
+
+  useEffect(() => {
+    if (format !== 'n8n' || !artifactUrl) return;
+    let cancelled = false;
+    setN8nState('loading');
+    fetch(artifactUrl)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((json) => {
+        if (cancelled) return;
+        const nodes = parseN8nNodes(json);
+        setN8nNodes(nodes);
+        setN8nState('loaded');
+      })
+      .catch(() => {
+        if (!cancelled) setN8nState('error');
+      });
+    return () => { cancelled = true; };
+  }, [format, artifactUrl]);
+
+  const eyebrow =
+    format === 'n8n' ? 'Workflow'
+    : format === 'dify' ? 'Dify app'
+    : format === 'langgraph' ? 'Graph'
+    : 'Workflow';
+
+  return (
+    <Card>
+      <CardContent className="pt-6 space-y-4">
+        <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-foreground-tertiary">{eyebrow}</p>
+
+        {/* Format identity band — flavor tint + label + import hint */}
+        <div
+          className="rounded-2xl p-4 border flex items-start gap-3"
+          style={{ backgroundColor: accent.tint, color: accent.ink, borderColor: accent.base }}
+        >
+          <span
+            className="grid place-items-center w-10 h-10 rounded-xl shrink-0 text-white"
+            style={{ backgroundColor: accent.base }}
+            aria-hidden="true"
+          >
+            <Workflow className="w-5 h-5" />
+          </span>
+          <div className="min-w-0">
+            <div className="font-candy font-semibold text-base leading-tight">{runtime.label}</div>
+            {runtime.importHint && (
+              <p className="text-sm mt-0.5 leading-snug opacity-90">{runtime.importHint}</p>
+            )}
+          </div>
+        </div>
+
+        {/* n8n — node list parsed from the workflow JSON */}
+        {format === 'n8n' && (
+          <div>
+            <h3 className="text-sm font-candy font-bold mb-2">Workflow nodes</h3>
+            {n8nState === 'loading' && (
+              <div className="flex items-center gap-2 text-sm text-foreground-tertiary py-3 font-mono">
+                <Loader2 className="w-4 h-4 animate-spin" /> reading workflow…
+              </div>
+            )}
+            {n8nState === 'error' && (
+              <div className="flex items-center gap-2 text-sm text-foreground-tertiary py-3 font-mono">
+                <AlertCircle className="w-4 h-4" /> Couldn’t parse the workflow — open the artifact below.
+              </div>
+            )}
+            {n8nState === 'loaded' && n8nNodes && n8nNodes.length > 0 && (
+              <ol className="space-y-1.5">
+                {n8nNodes.map((node, i) => (
+                  <li
+                    key={`${node.name}-${i}`}
+                    className="flex items-center gap-3 px-3 py-2 rounded-xl bg-secondary border border-border"
+                  >
+                    <span className="grid place-items-center w-6 h-6 rounded-lg text-[11px] font-mono font-bold shrink-0 tabular-nums"
+                      style={{ backgroundColor: accent.tint, color: accent.ink }}>
+                      {i + 1}
+                    </span>
+                    <span className="text-sm font-body text-foreground truncate flex-1 min-w-0">{node.name}</span>
+                    <span className="text-[11px] font-mono text-foreground-tertiary shrink-0">{node.type}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+            {n8nState === 'loaded' && n8nNodes && n8nNodes.length === 0 && (
+              <p className="text-sm text-foreground-tertiary font-mono py-3">No nodes found in this workflow.</p>
+            )}
+          </div>
+        )}
+
+        {/* langgraph — graph/repo pointer + run note */}
+        {format === 'langgraph' && (
+          <div className="space-y-2 text-sm text-foreground-secondary leading-relaxed font-body">
+            <p>
+              This is a <strong>LangGraph</strong> graph. Clone the repo / file below and run it with the
+              LangGraph Python runtime (<code className="font-mono text-mint">langgraph dev</code> or
+              your own entrypoint).
+            </p>
+          </div>
+        )}
+
+        {/* dify — DSL outline + import note */}
+        {format === 'dify' && (
+          <div className="space-y-2 text-sm text-foreground-secondary leading-relaxed font-body">
+            <p>
+              This is a <strong>Dify</strong> app exported as a DSL (YAML). Import the DSL below into your
+              Dify workspace via <span className="font-mono text-mint">Studio → Import DSL</span> to get the
+              full app, model config, and prompt chain.
+            </p>
+          </div>
+        )}
+
+        {/* workflow — generic steps */}
+        {format === 'workflow' && (
+          <div className="space-y-2 text-sm text-foreground-secondary leading-relaxed font-body">
+            <p>
+              This is a generic automation workflow. Open the artifact below for the full step definition;
+              in-platform execution is coming soon.
+            </p>
+          </div>
+        )}
+
+        {/* Shared CTAs — open artifact + docs */}
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          {artifactUrl && (
+            <a
+              href={artifactUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 h-10 rounded-2xl text-sm font-body font-semibold text-white transition-transform duration-150 ease-candy active:scale-95"
+              style={{ backgroundColor: accent.base }}
+            >
+              <ExternalLink className="w-4 h-4" />
+              {format === 'n8n' ? 'Import to n8n' : format === 'dify' ? 'Import to Dify' : 'Open artifact'}
+            </a>
+          )}
+          {runtime.docsUrl && (
+            <a
+              href={runtime.docsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 h-10 rounded-2xl text-sm font-body font-medium bg-card border border-border text-foreground-secondary hover:text-foreground hover:border-border-hover transition-colors"
+            >
+              <BookOpen className="w-4 h-4" />
+              {runtime.label} docs
+            </a>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export function SkillDetailPage({ cart, onToggleCart, onRunSkill, userId }: SkillDetailPageProps) {
@@ -49,6 +246,13 @@ export function SkillDetailPage({ cart, onToggleCart, onRunSkill, userId }: Skil
 
   const flavor = getFlavor(skill.category, isDark);
   const emoji = getCandyEmoji(skill.id);
+
+  // ── Multi-format: resolve format + runtime so the detail body, badges, and
+  //    sidebar can render format-aware content. claude-skill is the default.
+  const format = getFormat(skill);
+  const runtime = getRuntime(format);
+  const isClaudeSkill = format === 'claude-skill';
+  const formatFlavor = getFlavor(runtime.accentFlavor, isDark);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(skill.installCommand);
@@ -103,12 +307,23 @@ export function SkillDetailPage({ cart, onToggleCart, onRunSkill, userId }: Skil
                 {emoji}
               </div>
               <div className="flex-1 min-w-0">
-                <span
-                  className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-mono font-medium uppercase tracking-widest"
-                  style={{ backgroundColor: flavor.base, color: flavor.tint }}
-                >
-                  {skill.category}
-                </span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span
+                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-mono font-medium uppercase tracking-widest"
+                    style={{ backgroundColor: flavor.base, color: flavor.tint }}
+                  >
+                    {skill.category}
+                  </span>
+                  {!isClaudeSkill && (
+                    <span
+                      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold uppercase tracking-widest border"
+                      style={{ backgroundColor: formatFlavor.tint, color: formatFlavor.ink, borderColor: formatFlavor.base }}
+                      title={runtime.label}
+                    >
+                      {runtime.shortLabel}
+                    </span>
+                  )}
+                </div>
                 <h1
                   className="text-2xl sm:text-3xl md:text-4xl font-candy font-bold tracking-tight leading-[1.1] mt-2"
                   style={{ color: flavor.ink }}
@@ -198,35 +413,42 @@ export function SkillDetailPage({ cart, onToggleCart, onRunSkill, userId }: Skil
                 </CardContent>
               </Card>
 
-              {/* Install */}
-              <Card>
-                <CardContent className="pt-6">
-                  <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-foreground-tertiary mb-2">Get it</p>
-                  <h2 className="text-xl font-candy font-bold mb-3">Quick Install</h2>
-                  <div className="bg-secondary border border-border rounded-xl p-4 flex items-center justify-between gap-3 font-mono text-sm">
-                    <code className="text-foreground truncate">{skill.installCommand}</code>
-                    <button
-                      onClick={handleCopy}
-                      className="flex-shrink-0 p-2 hover:bg-backgroundTertiary rounded-lg transition-colors"
-                      aria-label="Copy install command"
-                    >
-                      {copied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4 text-foreground-secondary" />}
-                    </button>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Install (claude-skill) — non-claude formats get a format-aware
+                  section (node list / DSL outline / repo + import CTA) instead. */}
+              {isClaudeSkill ? (
+                <>
+                  <Card>
+                    <CardContent className="pt-6">
+                      <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-foreground-tertiary mb-2">Get it</p>
+                      <h2 className="text-xl font-candy font-bold mb-3">Quick Install</h2>
+                      <div className="bg-secondary border border-border rounded-xl p-4 flex items-center justify-between gap-3 font-mono text-sm">
+                        <code className="text-foreground truncate">{skill.installCommand}</code>
+                        <button
+                          onClick={handleCopy}
+                          className="flex-shrink-0 p-2 hover:bg-backgroundTertiary rounded-lg transition-colors"
+                          aria-label="Copy install command"
+                        >
+                          {copied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4 text-foreground-secondary" />}
+                        </button>
+                      </div>
+                    </CardContent>
+                  </Card>
 
-              {/* Config */}
-              {skill.config && Object.keys(skill.config).length > 0 && (
-                <Card>
-                  <CardContent className="pt-6">
-                    <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-foreground-tertiary mb-2">Setup</p>
-                    <h2 className="text-xl font-candy font-bold mb-3">Claude Desktop Config</h2>
-                    <pre className="bg-secondary border border-border rounded-xl p-4 text-xs overflow-x-auto font-mono text-foreground">
-                      {JSON.stringify(skill.config, null, 2)}
-                    </pre>
-                  </CardContent>
-                </Card>
+                  {/* Config */}
+                  {skill.config && Object.keys(skill.config).length > 0 && (
+                    <Card>
+                      <CardContent className="pt-6">
+                        <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-foreground-tertiary mb-2">Setup</p>
+                        <h2 className="text-xl font-candy font-bold mb-3">Claude Desktop Config</h2>
+                        <pre className="bg-secondary border border-border rounded-xl p-4 text-xs overflow-x-auto font-mono text-foreground">
+                          {JSON.stringify(skill.config, null, 2)}
+                        </pre>
+                      </CardContent>
+                    </Card>
+                  )}
+                </>
+              ) : (
+                <FormatDetailSection skill={skill} accent={formatFlavor} />
               )}
 
               {/* Related */}
@@ -302,10 +524,12 @@ export function SkillDetailPage({ cart, onToggleCart, onRunSkill, userId }: Skil
                   : 'w-full rounded-2xl'}
                 onClick={() => onRunSkill(skill)}
               >
-                {skill.executionModel === 'managed' ? <Zap className="w-4 h-4" /> : <Play className="w-4 h-4 fill-current" />}
-                {skill.executionModel === 'managed'
-                  ? (skill.price ? `Invoke ($${(skill.price / 100).toFixed(2)}/call)` : 'Invoke Skill')
-                  : 'Run Skill'}
+                {!isClaudeSkill ? <Workflow className="w-4 h-4" /> : skill.executionModel === 'managed' ? <Zap className="w-4 h-4" /> : <Play className="w-4 h-4 fill-current" />}
+                {!isClaudeSkill
+                  ? `Open ${runtime.label}`
+                  : skill.executionModel === 'managed'
+                    ? (skill.price ? `Invoke ($${(skill.price / 100).toFixed(2)}/call)` : 'Invoke Skill')
+                    : 'Run Skill'}
               </Button>
               <Button
                 variant={inCart ? 'secondary' : 'outline'}
@@ -335,6 +559,15 @@ export function SkillDetailPage({ cart, onToggleCart, onRunSkill, userId }: Skil
                 <div className="flex justify-between items-center">
                   <span className="text-foreground-secondary">Category</span>
                   <Badge variant="secondary" size="sm">{skill.category}</Badge>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-foreground-secondary">Format</span>
+                  <span
+                    className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold border"
+                    style={{ backgroundColor: formatFlavor.tint, color: formatFlavor.ink, borderColor: formatFlavor.base }}
+                  >
+                    {runtime.label}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-foreground-secondary">Rating</span>
