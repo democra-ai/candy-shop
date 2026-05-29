@@ -137,7 +137,7 @@ export function Categories({ onSelectCategory, activeCategory }: { onSelectCateg
         </div>
 
         {/* Bento tile grid — asymmetric on lg */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 auto-rows-[minmax(140px,auto)]">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 auto-rows-[minmax(140px,auto)]">
           {/* Mobile "All Flavors" tile */}
           <button
             onClick={() => onSelectCategory(null)}
