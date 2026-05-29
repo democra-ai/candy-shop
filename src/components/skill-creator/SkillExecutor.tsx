@@ -4,7 +4,6 @@ import remarkGfm from 'remark-gfm';
 
 import {
   X,
-  Send,
   Loader2,
   Sparkles,
   ChevronDown,
@@ -33,6 +32,11 @@ import {
   File,
   ExternalLink,
   Github,
+  Copy,
+  Check,
+  Terminal,
+  Zap,
+  ArrowUp,
 } from 'lucide-react';
 import type { Skill } from '../../types/skill-creator';
 import { SKILLS_DATA } from '../../data/skillsData';
@@ -291,13 +295,100 @@ function mapSessionMessagesToEntries(messages: Record<string, unknown>[], sessio
 }
 
 // ---------------------------------------------------------------------------
+// Shared presentation primitives (one cohesive "candy console" language)
+// ---------------------------------------------------------------------------
+
+/**
+ * CopyButton — a tiny ghost copy affordance used on every code/output block so
+ * the transcript reads like a real agent console (Claude.ai / Raycast).
+ */
+function CopyButton({ value, className = '' }: { value: string; className?: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        try {
+          void navigator.clipboard?.writeText(value);
+          setCopied(true);
+          window.setTimeout(() => setCopied(false), 1400);
+        } catch {
+          /* clipboard may be unavailable */
+        }
+      }}
+      title={copied ? 'Copied' : 'Copy'}
+      aria-label={copied ? 'Copied' : 'Copy to clipboard'}
+      className={`inline-flex items-center justify-center w-6 h-6 rounded-md text-foreground-tertiary hover:text-foreground hover:bg-foreground/10 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-ring/40 ${className}`}
+    >
+      {copied ? <Check className="w-3 h-3 text-mint" /> : <Copy className="w-3 h-3" />}
+    </button>
+  );
+}
+
+/**
+ * CodeBlock — the one monospace surface for all tool input/output, thinking
+ * traces and errors. A subtle header rail (label + copy) over a tinted Fira
+ * Code body — the polished terminal block (Warp / Raycast).
+ */
+function CodeBlock({
+  label,
+  value,
+  tone = 'neutral',
+  maxClass = 'max-h-56',
+}: {
+  label?: string;
+  value: string;
+  tone?: 'neutral' | 'error';
+  maxClass?: string;
+}) {
+  const isError = tone === 'error';
+  return (
+    <div
+      className={`rounded-xl overflow-hidden border ${
+        isError ? 'border-error/25 bg-error/[0.06]' : 'border-border/60 bg-background-secondary/70'
+      }`}
+    >
+      <div
+        className={`flex items-center gap-2 px-3 h-8 border-b ${
+          isError ? 'border-error/20' : 'border-border/50'
+        }`}
+      >
+        <span className="flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-error/60" />
+          <span className="w-1.5 h-1.5 rounded-full bg-caramel/60" />
+          <span className="w-1.5 h-1.5 rounded-full bg-mint/60" />
+        </span>
+        {label && (
+          <span
+            className={`text-[10px] font-mono uppercase tracking-[0.12em] ${
+              isError ? 'text-error/80' : 'text-foreground-tertiary'
+            }`}
+          >
+            {label}
+          </span>
+        )}
+        <CopyButton value={value} className="ml-auto -mr-1" />
+      </div>
+      <pre
+        className={`px-3 py-2.5 text-[12px] leading-relaxed overflow-x-auto ${maxClass} overflow-y-auto font-mono ${
+          isError ? 'text-error/90' : 'text-foreground-secondary'
+        }`}
+      >
+        {value}
+      </pre>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Sub-components for rendering parts
 // ---------------------------------------------------------------------------
 
 function ToolStateIcon({ state }: { state: string }) {
   switch (state) {
     case 'completed':
-      return <CheckCircle2 className="w-3.5 h-3.5 text-success" />;
+      return <CheckCircle2 className="w-3.5 h-3.5 text-mint" />;
     case 'running':
       return <Loader2 className="w-3.5 h-3.5 text-primary animate-spin" />;
     case 'error':
@@ -317,53 +408,62 @@ function ToolPartView({ part }: { part: ToolPart }) {
   const output = meta.output != null ? safeString(meta.output) : '';
   const error = meta.error != null ? safeString(meta.error) : '';
 
+  const isError = stateStr === 'error';
+  const isRunning = stateStr === 'running';
+
   return (
-    <div className="my-2 rounded-lg border border-border/60 bg-secondary/40 overflow-hidden">
+    <div
+      className={`my-2 rounded-xl border overflow-hidden transition-colors duration-200 ${
+        isError
+          ? 'border-error/25 bg-error/[0.05]'
+          : isRunning
+            ? 'border-primary/30 bg-primary/[0.04]'
+            : 'border-border/60 bg-card/60'
+      }`}
+    >
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-secondary/60 transition-colors"
+        className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-foreground/[0.03] transition-colors"
+        aria-expanded={expanded}
       >
-        <ToolStateIcon state={stateStr} />
-        <Wrench className="w-3.5 h-3.5 text-foreground-tertiary" />
-        <span className="text-sm font-medium text-foreground truncate">
+        <span
+          className={`grid place-items-center w-6 h-6 rounded-lg shrink-0 ${
+            isError ? 'bg-error/10' : isRunning ? 'bg-primary/10' : 'bg-info/10'
+          }`}
+        >
+          <Wrench className={`w-3.5 h-3.5 ${isError ? 'text-error' : isRunning ? 'text-primary' : 'text-info'}`} />
+        </span>
+        <span className="text-[13px] font-semibold text-foreground font-mono truncate">
           {safeString(part.tool)}
         </span>
         {title && (
-          <span className="text-xs text-foreground-tertiary truncate ml-1">{title}</span>
+          <span className="text-xs text-foreground-tertiary truncate min-w-0">{title}</span>
         )}
-        <span className="ml-auto text-xs text-foreground-tertiary capitalize">{stateStr}</span>
+        <span
+          className={`ml-auto inline-flex items-center gap-1.5 pl-2 pr-2.5 h-6 rounded-full text-[10px] font-medium font-mono uppercase tracking-wide shrink-0 ${
+            isError
+              ? 'bg-error/10 text-error'
+              : isRunning
+                ? 'bg-primary/10 text-primary'
+                : stateStr === 'completed'
+                  ? 'bg-mint/10 text-mint'
+                  : 'bg-secondary text-foreground-tertiary'
+          }`}
+        >
+          <ToolStateIcon state={stateStr} />
+          {stateStr}
+        </span>
         {expanded ? (
-          <ChevronDown className="w-3.5 h-3.5 text-foreground-tertiary shrink-0" />
+          <ChevronDown className="w-4 h-4 text-foreground-tertiary shrink-0" />
         ) : (
-          <ChevronRight className="w-3.5 h-3.5 text-foreground-tertiary shrink-0" />
+          <ChevronRight className="w-4 h-4 text-foreground-tertiary shrink-0" />
         )}
       </button>
-      {expanded && (
-        <div className="px-3 pb-3 space-y-2 border-t border-border/40">
-          {input && (
-            <div className="mt-2">
-              <p className="text-xs text-foreground-tertiary mb-1">Input</p>
-              <pre className="text-xs text-foreground-secondary bg-background-secondary/60 rounded p-2 overflow-x-auto max-h-48 overflow-y-auto font-mono">
-                {input}
-              </pre>
-            </div>
-          )}
-          {output && (
-            <div>
-              <p className="text-xs text-foreground-tertiary mb-1">Output</p>
-              <pre className="text-xs text-foreground-secondary bg-background-secondary/60 rounded p-2 overflow-x-auto max-h-48 overflow-y-auto font-mono">
-                {output}
-              </pre>
-            </div>
-          )}
-          {error && (
-            <div>
-              <p className="text-xs text-error mb-1">Error</p>
-              <pre className="text-xs text-error/80 bg-error/10 rounded p-2 overflow-x-auto font-mono">
-                {error}
-              </pre>
-            </div>
-          )}
+      {expanded && (input || output || error) && (
+        <div className="px-3 pb-3 pt-0.5 space-y-2 border-t border-border/40 bg-background-secondary/30">
+          {input && <div className="mt-2.5"><CodeBlock label="input" value={input} maxClass="max-h-48" /></div>}
+          {output && <CodeBlock label="output" value={output} maxClass="max-h-48" />}
+          {error && <CodeBlock label="error" value={error} tone="error" />}
         </div>
       )}
     </div>
@@ -374,25 +474,28 @@ function ReasoningPartView({ part }: { part: ReasoningPart }) {
   const [expanded, setExpanded] = useState(false);
   if (!part.text) return null;
   return (
-    <div className="my-2 rounded-lg border border-primary/20 bg-primary/5 overflow-hidden">
+    <div className="my-2 rounded-xl border border-grape/20 bg-grape/[0.04] overflow-hidden">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-primary/10 transition-colors"
+        className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-grape/[0.07] transition-colors"
+        aria-expanded={expanded}
       >
-        <Brain className="w-3.5 h-3.5 text-primary" />
-        <span className="text-sm text-primary">Thinking...</span>
-        <span className="ml-auto text-xs text-primary/60">
+        <span className="grid place-items-center w-6 h-6 rounded-lg bg-grape/10 shrink-0">
+          <Brain className="w-3.5 h-3.5 text-grape" />
+        </span>
+        <span className="text-[13px] font-medium text-grape font-body">Reasoning</span>
+        <span className="ml-auto text-[10px] text-grape/60 font-mono">
           {part.text.length} chars
         </span>
         {expanded ? (
-          <ChevronDown className="w-3.5 h-3.5 text-primary/60 shrink-0" />
+          <ChevronDown className="w-4 h-4 text-grape/60 shrink-0" />
         ) : (
-          <ChevronRight className="w-3.5 h-3.5 text-primary/60 shrink-0" />
+          <ChevronRight className="w-4 h-4 text-grape/60 shrink-0" />
         )}
       </button>
       {expanded && (
-        <div className="px-3 pb-3 border-t border-primary/15">
-          <pre className="mt-2 text-xs text-foreground-secondary whitespace-pre-wrap max-h-64 overflow-y-auto font-mono">
+        <div className="px-3 pb-3 pt-0.5 border-t border-grape/15">
+          <pre className="mt-2.5 text-[12px] leading-relaxed text-foreground-secondary whitespace-pre-wrap max-h-64 overflow-y-auto font-mono">
             {part.text}
           </pre>
         </div>
@@ -404,11 +507,15 @@ function ReasoningPartView({ part }: { part: ReasoningPart }) {
 function TextPartView({ part }: { part: TextPart }) {
   if (!part.text) return null;
   return (
-    <div className="prose dark:prose-invert prose-sm max-w-none
-      prose-p:text-foreground prose-li:text-foreground prose-strong:text-foreground
-      prose-pre:bg-background-secondary/80 prose-pre:border prose-pre:border-border/50
-      prose-code:text-mint prose-code:bg-secondary/60 prose-code:px-1 prose-code:py-0.5 prose-code:rounded
-      prose-a:text-primary prose-headings:text-foreground"
+    <div className="prose dark:prose-invert prose-sm max-w-none font-body leading-relaxed
+      prose-headings:font-candy prose-headings:text-foreground prose-headings:font-semibold
+      prose-p:text-foreground prose-p:leading-relaxed
+      prose-li:text-foreground prose-strong:text-foreground prose-strong:font-semibold
+      prose-pre:bg-background-secondary/80 prose-pre:border prose-pre:border-border/60 prose-pre:rounded-xl prose-pre:text-[12px] prose-pre:leading-relaxed
+      prose-code:text-mint prose-code:bg-secondary/70 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:font-mono prose-code:text-[0.85em] prose-code:before:content-none prose-code:after:content-none
+      prose-a:text-primary prose-a:font-medium prose-a:no-underline hover:prose-a:underline
+      prose-blockquote:border-l-2 prose-blockquote:border-grape/40 prose-blockquote:text-foreground-secondary prose-blockquote:not-italic prose-blockquote:font-mono prose-blockquote:text-[12px]
+      prose-hr:border-border/60"
     >
       <ReactMarkdown remarkPlugins={[remarkGfm]}>{part.text}</ReactMarkdown>
     </div>
@@ -417,21 +524,27 @@ function TextPartView({ part }: { part: TextPart }) {
 
 function FilePartView({ part }: { part: FilePart }) {
   return (
-    <div className="my-2 flex items-center gap-2 px-3 py-2 rounded-lg border border-border/60 bg-secondary/40 text-sm">
-      <FileText className="w-3.5 h-3.5 text-primary shrink-0" />
-      <span className="text-foreground">{part.filename ?? 'File'}</span>
-      <span className="text-xs text-foreground-tertiary">{part.mime}</span>
+    <div className="my-2 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-mint/25 bg-mint/[0.05] text-sm">
+      <span className="grid place-items-center w-6 h-6 rounded-lg bg-mint/10 shrink-0">
+        <FileText className="w-3.5 h-3.5 text-mint" />
+      </span>
+      <span className="text-foreground font-mono text-[13px] truncate">{part.filename ?? 'File'}</span>
+      {part.mime && (
+        <span className="ml-auto text-[10px] text-foreground-tertiary font-mono uppercase tracking-wide shrink-0">{part.mime}</span>
+      )}
     </div>
   );
 }
 
 function PatchPartView({ part }: { part: PatchPart }) {
   return (
-    <div className="my-2 flex items-center gap-2 px-3 py-2 rounded-lg border border-caramel/30 bg-caramel/5 text-sm">
-      <GitBranch className="w-3.5 h-3.5 text-caramel shrink-0" />
-      <span className="text-caramel">Patch applied</span>
+    <div className="my-2 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-caramel/30 bg-caramel/[0.06] text-sm">
+      <span className="grid place-items-center w-6 h-6 rounded-lg bg-caramel/15 shrink-0">
+        <GitBranch className="w-3.5 h-3.5 text-caramel" />
+      </span>
+      <span className="text-foreground font-medium font-body text-[13px]">Patch applied</span>
       {part.files?.length > 0 && (
-        <span className="text-xs text-caramel/70">
+        <span className="text-xs text-foreground-tertiary font-mono truncate">
           {part.files.join(', ')}
         </span>
       )}
@@ -441,27 +554,27 @@ function PatchPartView({ part }: { part: PatchPart }) {
 
 function StepFinishView({ part }: { part: StepFinishPart }) {
   return (
-    <div className="my-1 flex items-center gap-3 px-3 py-1 text-xs text-foreground-tertiary">
-      <div className="h-px flex-1 bg-border/50" />
-      <span>
-        Step done
+    <div className="my-2.5 flex items-center gap-3 text-[10px] text-foreground-tertiary font-mono uppercase tracking-[0.12em]">
+      <div className="h-px flex-1 bg-border/60" />
+      <span className="shrink-0">
+        step
         {part.tokens && (
-          <> · {part.tokens.input + part.tokens.output} tokens</>
+          <> · {part.tokens.input + part.tokens.output} tok</>
         )}
         {typeof part.cost === 'number' && part.cost > 0 && (
           <> · ${part.cost.toFixed(4)}</>
         )}
       </span>
-      <div className="h-px flex-1 bg-border/50" />
+      <div className="h-px flex-1 bg-border/60" />
     </div>
   );
 }
 
 function SnapshotView() {
   return (
-    <div className="my-1 flex items-center gap-2 px-3 py-1 text-xs text-foreground-tertiary">
+    <div className="my-1.5 flex items-center gap-2 px-1 text-[10px] text-foreground-tertiary font-mono uppercase tracking-[0.12em]">
       <Camera className="w-3 h-3" />
-      <span>Snapshot created</span>
+      <span>snapshot</span>
     </div>
   );
 }
@@ -498,40 +611,41 @@ function AssistantMessageView({ entry }: { entry: AssistantEntry }) {
   const isTooling = !entry.isComplete && lastPart?.type === 'tool';
   const toolName = isTooling ? (lastPart as ToolPart).tool : '';
 
+  const statusLabel = isThinking ? 'stirring…' : isTooling ? `running ${toolName}` : 'working…';
+
   return (
-    <div className="flex justify-start">
+    <div className="flex justify-start group/msg">
       <div className="max-w-[95%] w-full">
-        <div className="flex items-center gap-2 mb-1.5">
-          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-caramel flex items-center justify-center shadow-lg shadow-primary/20">
-            <Sparkles className="w-3.5 h-3.5 text-primary-foreground" />
+        <div className="flex items-center gap-2.5 mb-2">
+          <div className="grid place-items-center w-7 h-7 rounded-xl bg-primary text-primary-foreground shadow-candy-1 candy-gloss shrink-0">
+            <Sparkles className="w-4 h-4" />
           </div>
-          <span className="text-xs font-semibold text-foreground-secondary font-body">Agent</span>
+          <span className="text-[13px] font-semibold text-foreground font-candy">Agent</span>
           {!entry.isComplete && (
-            <div className="flex items-center gap-1.5 ml-1">
-              <Loader2 className="w-3 h-3 text-primary animate-spin" />
-              <span className="text-[10px] text-primary/80 font-medium">
-                {isThinking ? 'Thinking...' : isTooling ? `Running ${toolName}` : 'Working...'}
-              </span>
-            </div>
+            <span className="inline-flex items-center gap-1.5 pl-1.5 pr-2.5 h-6 rounded-full bg-primary/10 text-primary">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              <span className="text-[10px] font-medium font-mono lowercase">{statusLabel}</span>
+            </span>
           )}
           {entry.isComplete && entry.tokens && (
             <span className="text-[10px] text-foreground-tertiary ml-auto font-mono">
-              {entry.tokens.input + entry.tokens.output} tokens
+              {entry.tokens.input + entry.tokens.output} tok
               {typeof entry.cost === 'number' && entry.cost > 0 && ` · $${entry.cost.toFixed(4)}`}
             </span>
           )}
         </div>
-        <div className="pl-8">
+        <div className="pl-[38px] space-y-0.5">
           {entry.parts.map((part, i) => (
             <PartRenderer key={part.id || `part-${i}`} part={part} />
           ))}
           {!entry.isComplete && entry.parts.length === 0 && (
-            <div className="flex items-center gap-2.5 py-3 px-4 rounded-lg bg-secondary/30 border border-border/30">
-              <div className="relative">
-                <Loader2 className="w-4 h-4 text-primary animate-spin" />
-                <div className="absolute inset-0 rounded-full bg-primary/10 animate-pulse" />
-              </div>
-              <span className="text-sm text-foreground-secondary">Thinking...</span>
+            <div className="flex items-center gap-2 py-1">
+              <span className="flex gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary/70 animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-primary/70 animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-primary/70 animate-bounce" style={{ animationDelay: '300ms' }} />
+              </span>
+              <span className="text-[13px] text-foreground-tertiary font-body">thinking…</span>
             </div>
           )}
         </div>
@@ -540,11 +654,12 @@ function AssistantMessageView({ entry }: { entry: AssistantEntry }) {
   );
 }
 
-// User message bubble
+// User message — solid tinted prompt block (raspberry tint + ink), per DESIGN.md
+// "color carried by tinted accents on a clean canvas" (no rainbow gradient).
 function UserMessageView({ entry }: { entry: UserEntry }) {
   return (
     <div className="flex justify-end">
-      <div className="max-w-[80%] px-4 py-2.5 rounded-2xl rounded-br-md bg-gradient-to-r from-primary to-primary-hover text-primary-foreground text-sm whitespace-pre-wrap shadow-candy font-body">
+      <div className="max-w-[80%] px-4 py-2.5 rounded-2xl rounded-br-md bg-secondary border border-primary/15 text-foreground text-[14px] leading-relaxed whitespace-pre-wrap shadow-candy-1 font-body">
         {entry.text}
       </div>
     </div>
@@ -554,23 +669,25 @@ function UserMessageView({ entry }: { entry: UserEntry }) {
 // Todos sidebar display
 function TodosView({ todos }: { todos: TodoItem[] }) {
   if (!todos.length) return null;
+  const done = todos.filter((t) => t.status === 'completed').length;
   return (
-    <div className="px-3 py-2 border-b border-border/50">
-      <div className="flex items-center gap-2 mb-2">
+    <div className="px-4 py-3 border-b border-border/50 bg-background-secondary/40">
+      <div className="flex items-center gap-2 mb-2.5">
         <ListTodo className="w-3.5 h-3.5 text-foreground-tertiary" />
-        <span className="text-xs font-medium text-foreground-tertiary uppercase tracking-wide font-body">Tasks</span>
+        <span className="text-[10px] font-semibold text-foreground-tertiary uppercase tracking-[0.14em] font-mono">Plan</span>
+        <span className="ml-auto text-[10px] font-mono text-foreground-tertiary tabular-nums">{done}/{todos.length}</span>
       </div>
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         {todos.map((todo) => (
-          <div key={todo.id} className="flex items-center gap-2 text-xs">
+          <div key={todo.id} className="flex items-center gap-2.5 text-[13px]">
             {todo.status === 'completed' ? (
-              <CheckCircle2 className="w-3 h-3 text-success shrink-0" />
+              <CheckCircle2 className="w-3.5 h-3.5 text-mint shrink-0" />
             ) : todo.status === 'in_progress' ? (
-              <Loader2 className="w-3 h-3 text-primary animate-spin shrink-0" />
+              <Loader2 className="w-3.5 h-3.5 text-primary animate-spin shrink-0" />
             ) : (
-              <Circle className="w-3 h-3 text-foreground-tertiary shrink-0" />
+              <Circle className="w-3.5 h-3.5 text-foreground-tertiary shrink-0" />
             )}
-            <span className={todo.status === 'completed' ? 'text-foreground-tertiary line-through' : 'text-foreground-secondary'}>
+            <span className={todo.status === 'completed' ? 'text-foreground-tertiary line-through font-body' : todo.status === 'in_progress' ? 'text-foreground font-medium font-body' : 'text-foreground-secondary font-body'}>
               {todo.content}
             </span>
           </div>
@@ -635,16 +752,16 @@ function QuestionPanel({
   });
 
   return (
-    <div className="mx-4 mb-3 rounded-xl border border-primary/30 bg-gradient-to-b from-primary/10 to-background-secondary/50 overflow-hidden shadow-candy">
+    <div className="mx-4 mb-3 rounded-2xl border border-primary/25 bg-card overflow-hidden shadow-candy-2">
       {/* Header */}
-      <div className="px-4 py-3 bg-primary/10 border-b border-primary/20 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
+      <div className="px-4 py-3 bg-primary/[0.06] border-b border-primary/15 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="grid place-items-center w-7 h-7 rounded-xl bg-primary/12 shrink-0">
             <MessageSquare className="w-3.5 h-3.5 text-primary" />
           </div>
           <div>
-            <div className="text-xs font-semibold text-foreground font-body">Agent needs your input</div>
-            <div className="text-[10px] text-foreground-tertiary">Select an option or type a response</div>
+            <div className="text-[13px] font-semibold text-foreground font-candy">Agent needs your input</div>
+            <div className="text-[11px] text-foreground-tertiary font-body">Select an option or type a response</div>
           </div>
         </div>
         <button
@@ -713,13 +830,13 @@ function QuestionPanel({
           {q.custom !== false && (
             <button
               onClick={() => setShowCustom((prev) => ({ ...prev, [qIdx]: !prev[qIdx] }))}
-              className={`mt-2 px-3 py-2 text-xs rounded-lg border transition-all duration-200 cursor-pointer min-h-[36px] focus:outline-none focus:ring-2 focus:ring-primary/30 ${
+              className={`mt-2 inline-flex items-center gap-1.5 px-3 py-2 text-xs rounded-xl border transition-all duration-200 cursor-pointer min-h-[36px] focus:outline-none focus:ring-2 focus:ring-primary/30 ${
                 showCustom[qIdx]
                   ? 'bg-secondary border-border-hover text-foreground'
                   : 'bg-secondary/40 border-border/40 text-foreground-tertiary hover:text-foreground-secondary hover:border-border-hover'
               }`}
             >
-              <span className="mr-1">✎</span> Custom answer...
+              <Edit2 className="w-3 h-3" /> Custom answer…
             </button>
           )}
           {showCustom[qIdx] && (
@@ -757,13 +874,13 @@ function QuestionPanel({
           <button
             onClick={handleSubmit}
             disabled={!hasSelection}
-            className="px-5 py-2 text-xs font-medium rounded-lg bg-gradient-to-r from-primary to-primary-hover text-primary-foreground hover:shadow-candy
-              disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-150 cursor-pointer
-              shadow-candy min-h-[36px]
+            className="candy-btn inline-flex items-center gap-1.5 px-5 py-2 text-xs font-semibold rounded-xl
+              disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer min-h-[36px]
               focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:focus:ring-0 btn-press font-body"
             aria-label="Submit answer"
           >
-            Submit Answer →
+            Submit answer
+            <ArrowUp className="w-3.5 h-3.5 rotate-90" />
           </button>
         </div>
       </div>
@@ -791,38 +908,39 @@ function SessionSidebar({
   onDelete: (id: string) => void;
 }) {
   return (
-    <div className="w-56 border-r border-border/50 flex flex-col glass shrink-0">
-      <div className="p-3 border-b border-border/50 flex items-center justify-between">
-        <span className="text-xs font-medium text-foreground-secondary uppercase tracking-wide font-body">Sessions</span>
+    <div className="w-56 border-r border-border/60 flex flex-col bg-background-secondary/40 shrink-0">
+      <div className="px-3 py-3 border-b border-border/60 flex items-center justify-between">
+        <span className="text-[10px] font-semibold text-foreground-tertiary uppercase tracking-[0.14em] font-mono">Sessions</span>
         <button
           onClick={onNew}
-          className="p-2 rounded hover:bg-primary/10 text-foreground-secondary hover:text-primary transition-colors duration-200 cursor-pointer min-w-[36px] min-h-[36px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-primary/30"
+          className="grid place-items-center w-8 h-8 rounded-lg hover:bg-primary/10 text-foreground-secondary hover:text-primary transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30"
           title="New session"
           aria-label="Create new session"
         >
           <Plus className="w-4 h-4" />
         </button>
       </div>
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5">
         {sessions.length === 0 && (
-          <p className="p-3 text-xs text-foreground-tertiary">No sessions yet</p>
+          <p className="px-2 py-3 text-xs text-foreground-tertiary font-body">No sessions yet</p>
         )}
         {sessions.map((s) => {
           const hasPendingQ = pendingQuestionSessionIds.has(s.id);
+          const active = s.id === currentSessionId;
           return (
             <div
               key={s.id}
-              className={`group flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors ${
-                s.id === currentSessionId
+              className={`group flex items-center gap-2 px-2.5 py-2 rounded-xl cursor-pointer transition-colors ${
+                active
                   ? 'bg-primary/10 text-foreground'
                   : hasPendingQ
-                    ? 'text-primary hover:bg-primary/5 hover:text-primary'
-                    : 'text-foreground-secondary hover:bg-secondary/60 hover:text-foreground'
+                    ? 'text-primary hover:bg-primary/5'
+                    : 'text-foreground-secondary hover:bg-secondary/70 hover:text-foreground'
               }`}
               onClick={() => onSelect(s.id)}
             >
-              <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${hasPendingQ ? 'text-primary' : ''}`} />
-              <span className="text-xs truncate flex-1 font-body">{s.title || 'Untitled'}</span>
+              <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${hasPendingQ || active ? 'text-primary' : ''}`} />
+              <span className="text-[13px] truncate flex-1 font-body">{s.title || 'Untitled'}</span>
               {hasPendingQ && (
                 <span className="w-2 h-2 rounded-full bg-primary animate-pulse shrink-0" title="Awaiting your response" />
               )}
@@ -831,7 +949,7 @@ function SessionSidebar({
                   e.stopPropagation();
                   onDelete(s.id);
                 }}
-                className="opacity-60 group-hover:opacity-100 p-1.5 rounded hover:bg-error/10 transition-all duration-200 cursor-pointer min-w-[28px] min-h-[28px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-error/30"
+                className="opacity-0 group-hover:opacity-100 grid place-items-center w-6 h-6 rounded-md hover:bg-error/10 transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-error/30 shrink-0"
                 title="Delete session"
                 aria-label={`Delete session ${s.title || 'Untitled'}`}
               >
@@ -1030,7 +1148,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
         sessionID: '',
         messageID: `greeting-${Date.now()}`,
         type: 'text' as const,
-        text: `👋 Hi! I'm **${skill.name}**.\n\n${skill.description}\n\nHow can I help you today?`,
+        text: `Hi! I'm **${skill.name}**.\n\n${skill.description}\n\nHow can I help you today?`,
       }],
       isComplete: true,
     };
@@ -2071,84 +2189,99 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       })()
       : null;
 
+  // ── Runtime mode badge (cf-cc / cf-ai / opencode) ─────────────────────────
+  const modeBadge =
+    runtimeMode === 'cf-cc'
+      ? { label: 'Claude Code', tone: 'text-primary bg-primary/10 border-primary/20' }
+      : runtimeMode === 'cf-ai'
+        ? { label: 'Workers AI', tone: 'text-info bg-info/10 border-info/20' }
+        : { label: 'OpenCode', tone: 'text-grape bg-grape/10 border-grape/20' };
+
+  // ── Live status pill — reads the streaming state with a candy-kitchen
+  //    flavor while staying legible (idle / warming / stirring / plating /
+  //    running tool / error). Pure presentation; derived from existing state.
+  const statusPill = (() => {
+    if (connecting) return { label: 'warming up', dot: 'bg-caramel', text: 'text-caramel', spin: true };
+    if (connectionError && !connected) return { label: 'disconnected', dot: 'bg-error', text: 'text-error', spin: false };
+    if (isRunning) {
+      const phase = (sandboxPhase || sessionStatus || '').toLowerCase();
+      let label = 'cooking…';
+      if (phase.includes('think') || sessionStatus === 'busy') label = 'stirring…';
+      else if (phase === 'claude' || phase === 'opencode') label = 'plating…';
+      else if (phase.includes('start') || phase.includes('restore') || phase.includes('setup')) label = 'prepping…';
+      else if (phase.includes('tool')) label = 'running tool…';
+      return { label, dot: 'bg-primary', text: 'text-primary', spin: true };
+    }
+    return { label: runtimeMode === 'cf-cc' ? 'warm · ready' : 'ready', dot: 'bg-mint', text: 'text-mint', spin: false };
+  })();
+
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[110] backdrop-blur-md">
-      <div className="relative bg-background rounded-2xl w-full max-w-7xl h-[92vh] mx-4 overflow-hidden flex flex-col border border-border/50 shadow-candy-lg">
+    <div className="fixed inset-0 bg-foreground/50 flex items-center justify-center z-[110] backdrop-blur-md p-3 sm:p-4 animate-fade-in">
+      <div className="relative bg-background rounded-3xl w-full max-w-7xl h-[92vh] overflow-hidden flex flex-col border border-border shadow-candy-3 animate-zoom-in">
         {/* candy-wrapper hairline */}
-        <div className="absolute inset-x-0 top-0 h-[3px] bg-candy-gradient z-10" />
+        <div className="absolute inset-x-0 top-0 h-[3px] bg-primary z-10" />
         {/* ── Header ─────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/50 glass-strong shrink-0">
-          <div className="flex items-center gap-3.5">
-            <div className="grid place-items-center w-10 h-10 rounded-xl bg-candy-gradient candy-gloss text-xl shadow-candy">
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 border-b border-border/60 glass-strong shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="grid place-items-center w-10 h-10 rounded-2xl bg-primary candy-gloss text-xl shadow-candy-1 shrink-0">
               <span>{skill.icon || '🍭'}</span>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-semibold text-foreground font-candy">{skill.name}</h2>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <h2 className="text-[15px] font-semibold text-foreground font-candy truncate">{skill.name}</h2>
+                <span className={`hidden sm:inline-flex items-center px-2 h-[18px] rounded-full border text-[10px] font-medium font-mono uppercase tracking-wide shrink-0 ${modeBadge.tone}`}>
+                  {modeBadge.label}
+                </span>
                 {githubUrl && (
                   <a
                     href={githubUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary/60 hover:bg-secondary text-foreground-tertiary hover:text-foreground transition-all duration-200 text-[11px] font-medium"
+                    className="hidden md:flex items-center gap-1 px-2 py-0.5 rounded-lg bg-secondary/60 hover:bg-secondary text-foreground-tertiary hover:text-foreground transition-all duration-200 text-[11px] font-medium shrink-0"
                     title="View on GitHub"
                   >
                     <Github className="w-3 h-3" />
-                    <span className="hidden sm:inline">Source</span>
+                    <span className="hidden lg:inline">Source</span>
                     <ExternalLink className="w-2.5 h-2.5 opacity-50" />
                   </a>
                 )}
               </div>
-              <div className="flex items-center gap-2.5 text-xs mt-0.5">
-                {connecting ? (
-                  <span className="flex items-center gap-1.5 text-primary">
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    Connecting...
-                  </span>
-                ) : connectionError && !connected ? (
-                  <span className="flex items-center gap-1.5 text-error">
-                    <AlertCircle className="w-3 h-3" />
-                    Disconnected
-                  </span>
-                ) : (
-                  <span className="gumdrop inline-flex items-center gap-1.5 px-2 py-0.5 text-[11px] font-mono font-bold">
-                    <span className="w-1.5 h-1.5 rounded-full bg-white/90 animate-pulse" />
-                    {runtimeMode === 'cf-cc' ? 'Warm · ready' : 'Connected'}
-                  </span>
-                )}
+              <div className="flex items-center gap-2 mt-1">
+                <span className={`inline-flex items-center gap-1.5 pl-1.5 pr-2.5 h-[22px] rounded-full bg-foreground/[0.04] border border-border/60 text-[11px] font-mono font-medium ${statusPill.text}`}>
+                  {statusPill.spin ? (
+                    <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                  ) : (
+                    <span className={`w-1.5 h-1.5 rounded-full ${statusPill.dot} ${statusPill.label.endsWith('ready') ? 'animate-pulse' : ''}`} />
+                  )}
+                  {statusPill.label}
+                </span>
                 {serverVersion && (
-                  <span className="text-foreground-muted font-mono">v{serverVersion}</span>
-                )}
-                {sessionStatus && sessionStatus !== 'idle' && (
-                  <span className="text-primary flex items-center gap-1">
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    {sessionStatus}
-                  </span>
+                  <span className="hidden sm:inline text-foreground-muted font-mono text-[10px]">v{serverVersion}</span>
                 )}
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 shrink-0">
             {/* Sessions toggle (mobile) */}
             <button
               onClick={() => setShowSessions(!showSessions)}
-              className="md:hidden p-2.5 rounded-lg hover:bg-secondary text-foreground-tertiary hover:text-foreground transition-colors"
+              className="md:hidden grid place-items-center w-9 h-9 rounded-xl hover:bg-secondary text-foreground-tertiary hover:text-foreground transition-colors"
               title="Toggle sessions"
             >
               <MessageSquare className="w-4 h-4" />
             </button>
 
             {/* Model label (fixed to GLM-4.5) */}
-            <div className="flex items-center gap-2 px-3 py-2 text-xs border border-border/50 rounded-lg text-foreground-secondary min-h-[36px] font-mono">
+            <div className="hidden sm:flex items-center gap-1.5 px-3 h-9 text-[11px] border border-border/60 rounded-xl text-foreground-secondary font-mono">
               <Settings className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">GLM-4.5</span>
+              <span>GLM-4.5</span>
             </div>
 
             {/* Close */}
             <button
               onClick={onClose}
-              className="p-2.5 rounded-lg hover:bg-secondary text-foreground-tertiary hover:text-foreground transition-all duration-200 cursor-pointer min-w-[40px] min-h-[40px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-border/30"
+              className="grid place-items-center w-9 h-9 rounded-full bg-secondary/70 hover:bg-secondary text-foreground-secondary hover:text-foreground transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring"
               aria-label="Close skill executor"
             >
               <X className="w-5 h-5" />
@@ -2175,24 +2308,24 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
             {/* Todos bar */}
             <TodosView todos={todos} />
 
-            {/* Session status bar — shows when AI is working */}
+            {/* Run console strip — slim, on-system; shows while the agent works */}
             {isRunning && (
-              <div className="shrink-0 px-5 py-3 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-b border-primary/10">
+              <div className="shrink-0 px-4 sm:px-5 py-2.5 bg-primary/[0.05] border-b border-primary/12">
                 <div className="flex items-center gap-3">
-                  <div className="relative flex items-center justify-center w-5 h-5">
-                    <Loader2 className="w-5 h-5 text-primary animate-spin" />
-                  </div>
-                  <span className="text-sm text-primary font-medium font-body">
-                    {sessionStatus === 'busy' ? 'Agent is working...' : sessionStatus || 'Processing...'}
+                  <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />
+                  <span className="text-[13px] text-primary font-medium font-body">
+                    {sessionStatus === 'busy' ? 'Agent is working' : sessionStatus || 'Processing'}
                   </span>
-                  <div className="flex-1 h-0.5 bg-secondary/50 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-primary to-caramel rounded-full animate-pulse" style={{ width: '60%' }} />
+                  {/* indeterminate candy progress track */}
+                  <div className="flex-1 h-1 bg-primary/10 rounded-full overflow-hidden">
+                    <div className="h-full w-1/3 bg-primary/60 rounded-full animate-shimmer" style={{ backgroundImage: 'linear-gradient(90deg, transparent, var(--color-primary), transparent)', backgroundSize: '200% 100%' }} />
                   </div>
                   <button
                     onClick={handleAbort}
-                    className="px-3 py-1.5 text-xs rounded-lg bg-error/10 hover:bg-error/20 text-error hover:text-error/80 border border-error/10 transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-error/30 btn-press"
+                    className="inline-flex items-center gap-1.5 px-3 h-7 text-xs font-medium rounded-lg bg-error/10 hover:bg-error/20 text-error border border-error/15 transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-error/30 btn-press"
                     aria-label="Stop agent"
                   >
+                    <Square className="w-3 h-3 fill-current" />
                     Stop
                   </button>
                 </div>
@@ -2200,24 +2333,28 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
             )}
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto min-h-0 p-4 space-y-4 relative">
+            <div className="flex-1 overflow-y-auto min-h-0 px-4 sm:px-6 py-5 space-y-5 relative bg-background">
               {/* Connection overlay — shown inside chat area, input stays visible */}
               {connecting && (
-                <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm rounded-lg">
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/85 backdrop-blur-sm">
                   <div className="text-center">
-                    <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto mb-3" />
-                    <h3 className="text-sm font-semibold text-foreground font-candy">Connecting to OpenCode</h3>
-                    <p className="text-xs text-foreground-tertiary mt-1 font-body">Establishing connection...</p>
+                    <div className="grid place-items-center w-14 h-14 rounded-2xl bg-primary/10 mx-auto mb-4">
+                      <Loader2 className="w-7 h-7 text-primary animate-spin" />
+                    </div>
+                    <h3 className="text-[15px] font-semibold text-foreground font-candy">Warming up the kitchen</h3>
+                    <p className="text-xs text-foreground-tertiary mt-1.5 font-body">Connecting to the agent runtime…</p>
                   </div>
                 </div>
               )}
               {connectionError && !connected && !connecting && (
-                <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm rounded-lg">
-                  <div className="text-center max-w-sm px-4">
-                    <AlertCircle className="w-8 h-8 text-error mx-auto mb-3" />
-                    <h3 className="text-sm font-semibold text-foreground font-candy">Connection Failed</h3>
-                    <p className="text-xs text-error/80 mt-1">{connectionError}</p>
-                    <div className="flex gap-2 justify-center mt-4">
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/85 backdrop-blur-sm px-4">
+                  <div className="text-center max-w-sm w-full p-6 rounded-2xl bg-card border border-error/20 shadow-candy-2">
+                    <div className="grid place-items-center w-14 h-14 rounded-2xl bg-error/10 mx-auto mb-4">
+                      <AlertCircle className="w-7 h-7 text-error" />
+                    </div>
+                    <h3 className="text-[15px] font-semibold text-foreground font-candy">Connection failed</h3>
+                    <p className="text-xs text-foreground-secondary mt-1.5 font-body break-words">{connectionError}</p>
+                    <div className="flex gap-2 justify-center mt-5">
                       <button
                         onClick={() => {
                           setConnecting(true);
@@ -2230,13 +2367,13 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                             .catch((err) => setConnectionError((err as Error).message))
                             .finally(() => setConnecting(false));
                         }}
-                        className="px-4 py-2 bg-gradient-to-r from-primary to-primary-hover text-primary-foreground text-xs rounded-lg hover:shadow-candy-lg transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50 shadow-candy btn-press font-body"
+                        className="candy-btn px-5 h-9 text-xs font-semibold rounded-xl cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50 btn-press font-body"
                       >
                         Retry
                       </button>
                       <button
                         onClick={onClose}
-                        className="px-4 py-2 glass text-foreground-secondary text-xs rounded-lg hover:text-foreground transition-all cursor-pointer focus:outline-none border border-border/50 btn-press font-body"
+                        className="px-5 h-9 bg-card text-foreground-secondary text-xs font-medium rounded-xl hover:text-foreground hover:border-border-hover transition-all cursor-pointer focus:outline-none border border-border btn-press font-body"
                       >
                         Close
                       </button>
@@ -2246,50 +2383,48 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
               )}
               {/* Skill intro: self-intro + view instructions + edit */}
               {showSkillBanner && skillLoadStatus !== 'idle' && (
-                <div className={`rounded-lg border text-sm overflow-hidden ${
-                  skillLoadStatus === 'loaded'
-                    ? 'bg-success/10 border-success/30 text-success'
-                    : skillLoadStatus === 'loading'
-                      ? 'bg-primary/10 border-primary/30 text-primary'
-                      : 'bg-warning/10 border-warning/30 text-warning'
-                }`}>
+                <div className="rounded-2xl border border-border/70 bg-card/70 text-sm overflow-hidden shadow-candy-1">
                   <div className="flex items-start gap-3 px-4 py-3">
-                    {skillLoadStatus === 'loading' ? (
-                      <Loader2 className="w-4 h-4 animate-spin shrink-0 mt-0.5" />
-                    ) : skillLoadStatus === 'loaded' ? (
-                      <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
-                    ) : (
-                      <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                    )}
+                    <span className={`grid place-items-center w-8 h-8 rounded-xl shrink-0 ${
+                      skillLoadStatus === 'loaded' ? 'bg-mint/10' : skillLoadStatus === 'loading' ? 'bg-primary/10' : 'bg-warning/10'
+                    }`}>
+                      {skillLoadStatus === 'loading' ? (
+                        <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                      ) : skillLoadStatus === 'loaded' ? (
+                        <CheckCircle2 className="w-4 h-4 text-mint" />
+                      ) : (
+                        <AlertCircle className="w-4 h-4 text-warning" />
+                      )}
+                    </span>
                     <div className="flex-1 min-w-0">
-                      <span className="font-medium">
+                      <span className="font-semibold text-foreground font-body">
                         {skillLoadStatus === 'loading'
-                          ? `Loading ${skill.name} skill...`
+                          ? `Loading ${skill.name}…`
                           : skillLoadStatus === 'loaded'
-                            ? `You're using: ${skill.name}`
+                            ? `Running ${skill.name}`
                             : `Could not load ${skill.name} SKILL.md`}
                       </span>
                       {skillLoadStatus === 'loaded' && (
-                        <p className="text-xs opacity-80 mt-1">{skill.description}</p>
+                        <p className="text-xs text-foreground-secondary mt-1 leading-relaxed font-body">{skill.description}</p>
                       )}
                       {skillLoadStatus === 'loaded' && (skillInstructions || skill.skillMdUrl) && (
-                        <div className="flex flex-wrap items-center gap-3 mt-2">
+                        <div className="flex flex-wrap items-center gap-2 mt-2.5">
                           {skillInstructions && (
                             <button
                               type="button"
                               onClick={() => setShowViewInstructions(v => !v)}
-                              className="inline-flex items-center gap-1.5 text-xs font-medium opacity-90 hover:opacity-100 underline underline-offset-2 cursor-pointer"
+                              className="inline-flex items-center gap-1.5 px-2.5 h-7 text-[11px] font-medium rounded-lg bg-secondary/70 text-foreground-secondary hover:text-foreground hover:bg-secondary transition-colors cursor-pointer"
                             >
                               <FileText className="w-3.5 h-3.5" />
-                              {showViewInstructions ? 'Hide instructions' : 'View full instructions'}
+                              {showViewInstructions ? 'Hide instructions' : 'View instructions'}
                             </button>
                           )}
                           <button
                             onClick={handleOpenEditModal}
-                            className="inline-flex items-center gap-1.5 text-xs font-medium opacity-90 hover:opacity-100 underline underline-offset-2 cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-2.5 h-7 text-[11px] font-medium rounded-lg bg-secondary/70 text-foreground-secondary hover:text-foreground hover:bg-secondary transition-colors cursor-pointer"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
-                            Edit & Save as My Skill
+                            Edit &amp; save
                           </button>
                         </div>
                       )}
@@ -2297,7 +2432,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                     {skillLoadStatus !== 'loading' && (
                       <button
                         onClick={() => setShowSkillBanner(false)}
-                        className="p-2 rounded hover:bg-secondary/50 shrink-0 cursor-pointer transition-all duration-200 min-w-[36px] min-h-[36px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-border/20"
+                        className="grid place-items-center w-8 h-8 rounded-lg hover:bg-secondary/70 shrink-0 cursor-pointer transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-border/20 text-foreground-tertiary hover:text-foreground"
                         aria-label="Dismiss skill intro"
                       >
                         <X className="w-3.5 h-3.5" />
@@ -2316,8 +2451,8 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                         return (
                           <>
                             {segments.length > 0 && (
-                              <div className="px-4 py-3 bg-secondary/30 border-b border-border/30">
-                                <div className="text-xs font-medium opacity-80 mb-2 font-body">File structure</div>
+                              <div className="px-4 py-3 bg-background-secondary/40 border-b border-border/30">
+                                <div className="text-[10px] font-semibold text-foreground-tertiary uppercase tracking-[0.12em] mb-2 font-mono">File structure</div>
                                 <div className="font-mono text-xs space-y-0.5">
                                   {segments.map((name, i) => {
                                     const isFile = i === segments.length - 1;
@@ -2329,13 +2464,13 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                                         style={{ paddingLeft: depth * 12 }}
                                       >
                                         {isFile ? (
-                                          <FileText className="w-3.5 h-3.5 shrink-0 opacity-70" />
+                                          <FileText className="w-3.5 h-3.5 shrink-0 text-caramel" />
                                         ) : depth === 0 ? (
-                                          <FolderOpen className="w-3.5 h-3.5 shrink-0 opacity-70" />
+                                          <FolderOpen className="w-3.5 h-3.5 shrink-0 text-foreground-tertiary" />
                                         ) : (
-                                          <Folder className="w-3.5 h-3.5 shrink-0 opacity-70" />
+                                          <Folder className="w-3.5 h-3.5 shrink-0 text-foreground-tertiary" />
                                         )}
-                                        <span className={isFile ? 'text-caramel' : 'opacity-90'}>{name}</span>
+                                        <span className={isFile ? 'text-caramel font-medium' : 'text-foreground-secondary'}>{name}</span>
                                       </div>
                                     );
                                   })}
@@ -2344,8 +2479,8 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                             )}
                             {skillInstructions && (
                               <div className="flex-1 min-h-0 max-h-64 overflow-y-auto">
-                                <div className="text-xs font-medium opacity-80 px-4 pt-3 pb-1">Content</div>
-                                <pre className="p-4 pt-0 text-xs whitespace-pre-wrap font-sans opacity-90">
+                                <div className="text-[10px] font-semibold text-foreground-tertiary uppercase tracking-[0.12em] px-4 pt-3 pb-1 font-mono">Content</div>
+                                <pre className="p-4 pt-0 text-xs whitespace-pre-wrap font-mono text-foreground-secondary leading-relaxed">
                                   {skillInstructions}
                                 </pre>
                               </div>
@@ -2359,30 +2494,32 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
               )}
 
               {connectionError && connected && (
-                <div className="flex items-center gap-2 px-3 py-2 bg-error/10 border border-error/30 rounded-lg text-sm text-error">
+                <div className="flex items-center gap-2.5 px-3.5 py-2.5 bg-error/[0.06] border border-error/25 rounded-xl text-sm text-error font-body">
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   {connectionError}
                 </div>
               )}
 
               {!greetingEntry && entries.length === 0 && (
-                <div className="flex flex-col items-center justify-center h-full text-center">
-                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/15 to-caramel/15 flex items-center justify-center mb-6 ring-1 ring-primary/10 shadow-candy">
-                    <Sparkles className="w-10 h-10 text-primary/80" />
+                <div className="flex flex-col items-center justify-center h-full text-center px-4">
+                  <div className="grid place-items-center w-20 h-20 rounded-3xl bg-primary/[0.06] ring-1 ring-primary/15 mb-6 shadow-candy-1">
+                    <div className="grid place-items-center w-14 h-14 rounded-2xl bg-primary candy-gloss shadow-candy-1">
+                      <Sparkles className="w-7 h-7 text-primary-foreground" />
+                    </div>
                   </div>
-                  <h3 className="text-xl font-semibold text-foreground mb-2 font-candy">
+                  <h3 className="text-2xl font-semibold text-foreground mb-2 font-candy">
                     Ready to run {skill.name}
                   </h3>
-                  <p className="text-sm text-foreground-tertiary max-w-md mb-6 leading-relaxed font-body">
+                  <p className="text-sm text-foreground-secondary max-w-md mb-6 leading-relaxed font-body">
                     {skillLoadStatus === 'loaded'
-                      ? 'Skill instructions loaded successfully. Type a message below to start working with this skill.'
+                      ? 'Skill instructions are loaded. Describe a task below and the agent will get cooking.'
                       : skillLoadStatus === 'loading'
-                        ? 'Loading skill instructions...'
-                        : 'Type a message to start the agent. It will use OpenCode on the server to execute tasks with full tool access.'}
+                        ? 'Loading skill instructions…'
+                        : 'Describe a task below to start the agent. It runs with full tool access on the server.'}
                   </p>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2.5">
                     {skillLoadStatus === 'loaded' && (
-                      <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-success/10 border border-success/15 text-success text-xs font-medium">
+                      <div className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-full bg-mint/10 border border-mint/20 text-mint text-xs font-medium font-body">
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         Skill loaded
                       </div>
@@ -2392,17 +2529,17 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                         href={githubUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 px-4 py-2 rounded-full glass border border-border/50 text-foreground-secondary hover:text-foreground text-xs font-medium transition-all duration-200 hover:shadow-warm"
+                        className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-full bg-card border border-border text-foreground-secondary hover:text-foreground hover:border-border-hover text-xs font-medium transition-all duration-200 hover:shadow-candy-1"
                       >
                         <Github className="w-3.5 h-3.5" />
-                        View Source
+                        View source
                         <ExternalLink className="w-3 h-3 opacity-50" />
                       </a>
                     )}
                   </div>
                   <button
                     onClick={() => inputRef.current?.focus()}
-                    className="mt-6 px-6 py-3 bg-gradient-to-r from-primary to-primary-hover text-primary-foreground rounded-xl hover:shadow-candy-lg transition-all duration-300 cursor-pointer text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 shadow-candy btn-press font-body"
+                    className="candy-btn mt-6 px-6 h-11 rounded-2xl cursor-pointer text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/50 btn-press font-body"
                     aria-label="Start a conversation"
                   >
                     Start a conversation
@@ -2604,8 +2741,8 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
             )}
 
             {/* ── Input area ─────────────────────────────────────────── */}
-            <div className="px-5 py-4 border-t border-border/50 glass shrink-0">
-              <div className="relative max-w-4xl mx-auto">
+            <div className="px-4 sm:px-5 py-4 border-t border-border/60 glass shrink-0">
+              <div className="max-w-4xl mx-auto">
                 {/* Hidden file input */}
                 <input
                   ref={fileInputRef}
@@ -2617,130 +2754,135 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                   aria-label="Attach files"
                 />
 
-                {/* File attachments preview */}
-                {attachedFiles.length > 0 && (
-                  <div className="mb-2.5 flex flex-wrap gap-2">
-                    {attachedFiles.map((file) => {
-                      const FileIcon = getFileIcon(file.mimeType);
-                      return (
-                        <div
-                          key={file.id}
-                          className="group relative flex items-center gap-2 px-3 py-2 bg-secondary/40 border border-border/50 rounded-lg hover:bg-secondary/60 transition-colors"
-                        >
-                          {isImageFile(file.mimeType) ? (
-                            <img
-                              src={file.dataUrl}
-                              alt={file.fileName}
-                              className="w-8 h-8 object-cover rounded"
-                            />
-                          ) : (
-                            <FileIcon className="w-4 h-4 text-foreground-tertiary" />
-                          )}
-                          <span className="text-xs text-foreground-secondary max-w-[150px] truncate font-body">
-                            {file.fileName}
-                          </span>
-                          <button
-                            onClick={() => removeFile(file.id)}
-                            className="ml-1 p-1 rounded hover:bg-error/10 text-foreground-tertiary hover:text-error transition-colors cursor-pointer min-w-[20px] min-h-[20px] flex items-center justify-center"
-                            aria-label={`Remove ${file.fileName}`}
+                {/* Composer shell — one elevated rounded surface (Claude/ChatGPT) */}
+                <div className="rounded-2xl border border-input-border bg-input shadow-candy-1 transition-colors duration-200 focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/20">
+                  {/* File attachments preview (chips inside the shell) */}
+                  {attachedFiles.length > 0 && (
+                    <div className="flex flex-wrap gap-2 px-3 pt-3">
+                      {attachedFiles.map((file) => {
+                        const FileIcon = getFileIcon(file.mimeType);
+                        return (
+                          <div
+                            key={file.id}
+                            className="group relative flex items-center gap-2 pl-1.5 pr-2 py-1.5 bg-secondary/70 border border-border/60 rounded-xl"
                           >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                            {isImageFile(file.mimeType) ? (
+                              <img
+                                src={file.dataUrl}
+                                alt={file.fileName}
+                                className="w-7 h-7 object-cover rounded-lg"
+                              />
+                            ) : (
+                              <span className="grid place-items-center w-7 h-7 rounded-lg bg-background-secondary">
+                                <FileIcon className="w-3.5 h-3.5 text-foreground-tertiary" />
+                              </span>
+                            )}
+                            <span className="text-xs text-foreground-secondary max-w-[150px] truncate font-body">
+                              {file.fileName}
+                            </span>
+                            <button
+                              onClick={() => removeFile(file.id)}
+                              className="grid place-items-center w-5 h-5 rounded-md hover:bg-error/10 text-foreground-tertiary hover:text-error transition-colors cursor-pointer"
+                              aria-label={`Remove ${file.fileName}`}
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
 
-                <textarea
-                  ref={inputRef}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder={
-                    activeQuestion
-                      ? "Type your answer here..."
-                      : skillLoadStatus === 'loading'
-                        ? "Loading skill instructions… one moment"
-                        : "What should the agent do?"
-                  }
-                  rows={2}
-                  disabled={isRunning || skillLoadStatus === 'loading'}
-                  className="w-full pl-4 pr-28 py-3.5 bg-input border border-input-border rounded-xl
-                    text-sm text-foreground placeholder-foreground-tertiary font-body
-                    focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/30
-                    resize-none disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200
-                    hover:border-border-hover hover:bg-secondary/30"
-                  aria-label="Message input"
-                />
-                <div className="absolute right-2.5 bottom-2.5 flex items-center gap-1.5">
-                  {/* File attachment button */}
-                  {!isRunning && (
+                  <textarea
+                    ref={inputRef}
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder={
+                      activeQuestion
+                        ? "Type your answer here…"
+                        : skillLoadStatus === 'loading'
+                          ? "Loading skill instructions… one moment"
+                          : "What should the agent do?"
+                    }
+                    rows={2}
+                    disabled={isRunning || skillLoadStatus === 'loading'}
+                    className="w-full px-4 pt-3.5 pb-1 bg-transparent border-0
+                      text-sm text-foreground placeholder-foreground-tertiary font-body leading-relaxed
+                      focus:outline-none focus:ring-0
+                      resize-none disabled:opacity-50 disabled:cursor-not-allowed"
+                    aria-label="Message input"
+                  />
+
+                  {/* Control row inside the shell */}
+                  <div className="flex items-center gap-2 px-2.5 pb-2.5 pt-1">
+                    {/* File attachment button */}
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       disabled={isRunning}
-                      className="p-2.5 bg-secondary/40 text-foreground-tertiary rounded-lg hover:bg-secondary hover:text-foreground-secondary
-                        disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer min-w-[38px] min-h-[38px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-border/30"
+                      className="grid place-items-center w-9 h-9 bg-transparent text-foreground-tertiary rounded-xl hover:bg-secondary hover:text-foreground-secondary
+                        disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-border/30"
                       title="Attach files"
                       aria-label="Attach files"
                     >
                       <Paperclip className="w-4 h-4" />
                     </button>
-                  )}
-                  {isRunning ? (
-                    <button
-                      onClick={handleAbort}
-                      className="p-2.5 bg-error/15 text-error rounded-lg hover:bg-error/25 hover:text-error/80 border border-error/10 transition-all duration-200 cursor-pointer min-w-[38px] min-h-[38px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-error/50 btn-press"
-                      title="Stop agent"
-                      aria-label="Stop agent"
-                    >
-                      <Square className="w-4 h-4" />
-                    </button>
-                  ) : (
-                    <button
-                      onClick={handleSend}
-                      disabled={(!input.trim() && attachedFiles.length === 0) || skillLoadStatus === 'loading'}
-                        className="p-2.5 bg-gradient-to-r from-primary to-primary-hover text-primary-foreground rounded-lg hover:shadow-candy
-                        disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer min-w-[38px] min-h-[38px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-primary/50 shadow-candy disabled:shadow-none btn-press"
-                      title="Send (Enter)"
-                      aria-label="Send message"
-                    >
-                      <Send className="w-4 h-4" />
-                    </button>
-                  )}
+
+                    <span className="ml-auto text-[11px] text-foreground-muted font-mono hidden sm:inline pr-1">
+                      Enter to send
+                    </span>
+
+                    {isRunning ? (
+                      <button
+                        onClick={handleAbort}
+                        className="grid place-items-center w-9 h-9 bg-error/15 text-error rounded-xl hover:bg-error/25 border border-error/15 transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-error/50 btn-press"
+                        title="Stop agent"
+                        aria-label="Stop agent"
+                      >
+                        <Square className="w-4 h-4 fill-current" />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleSend}
+                        disabled={(!input.trim() && attachedFiles.length === 0) || skillLoadStatus === 'loading'}
+                        className="candy-btn grid place-items-center w-9 h-9 rounded-xl
+                          disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50 btn-press"
+                        title="Send (Enter)"
+                        aria-label="Send message"
+                      >
+                        <ArrowUp className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-              <div className="flex flex-col gap-2 mt-2.5 px-1 max-w-4xl mx-auto">
+              <div className="flex flex-col gap-2.5 mt-2.5 px-0.5 max-w-4xl mx-auto">
                 {/* Optional repo input — empty uses the sandbox's scratch dir */}
                 {(runtimeMode === 'opencode' || runtimeMode === 'cf-cc') && (
                   <div className="flex items-center gap-2 text-[11px]">
-                    <span className="text-foreground-secondary shrink-0">
-                      Repo (optional):
+                    <span className="text-foreground-tertiary shrink-0 font-mono uppercase tracking-wide text-[10px]">
+                      Repo
                     </span>
                     <input
                       type="text"
                       value={sandboxRepo}
                       onChange={(e) => setSandboxRepo(e.target.value)}
-                      placeholder="leave empty for fastest TTFR (uses scratch dir)"
-                      className="flex-1 px-2 py-1 rounded border border-border bg-background-secondary text-foreground font-mono text-[11px]"
+                      placeholder="leave empty for fastest run (uses scratch dir)"
+                      className="flex-1 px-2.5 h-7 rounded-lg border border-border bg-background-secondary text-foreground placeholder-foreground-muted font-mono text-[11px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-colors"
                     />
                   </div>
                 )}
 
                 <div className="flex justify-between items-center gap-3 flex-wrap">
-                  <span className="text-[11px] text-foreground-muted font-body">
-                    Enter to send · Shift+Enter for new line
-                  </span>
-
                   {/* Runtime picker — Claude Code (persistent warm session)
                       is the primary path and listed first. */}
-                  <div className="flex items-center gap-1 text-[11px] rounded-md border border-border bg-background-secondary p-0.5">
+                  <div className="flex items-center gap-0.5 text-[11px] rounded-xl border border-border bg-background-secondary p-1">
                     {([
-                      { id: 'cf-cc', label: '🍭 Claude Code',
+                      { id: 'cf-cc', label: 'Claude Code', Icon: Zap,
                         title: 'Persistent warm Claude Code session over WebSocket — no per-turn cold start, instant after the first turn. Recommended.' },
-                      { id: 'cf-ai', label: '☁️ CF AI',
+                      { id: 'cf-ai', label: 'Workers AI', Icon: Sparkles,
                         title: 'Workers AI Llama 3.1 8B — single-shot chat, no tools' },
-                      { id: 'opencode', label: '🤖 OpenCode',
+                      { id: 'opencode', label: 'OpenCode', Icon: Terminal,
                         title: 'Legacy local OpenCode SDK path (fallback)' },
                     ] as const).map(opt => (
                       <button
@@ -2748,44 +2890,47 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                         type="button"
                         onClick={() => setRuntimeMode(opt.id)}
                         title={opt.title}
-                        className={`px-2 py-1 rounded transition-colors ${
+                        className={`inline-flex items-center gap-1.5 px-2.5 h-7 rounded-lg font-medium transition-colors ${
                           runtimeMode === opt.id
-                            ? 'bg-primary text-white font-semibold'
-                            : 'text-foreground-secondary hover:text-foreground'
+                            ? 'bg-primary text-primary-foreground shadow-candy-1'
+                            : 'text-foreground-secondary hover:text-foreground hover:bg-secondary/70'
                         }`}
                       >
-                        {opt.label}
+                        <opt.Icon className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">{opt.label}</span>
                       </button>
                     ))}
                   </div>
 
-                  {/* Budget chip — per mode */}
-                  {runtimeMode === 'opencode' && ocBudget && (
-                    <span className="text-[11px] text-foreground-secondary">
-                      {ocBudget.remaining}/{ocBudget.limit} runs left today
-                    </span>
-                  )}
-                  {runtimeMode === 'cf-ai' && cfBudget && (
-                    <span className="text-[11px] text-foreground-secondary">
-                      {cfBudget.remaining}/{cfBudget.limit} chats left today
-                    </span>
-                  )}
-                  {runtimeMode === 'cf-cc' && ccBudget && (
-                    <span className="text-[11px] text-foreground-secondary">
-                      {ccBudget.remaining}/{ccBudget.limit} runs left today
-                    </span>
-                  )}
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {/* Budget chip — per mode */}
+                    {runtimeMode === 'opencode' && ocBudget && (
+                      <span className="text-[11px] text-foreground-tertiary font-mono">
+                        {ocBudget.remaining}/{ocBudget.limit} runs left
+                      </span>
+                    )}
+                    {runtimeMode === 'cf-ai' && cfBudget && (
+                      <span className="text-[11px] text-foreground-tertiary font-mono">
+                        {cfBudget.remaining}/{cfBudget.limit} chats left
+                      </span>
+                    )}
+                    {runtimeMode === 'cf-cc' && ccBudget && (
+                      <span className="text-[11px] text-foreground-tertiary font-mono">
+                        {ccBudget.remaining}/{ccBudget.limit} runs left
+                      </span>
+                    )}
 
-                  {isRunning && (
-                    <span className="text-[11px] text-primary/80 flex items-center gap-1.5">
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                      {runtimeMode === 'cf-ai'
-                        ? 'Thinking...'
-                        : sandboxPhase === 'opencode' || sandboxPhase === 'claude'
-                          ? `Waiting for model… (${sandboxElapsed}s)`
-                          : `Sandbox: ${sandboxPhase || 'starting'}… (${sandboxElapsed}s)`}
-                    </span>
-                  )}
+                    {isRunning && (
+                      <span className="text-[11px] text-primary flex items-center gap-1.5 font-mono">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        {runtimeMode === 'cf-ai'
+                          ? 'thinking…'
+                          : sandboxPhase === 'opencode' || sandboxPhase === 'claude'
+                            ? `waiting for model… (${sandboxElapsed}s)`
+                            : `${sandboxPhase || 'starting'}… (${sandboxElapsed}s)`}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -2795,50 +2940,51 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
 
       {/* Edit & Save as My Skill Modal */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-card rounded-xl p-6 max-w-lg w-full shadow-candy-lg max-h-[80vh] overflow-y-auto border border-border/50">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-card-foreground font-candy">Edit & Save as My Skill</h2>
+        <div className="fixed inset-0 bg-foreground/40 flex items-center justify-center z-[120] p-4 backdrop-blur-sm animate-fade-in">
+          <div className="bg-card rounded-3xl max-w-lg w-full shadow-candy-3 max-h-[85vh] overflow-y-auto border border-border animate-zoom-in">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border/60 sticky top-0 bg-card z-10">
+              <h2 className="text-lg font-semibold text-card-foreground font-candy">Edit &amp; save as my skill</h2>
               <button
                 onClick={() => setShowEditModal(false)}
-                className="p-2 hover:bg-secondary rounded-lg transition-colors"
+                className="grid place-items-center w-9 h-9 rounded-full bg-secondary/70 hover:bg-secondary text-foreground-secondary hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+                aria-label="Close"
               >
-                <X className="w-5 h-5 text-foreground-secondary" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-4 p-6">
               {/* Skill Name */}
               <div>
-                <label className="block text-sm font-medium text-foreground-secondary mb-2 font-body">Skill Name</label>
+                <label className="block text-[11px] font-semibold text-foreground-tertiary uppercase tracking-[0.1em] mb-2 font-mono">Skill name</label>
                 <input
                   type="text"
                   value={editingSkill.name || ''}
                   onChange={(e) => setEditingSkill({ ...editingSkill, name: e.target.value })}
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground font-body"
+                  className="w-full px-3.5 h-11 border border-input-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40 bg-input text-foreground font-body transition-colors"
                   placeholder="e.g., Data Analysis Expert"
                 />
               </div>
 
               {/* Description */}
               <div>
-                <label className="block text-sm font-medium text-foreground-secondary mb-2 font-body">Description</label>
+                <label className="block text-[11px] font-semibold text-foreground-tertiary uppercase tracking-[0.1em] mb-2 font-mono">Description</label>
                 <textarea
                   value={editingSkill.description || ''}
                   onChange={(e) => setEditingSkill({ ...editingSkill, description: e.target.value })}
                   rows={3}
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none bg-input text-foreground font-body"
-                  placeholder="Describe what this skill can do..."
+                  className="w-full px-3.5 py-2.5 border border-input-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40 resize-none bg-input text-foreground font-body transition-colors"
+                  placeholder="Describe what this skill can do…"
                 />
               </div>
 
               {/* Category */}
               <div>
-                <label className="block text-sm font-medium text-foreground-secondary mb-2 font-body">Category</label>
+                <label className="block text-[11px] font-semibold text-foreground-tertiary uppercase tracking-[0.1em] mb-2 font-mono">Category</label>
                 <select
                   value={editingSkill.category || 'Custom'}
                   onChange={(e) => setEditingSkill({ ...editingSkill, category: e.target.value as any })}
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input text-foreground font-body"
+                  className="w-full px-3.5 h-11 border border-input-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40 bg-input text-foreground font-body transition-colors"
                 >
                   <option value="Knowledge">Knowledge</option>
                   <option value="Analysis">Analysis</option>
@@ -2854,7 +3000,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
 
               {/* System Prompt */}
               <div>
-                <label className="block text-sm font-medium text-foreground-secondary mb-2 font-body">System Prompt</label>
+                <label className="block text-[11px] font-semibold text-foreground-tertiary uppercase tracking-[0.1em] mb-2 font-mono">System prompt</label>
                 <textarea
                   value={editingSkill.config?.systemPrompt || ''}
                   onChange={(e) => setEditingSkill({
@@ -2862,51 +3008,53 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                     config: { ...editingSkill.config!, systemPrompt: e.target.value }
                   })}
                   rows={6}
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none font-mono text-sm bg-input text-foreground"
-                  placeholder="Enter the system prompt for this skill..."
+                  className="w-full px-3.5 py-2.5 border border-input-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40 resize-none font-mono text-[13px] leading-relaxed bg-input text-foreground transition-colors"
+                  placeholder="Enter the system prompt for this skill…"
                 />
               </div>
 
               {/* Status Messages */}
               {saveStatus === 'success' && (
-                <div className="p-3 bg-success/10 border border-success/30 rounded-lg">
-                  <p className="text-sm text-success font-body">Skill saved successfully!</p>
+                <div className="flex items-center gap-2 p-3 bg-mint/[0.08] border border-mint/25 rounded-xl">
+                  <CheckCircle2 className="w-4 h-4 text-mint shrink-0" />
+                  <p className="text-sm text-foreground font-body">Skill saved successfully.</p>
                 </div>
               )}
               {saveStatus === 'error' && (
-                <div className="p-3 bg-error/10 border border-error/30 rounded-lg">
-                  <p className="text-sm text-error font-body">Failed to save skill. Please try again.</p>
+                <div className="flex items-center gap-2 p-3 bg-error/[0.06] border border-error/25 rounded-xl">
+                  <AlertCircle className="w-4 h-4 text-error shrink-0" />
+                  <p className="text-sm text-foreground font-body">Failed to save skill. Please try again.</p>
                 </div>
               )}
 
               {/* Actions */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+              <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-border/60">
                 <button
                   onClick={() => setShowEditModal(false)}
                   disabled={saveStatus === 'saving'}
-                  className="px-6 py-2 text-sm font-medium text-foreground-secondary bg-card border border-border rounded-lg hover:bg-secondary transition-colors disabled:opacity-50 btn-press font-body"
+                  className="px-5 h-10 text-sm font-medium text-foreground-secondary bg-card border border-border rounded-2xl hover:bg-secondary hover:border-border-hover transition-colors disabled:opacity-50 btn-press font-body"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSaveAsMySkill}
                   disabled={saveStatus === 'saving' || !editingSkill.name?.trim()}
-                  className="px-6 py-2 text-sm font-medium text-primary-foreground bg-gradient-to-r from-primary to-primary-hover rounded-lg hover:shadow-candy transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-candy btn-press font-body"
+                  className="candy-btn px-5 h-10 text-sm font-semibold rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2 btn-press font-body"
                 >
                   {saveStatus === 'saving' ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      Saving...
+                      Saving…
                     </>
                   ) : saveStatus === 'success' ? (
                     <>
                       <CheckCircle2 className="w-4 h-4" />
-                      Saved!
+                      Saved
                     </>
                   ) : (
                     <>
                       <Save className="w-4 h-4" />
-                      Save as My Skill
+                      Save as my skill
                     </>
                   )}
                 </button>
