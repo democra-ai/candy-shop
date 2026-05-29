@@ -42,6 +42,9 @@ import {
   PanelLeftOpen,
   Workflow,
   BookOpen,
+  Lock,
+  ShoppingBag,
+  LogIn,
 } from 'lucide-react';
 import type { Skill } from '../../types/skill-creator';
 import { getCandyIcon } from '../illustrations';
@@ -83,6 +86,7 @@ import {
 } from '../../lib/cfOpenCodeClient';
 import { streamLangGraphRun, warmLangGraph } from '../../lib/cfLangGraphClient';
 import { streamN8nRun, warmN8n } from '../../lib/cfN8nClient';
+import { checkAccess, getX402Pricing, formatPrice } from '../../lib/payment/payment-client';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -108,6 +112,12 @@ type ChatEntry = UserEntry | AssistantEntry;
 interface SkillExecutorProps {
   skill: Skill;
   onClose: () => void;
+  /** Current signed-in user id (Supabase). Undefined ⇒ anonymous visitor. */
+  userId?: string;
+  /** Open the auth modal — invoked from the purchase gate when signed out. */
+  onRequireAuth?: () => void;
+  /** Start Stripe checkout for the given skill id — invoked from the gate. */
+  onPurchase?: (skillId: string) => void;
 }
 
 /**
@@ -994,7 +1004,7 @@ function SessionSidebar({
 // Main component
 // ---------------------------------------------------------------------------
 
-export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
+export function SkillExecutor({ skill, onClose, userId, onRequireAuth, onPurchase }: SkillExecutorProps) {
   // ── Run-dispatch by format/runtime (declared first; used by effects below) ─
   // claude-skill        → runner 'cc-sandbox'        → existing cf-cc/cf-ai/opencode
   //                       chat flow, UNCHANGED.
@@ -1014,6 +1024,55 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
   // UI shape — distinct from the multi-runtime claude-skill chat path.
   const isFixedRuntime = isLangGraph || isN8n;
   const isComingSoon = runtimeDescriptor.runner === 'coming-soon';
+
+  // ── Buyer-side entitlement gate ───────────────────────────────────────────
+  // Source of truth is the Worker `checkAccess`, NOT a frontend pricing field
+  // (the Skill type has none). Catalog runs prefix the id with `store-`
+  // (see App.handleRunSkill); the D1 row is keyed by the bare catalog id, so we
+  // strip that prefix before asking the Worker. Free/unknown/entitled skills
+  // resolve to hasAccess !== false and run unchanged; paid-but-unentitled skills
+  // resolve to hasAccess === false → Purchase Gate (no runtime, no warming).
+  const entitlementSkillId = String(skill.id).replace(/^store-/, '');
+  const [gate, setGate] = useState<{
+    loading: boolean;
+    hasAccess: boolean | null;
+    reason: string;
+  }>({ loading: true, hasAccess: null, reason: '' });
+  // Resolved price label for the gate panel (best-effort; falls back to "Premium").
+  const [gatePriceLabel, setGatePriceLabel] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setGate({ loading: true, hasAccess: null, reason: '' });
+    setGatePriceLabel(null);
+    checkAccess(userId ?? 'anonymous', entitlementSkillId)
+      .then((res) => {
+        if (cancelled) return;
+        setGate({ loading: false, hasAccess: res.hasAccess, reason: res.reason });
+        // Only fetch pricing when actually gated — keeps free skills zero-cost.
+        if (res.hasAccess === false) {
+          getX402Pricing(entitlementSkillId)
+            .then((p) => {
+              if (cancelled) return;
+              if (p?.fiat?.amount != null) {
+                setGatePriceLabel(
+                  p.fiat.display || formatPrice(p.fiat.amount, p.fiat.currency)
+                );
+              }
+            })
+            .catch(() => { /* fallback label handles this */ });
+        }
+      })
+      .catch(() => {
+        // Fail OPEN: if the check itself errors (network/worker down), don't
+        // trap a legitimate user behind a gate — let the normal run path decide.
+        if (!cancelled) setGate({ loading: false, hasAccess: true, reason: 'check_failed' });
+      });
+    return () => { cancelled = true; };
+  }, [userId, entitlementSkillId]);
+
+  // True while we must NOT touch any runtime: still checking, or gated.
+  const gateBlocksRuntime = gate.loading || gate.hasAccess === false;
 
   // Connection state
   const [connected, setConnected] = useState(false);
@@ -1099,6 +1158,9 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
   }, [sandboxPhase]);
   useEffect(() => {
     if (isComingSoon) return; // no runtime to warm for import-only formats
+    // Gated/while-checking: do NOT warm any container for a skill the user
+    // can't run yet. Warming resumes automatically once the gate clears.
+    if (gateBlocksRuntime) return;
     if (isLangGraph) {
       // Pre-boot the LangGraph sandbox container so the first run skips the
       // cold boot. Best-effort; the runtime picker doesn't apply here.
@@ -1123,7 +1185,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       // skips the cold start (container wake + provider init). Best-effort.
       warmOpenCode();
     }
-  }, [runtimeMode, isComingSoon, isLangGraph, isN8n]);
+  }, [runtimeMode, isComingSoon, isLangGraph, isN8n, gateBlocksRuntime]);
 
   // Skill loading state
   const [skillInstructions, setSkillInstructions] = useState<string | null>(null);
@@ -1147,6 +1209,10 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       setConnecting(false);
       return;
     }
+    // Gated/while-checking: don't open an opencode session/server for a skill
+    // the user can't run. The gate panel renders instead; once it clears this
+    // effect re-runs and connects normally.
+    if (gateBlocksRuntime) return;
     // LangGraph / n8n run against their dedicated sandbox worker directly (no
     // opencode session/server). Mark connected so the transcript + composer
     // render, and skip the opencode.connect()/listSessions flow entirely.
@@ -1221,7 +1287,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       cancelled = true;
       opencode.cleanup();
     };
-  }, [skill, isComingSoon, isFixedRuntime]);
+  }, [skill, isComingSoon, isFixedRuntime, gateBlocksRuntime]);
 
   // ── Auto-scroll ─────────────────────────────────────────────────────────
 
@@ -2517,6 +2583,181 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
   // Skill identity illustration — DESIGN.md hard rule #1: no emoji as UI.
   const SkillCandy = getCandyIcon(skill.category);
   // Model label/selection is rendered by <ModelPicker> (LangGraph keeps a static chip).
+
+  // ── Entitlement gate dispatch ─────────────────────────────────────────────
+  // Resolved BEFORE the coming-soon / chat paths so a paid-but-unentitled skill
+  // never reaches a runtime. Two states: (1) checking access — a light shell
+  // with a "checking access…" pill; (2) gated — a first-class Purchase Gate
+  // panel in place of the transcript/run area. Free/entitled skills fall
+  // through to the existing paths below, unchanged.
+  const gateFlavor = getFlavor(skill.category, executorIsDark);
+
+  // (1) Still resolving entitlement — hold the run UI; never auto-run.
+  if (gate.loading) {
+    return (
+      <div className="h-screen w-full flex flex-col bg-background animate-fade-in overflow-hidden">
+        <header className="relative shrink-0 bg-card border-b border-border z-20">
+          <div className="absolute inset-x-0 top-0 h-[3px]" style={{ backgroundColor: gateFlavor.base }} />
+          <div className="flex items-center gap-3 px-3 sm:px-5 h-16">
+            <button
+              onClick={onClose}
+              className="group inline-flex items-center gap-1.5 pl-2 pr-3 h-9 rounded-xl bg-secondary/70 hover:bg-secondary text-foreground-secondary hover:text-foreground transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring shrink-0 font-body"
+              aria-label="Back to Candy Shop"
+              title="Back to Candy Shop"
+            >
+              <ArrowLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-0.5" />
+              <span className="hidden sm:inline text-[13px] font-medium">Candy Shop</span>
+            </button>
+            <div className="h-7 w-px bg-border/70 mx-0.5 hidden sm:block" />
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="grid place-items-center w-9 h-9 rounded-xl bg-secondary ring-1 ring-border/60 shrink-0 overflow-hidden">
+                <SkillCandy size={26} />
+              </span>
+              <div className="min-w-0">
+                <h1 className="text-[15px] leading-tight font-semibold text-foreground font-candy truncate">{skill.name}</h1>
+                <span className="inline-flex items-center gap-1.5 mt-0.5 pl-1.5 pr-2 h-[20px] rounded-full bg-foreground/[0.04] border border-border/60 text-[10px] font-mono font-medium text-foreground-tertiary">
+                  <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                  checking access…
+                </span>
+              </div>
+            </div>
+          </div>
+        </header>
+        <div className="flex-1 grid place-items-center bg-background">
+          <div className="flex flex-col items-center gap-3 text-foreground-tertiary">
+            <Loader2 className="w-6 h-6 animate-spin" style={{ color: gateFlavor.base }} />
+            <span className="text-sm font-body">Checking access…</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // (2) Gated — paid skill the user hasn't purchased. Purchase Gate panel.
+  if (gate.hasAccess === false) {
+    const priceLabel = gatePriceLabel ?? 'Premium';
+    return (
+      <div className="h-screen w-full flex flex-col bg-background animate-fade-in overflow-hidden">
+        <header className="relative shrink-0 bg-card border-b border-border z-20">
+          <div className="absolute inset-x-0 top-0 h-[3px]" style={{ backgroundColor: gateFlavor.base }} />
+          <div className="flex items-center gap-3 px-3 sm:px-5 h-16">
+            <button
+              onClick={onClose}
+              className="group inline-flex items-center gap-1.5 pl-2 pr-3 h-9 rounded-xl bg-secondary/70 hover:bg-secondary text-foreground-secondary hover:text-foreground transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring shrink-0 font-body"
+              aria-label="Back to Candy Shop"
+              title="Back to Candy Shop"
+            >
+              <ArrowLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-0.5" />
+              <span className="hidden sm:inline text-[13px] font-medium">Candy Shop</span>
+            </button>
+            <div className="h-7 w-px bg-border/70 mx-0.5 hidden sm:block" />
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="grid place-items-center w-9 h-9 rounded-xl bg-secondary ring-1 ring-border/60 shrink-0 overflow-hidden">
+                <SkillCandy size={26} />
+              </span>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <h1 className="text-[15px] leading-tight font-semibold text-foreground font-candy truncate">{skill.name}</h1>
+                  {/* 🔒 Premium badge while gated */}
+                  <span
+                    className="inline-flex items-center gap-1 px-2 h-[18px] rounded-full border text-[10px] font-bold font-mono uppercase tracking-wide shrink-0"
+                    style={{ backgroundColor: gateFlavor.tint, color: gateFlavor.ink, borderColor: gateFlavor.base }}
+                  >
+                    <Lock className="w-2.5 h-2.5" />
+                    Premium
+                  </span>
+                </div>
+                <div className="mt-0.5 text-[11px] text-foreground-tertiary font-mono">purchase required to run</div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div className="flex-1 overflow-y-auto bg-background">
+          <div className="mx-auto w-full max-w-xl px-4 sm:px-6 py-10 sm:py-16">
+            <div className="rounded-3xl border border-border bg-card shadow-candy-2 overflow-hidden">
+              {/* Flavored hero band */}
+              <div
+                className="relative px-6 sm:px-8 pt-9 pb-7 flex flex-col items-center text-center"
+                style={{ backgroundColor: gateFlavor.tint, color: gateFlavor.ink }}
+              >
+                <div className="relative">
+                  <span
+                    className="grid place-items-center w-20 h-20 rounded-3xl shadow-candy-1 overflow-hidden bg-card ring-1 ring-border/60"
+                    aria-hidden="true"
+                  >
+                    <SkillCandy size={48} />
+                  </span>
+                  {/* lock chip overlapping the skill candy */}
+                  <span
+                    className="absolute -bottom-2 -right-2 grid place-items-center w-9 h-9 rounded-2xl text-white shadow-candy-1 ring-2 ring-card"
+                    style={{ backgroundColor: gateFlavor.base }}
+                  >
+                    <Lock className="w-4 h-4" />
+                  </span>
+                </div>
+                <h2 className="mt-5 font-candy font-bold text-2xl leading-tight">{skill.name}</h2>
+                <div
+                  className="mt-3 inline-flex items-center gap-1.5 px-3 h-8 rounded-full text-sm font-semibold font-body text-white shadow-candy-1"
+                  style={{ backgroundColor: gateFlavor.base }}
+                >
+                  <ShoppingBag className="w-3.5 h-3.5" />
+                  {priceLabel}
+                </div>
+              </div>
+
+              {/* Copy + actions */}
+              <div className="px-6 sm:px-8 py-7">
+                <p className="text-center text-foreground font-body leading-relaxed">
+                  This is a premium skill — purchase to run it.
+                </p>
+                <p className="mt-2 text-center text-sm text-foreground-tertiary font-body leading-relaxed">
+                  {userId
+                    ? 'Unlock execution to start a live session with this skill.'
+                    : 'Sign in to purchase, then run it right here in the browser.'}
+                </p>
+
+                <div className="mt-7 flex flex-col gap-2.5">
+                  {userId ? (
+                    <button
+                      onClick={() => onPurchase?.(entitlementSkillId)}
+                      className="inline-flex items-center justify-center gap-2 w-full h-12 rounded-2xl text-sm font-semibold font-body text-white shadow-candy-1 transition-transform duration-150 ease-candy active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-card"
+                      style={{ backgroundColor: gateFlavor.base }}
+                    >
+                      <ShoppingBag className="w-4 h-4" />
+                      Buy to run
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => onRequireAuth?.()}
+                      className="inline-flex items-center justify-center gap-2 w-full h-12 rounded-2xl text-sm font-semibold font-body text-white shadow-candy-1 transition-transform duration-150 ease-candy active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-card"
+                      style={{ backgroundColor: gateFlavor.base }}
+                    >
+                      <LogIn className="w-4 h-4" />
+                      Sign in to purchase
+                    </button>
+                  )}
+                  <button
+                    onClick={onClose}
+                    className="inline-flex items-center justify-center gap-2 w-full h-11 rounded-2xl text-sm font-medium font-body bg-secondary border border-border text-foreground-secondary hover:text-foreground hover:border-border-hover transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    Back
+                  </button>
+                </div>
+
+                {skill.description && (
+                  <p className="mt-6 text-xs text-foreground-tertiary leading-relaxed font-body border-t border-border/50 pt-5">
+                    {skill.description}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ── Coming-soon dispatch ──────────────────────────────────────────────────
   // Non-claude formats (n8n / dify / langgraph / workflow) have no in-platform

@@ -238,6 +238,34 @@ export const SKILL_CATEGORIES: { name: SkillCategory; icon: string; color: strin
 ];
 
 export const SKILLS_DATA: Skill[] = [
+  // ── DEMO: paid skill showcasing the buyer-side purchase gate ───
+  // Free skills run unchanged; this one is `one_time` priced in the live D1
+  // (`skills.pricing_model='one_time'`), so SkillExecutor's entitlement check
+  // (checkAccess) resolves hasAccess:false for un-entitled users and shows the
+  // Purchase Gate instead of running. Real catalog item — runnable once bought.
+  {
+    id: 'demo-premium-skill',
+    name: 'Premium Demo Skill (paid)',
+    description: 'Demo paid skill that showcases the buyer-side purchase gate. Free skills run as usual; this one requires a purchase before the executor will run it.',
+    category: 'Development',
+    icon: '🔒',
+    color: 'bg-pink-100 border-pink-200 text-pink-700',
+    installCommand: 'npx skills add candy-shop/demo-premium-skill',
+    popularity: 0,
+    repo: 'candy-shop/demo-premium-skill',
+    skillMdUrl: mdUrl('vercel-labs', 'agent-skills', 'vercel-react-best-practices'),
+    config: {}, tags: ['Demo', 'Premium', 'Paid'],
+    format: 'claude-skill',
+    price: 499,
+    pricingModel: 'one_time',
+    developer: 'Candy Shop',
+    version: 'v1.0',
+    rating: 5,
+    ratingCount: 1,
+    lineage: { type: 'original', canonical: true, originalAuthor: 'Candy Shop' },
+    executionModel: 'open',
+    manifestVisibility: 'full',
+  },
   // ── Development ────────────────────────────────────────────────
   {
     id: 'vercel-react-best-practices',

@@ -688,6 +688,9 @@ function AppContent() {
               <Suspense fallback={null}>
                 <SkillExecutor
                   skill={executingSkill}
+                  userId={user?.id}
+                  onRequireAuth={() => setIsAuthOpen(true)}
+                  onPurchase={(skillId) => payment.startCheckout([skillId])}
                   onClose={() => {
                     setExecutingSkill(null);
                     navigate('/');
