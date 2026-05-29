@@ -1530,6 +1530,11 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
               repo: sandboxRepo || undefined,  // empty → sandbox uses scratch
               task: text,
               skillMd: resolvedSkillInstructions ?? undefined,
+              // Let the Worker re-resolve SKILL.md server-side (no CORS) when
+              // the in-browser fetch above failed/returned nothing — the
+              // reliable fallback so the agent runs AS the skill.
+              skillMdUrl: skill.skillMdUrl,
+              skillName: skill.name,
             },
             {
               onPhase: (phase) => {

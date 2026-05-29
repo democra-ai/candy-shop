@@ -122,18 +122,34 @@ export function resetClaudeSession(): void {
  * scratch workspace (fastest TTFR). The skill body is delivered via `skillMd`.
  */
 export async function streamClaudeCodeRun(
-  params: { task: string; repo?: string; skillMd?: string; model?: string; fast?: boolean; fresh?: boolean },
+  params: {
+    task: string;
+    repo?: string;
+    skillMd?: string;
+    skillMdUrl?: string;
+    skillName?: string;
+    model?: string;
+    fast?: boolean;
+    fresh?: boolean;
+  },
   cb: CCStreamCallbacks = {},
 ): Promise<void> {
   // Forward exactly the fields the /api/cc/run backend understands. Default
   // `fast` on (matches the verified-fast streaming path) unless the caller
   // explicitly set it.
+  //
+  // `skillMd` is the body resolved in-browser (fast path, may be empty if the
+  // raw.githubusercontent fetch hit CORS/404). `skillMdUrl` + `skillName` let
+  // the Worker re-resolve the SKILL.md server-side (no CORS) as a reliable
+  // fallback so the agent always operates AS the skill.
   const body: Record<string, unknown> = {
     task: params.task,
     fast: params.fast ?? true,
   };
   if (params.repo) body.repo = params.repo;
   if (params.skillMd) body.skillMd = params.skillMd;
+  if (params.skillMdUrl) body.skillMdUrl = params.skillMdUrl;
+  if (params.skillName) body.skillName = params.skillName;
   if (params.model) body.model = params.model;
   if (params.fresh) body.fresh = params.fresh;
 
