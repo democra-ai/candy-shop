@@ -1,24 +1,41 @@
 // ============================================================
-// Claude Code agent client — PERSISTENT WARM WEBSOCKET SESSION.
+// Claude Code agent client — HTTP-SSE transport (/api/cc/run).
 // ============================================================
-// Old model (high latency): every turn POSTed /api/cc/run, which
-// cold-started a sandbox and ran `claude --print` from scratch.
+// Transport history:
+//   * The original client POSTed {repo, task, skillMd} to the Worker's
+//     /api/cc/run and read a streaming SSE response — one shot per turn.
+//   * A migration swapped this for a ticket + persistent WebSocket model
+//     (/api/cc/ticket → wss://agent/ws). That backend was never deployed:
+//     /api/cc/ticket returns 404 and the agent worker has no /ws, so every
+//     turn failed at the mint step (404 → nothing streams).
+//   * This file reverts the transport back to HTTP-SSE /api/cc/run, which
+//     is live and healthy, while keeping the SAME exported surface so the
+//     SkillExecutor UI needs no change.
 //
-// New model (this file): the browser holds ONE WebSocket to the
-// agent worker (`cc-sandbox`), which bridges to a persistent
-// Claude Agent SDK session inside a kept-warm container. The
-// session is created once and reused for every turn — turn 2..N
-// have no cold start and no re-init, so it feels exactly like
-// using Claude Code directly.
+// Two layers of SSE on /api/cc/run:
 //
-// Anti-abuse: the socket can only be opened with a short-lived
-// HMAC ticket minted by /api/cc/ticket *after* the user's session
-// is validated. The agent worker rejects anything else, so the
-// endpoint can't be scanned/freeloaded.
+//   Outer envelope:   phase / restore / setup / claude_ttfo / claude_ms /
+//                     snapshot / diff / done / stall-warning
 //
-// The public API (streamClaudeCodeRun / CCStreamCallbacks /
-// getCCBudget / deriveRepoUrlFromSkillMd) is unchanged, so the
-// SkillExecutor UI keeps working — only the transport changed.
+//   stdout payloads (Claude Code stream-json format):
+//     system/init                     — env, available tools, model
+//     stream_event/content_block_start
+//                                     - type:text                 ← assistant text begins
+//                                     - type:thinking             ← reasoning begins
+//                                     - type:tool_use {name,id}   ← tool call begins
+//     stream_event/content_block_delta
+//                                     - text_delta                ← TOKEN-BY-TOKEN text
+//                                     - thinking_delta            ← TOKEN-BY-TOKEN thinking
+//                                     - input_json_delta          ← tool args streamed
+//     stream_event/content_block_stop
+//     user                            — tool_result blocks
+//     assistant                       — completed assistant message
+//     result/success                  — final summary
+//
+// The public API (streamClaudeCodeRun / CCStreamCallbacks / getCCBudget /
+// warmClaudeAgent / resetClaudeSession / deriveRepoUrlFromSkillMd) is
+// unchanged, so the SkillExecutor UI keeps working — only the transport
+// changed (WebSocket → HTTP SSE).
 // ============================================================
 
 const API_BASE =
@@ -70,302 +87,232 @@ export async function getCCBudget(): Promise<CCBudget | null> {
   }
 }
 
-// ── ticket + url helpers ───────────────────────────────────
-
-interface Ticket { ticket: string; exp: number; agentUrl: string }
-
-async function mintTicket(skill?: string): Promise<Ticket> {
-  const r = await fetch(`${API_BASE}/cc/ticket`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ skill }),
-  });
-  if (!r.ok) {
-    const e = await r.text().catch(() => '');
-    throw new Error(`agent ticket denied (${r.status}): ${e.slice(0, 160)}`);
-  }
-  return (await r.json()) as Ticket;
-}
-
-function wsUrl(agentUrl: string, ticket: string): string {
-  const u = new URL(agentUrl);
-  u.protocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
-  u.pathname = u.pathname.replace(/\/+$/, '') + '/ws';
-  u.search = `?ticket=${encodeURIComponent(ticket)}`;
-  return u.toString();
-}
-
-/** Fire-and-forget pre-boot: mint a ticket and ask the agent to warm the
- *  container before the user's first turn, so cold start is invisible. */
-export async function warmClaudeAgent(skill?: string): Promise<void> {
+/**
+ * Best-effort pre-warm. The /api/cc/run backend keeps its sandbox warm via
+ * its own cron, so there is no separate warm endpoint to hit in the HTTP-SSE
+ * model. We keep this exported (SkillExecutor calls it on mount) and make it
+ * a cheap, non-fatal touch of the budget endpoint so the connection/auth is
+ * primed; any failure is swallowed.
+ */
+export async function warmClaudeAgent(_skill?: string): Promise<void> {
   try {
-    const t = await mintTicket(skill);
-    const base = t.agentUrl.replace(/\/+$/, '');
-    await fetch(`${base}/warm?ticket=${encodeURIComponent(t.ticket)}`, {
-      method: 'POST',
-    }).catch(() => {});
+    await fetch(`${API_BASE}/cc/budget`, { credentials: 'include' }).catch(() => {});
   } catch {
     /* best-effort */
   }
 }
 
-// ── persistent session singleton ───────────────────────────
-
-type Pending = {
-  cb: CCStreamCallbacks;
-  resolve: () => void;
-  reject: (e: Error) => void;
-  startedAt: number;
-  firstOutput: boolean;
-  settled: boolean;
-};
-
-class AgentSession {
-  private ws: WebSocket | null = null;
-  private connecting: Promise<void> | null = null;
-  private skillKey = '';
-  private initialised = false;
-  private pending: Pending | null = null;
-  private model?: string;
-
-  private fail(e: Error) {
-    if (this.pending && !this.pending.settled) {
-      this.pending.settled = true;
-      this.pending.cb.onError?.(e);
-      this.pending.reject(e);
-      this.pending = null;
-    }
-  }
-
-  private async open(skillMd: string | undefined, model: string | undefined) {
-    const skillKey = skillMd ?? '';
-    // Reuse the warm socket unless the skill identity changed.
-    if (
-      this.ws &&
-      this.ws.readyState === WebSocket.OPEN &&
-      this.skillKey === skillKey
-    ) {
-      return;
-    }
-    if (this.connecting) return this.connecting;
-
-    this.connecting = (async () => {
-      this.close();
-      this.skillKey = skillKey;
-      this.initialised = false;
-      this.model = model;
-
-      const t = await mintTicket();
-      await new Promise<void>((resolve, reject) => {
-        let settled = false;
-        const ws = new WebSocket(wsUrl(t.agentUrl, t.ticket));
-        this.ws = ws;
-        const to = setTimeout(() => {
-          if (!settled) {
-            settled = true;
-            try { ws.close(); } catch { /* noop */ }
-            reject(new Error('agent connection timed out'));
-          }
-        }, 30_000);
-
-        ws.onmessage = (ev) => {
-          let msg: any;
-          try { msg = JSON.parse(typeof ev.data === 'string' ? ev.data : ''); }
-          catch { return; }
-          if (msg?.type === 'ready' && !settled) {
-            settled = true;
-            clearTimeout(to);
-            // Send the skill definition once for this connection.
-            ws.send(JSON.stringify({
-              type: 'init', skillMd: skillMd || undefined, model: this.model,
-            }));
-            this.initialised = true;
-            resolve();
-            return;
-          }
-          this.dispatch(msg);
-        };
-        ws.onerror = () => {
-          if (!settled) { settled = true; clearTimeout(to); reject(new Error('agent socket error')); }
-          else this.fail(new Error('agent socket error'));
-        };
-        ws.onclose = () => {
-          this.ws = null;
-          if (!settled) { settled = true; clearTimeout(to); reject(new Error('agent socket closed')); }
-          else this.fail(new Error('agent session closed'));
-        };
-      });
-    })().finally(() => { this.connecting = null; });
-
-    return this.connecting;
-  }
-
-  /** Translate raw Claude Agent SDK / envelope frames into the existing
-   *  CCStreamCallbacks the SkillExecutor UI already renders. */
-  private dispatch(msg: any) {
-    const p = this.pending;
-    if (!p) {
-      // Out-of-turn frames (e.g. late tool noise) — ignore safely.
-      return;
-    }
-    p.cb.onEvent?.(msg?.type ?? 'message', msg);
-
-    const markFirstOutput = () => {
-      if (!p.firstOutput) {
-        p.firstOutput = true;
-        p.cb.onSandboxEvent?.('claude_ttfo', { ms: Date.now() - p.startedAt });
-      }
-    };
-
-    switch (msg?.type) {
-      case 'system':
-        if (msg.subtype === 'init') {
-          p.cb.onSystemInit?.({ model: msg.model, tools: msg.tools, cwd: msg.cwd });
-        }
-        return;
-
-      case 'stream_event': {
-        const e = msg.event;
-        if (!e) return;
-        if (e.type === 'content_block_start') {
-          markFirstOutput();
-          const b = e.content_block;
-          if (b?.type === 'text') p.cb.onBlockStart?.({ type: 'text', index: e.index });
-          else if (b?.type === 'thinking') p.cb.onBlockStart?.({ type: 'thinking', index: e.index });
-          else if (b?.type === 'tool_use')
-            p.cb.onBlockStart?.({ type: 'tool_use', index: e.index, tool: { name: b.name, id: b.id } });
-        } else if (e.type === 'content_block_delta') {
-          markFirstOutput();
-          const d = e.delta;
-          if (d?.type === 'text_delta' && d.text) p.cb.onTextDelta?.(d.text, e.index);
-          else if (d?.type === 'thinking_delta' && d.thinking) p.cb.onThinkingDelta?.(d.thinking, e.index);
-          else if (d?.type === 'input_json_delta' && d.partial_json) p.cb.onToolInputDelta?.(d.partial_json, e.index);
-        } else if (e.type === 'content_block_stop') {
-          p.cb.onBlockStop?.(e.index);
-        }
-        return;
-      }
-
-      case 'user':
-        if (Array.isArray(msg.message?.content)) {
-          for (const blk of msg.message.content) {
-            if (blk?.type === 'tool_result') {
-              const content = Array.isArray(blk.content)
-                ? blk.content.map((x: any) => (typeof x === 'string' ? x : x.text || JSON.stringify(x))).join('\n')
-                : String(blk.content ?? '');
-              p.cb.onToolResult?.({ toolUseId: blk.tool_use_id, content, isError: blk.is_error });
-            }
-          }
-        }
-        return;
-
-      case 'assistant':
-        if (Array.isArray(msg.message?.content)) {
-          const text = msg.message.content
-            .filter((x: any) => x.type === 'text')
-            .map((x: any) => x.text)
-            .join('');
-          if (text) p.cb.onAssistantFinal?.(text);
-        }
-        return;
-
-      case 'result':
-        p.cb.onSandboxEvent?.('claude_ms', { ms: Date.now() - p.startedAt });
-        p.cb.onSandboxEvent?.('done', {});
-        if (msg.subtype && msg.subtype !== 'success') {
-          this.fail(new Error(msg.error || `agent ${msg.subtype}`));
-        } else {
-          p.cb.onResult?.({ success: true, durationMs: msg.duration_ms, usage: msg.usage });
-          if (!p.settled) { p.settled = true; p.resolve(); this.pending = null; }
-        }
-        return;
-
-      case 'turn_done':
-        if (p && !p.settled) { p.settled = true; p.resolve(); this.pending = null; }
-        return;
-
-      case 'error':
-        this.fail(new Error(msg.message || 'agent error'));
-        return;
-    }
-  }
-
-  async runTurn(
-    params: { task: string; skillMd?: string; model?: string },
-    cb: CCStreamCallbacks,
-  ): Promise<void> {
-    cb.onPhase?.('setup');
-    const wasWarm =
-      !!this.ws && this.ws.readyState === WebSocket.OPEN &&
-      this.skillKey === (params.skillMd ?? '');
-
-    await this.open(params.skillMd, params.model);
-    cb.onSandboxEvent?.('restore', { skipped: wasWarm, ms: 0 });
-    cb.onSandboxEvent?.('setup', { skipped: wasWarm, tail: wasWarm ? 'warm session' : 'session ready' });
-
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      throw new Error('agent session unavailable');
-    }
-
-    cb.onPhase?.('claude');
-    await new Promise<void>((resolve, reject) => {
-      this.pending = {
-        cb, resolve, reject,
-        startedAt: Date.now(),
-        firstOutput: false,
-        settled: false,
-      };
-      this.ws!.send(JSON.stringify({
-        type: 'user',
-        text: params.task,
-        skillMd: this.initialised ? undefined : params.skillMd,
-        model: params.model,
-      }));
-    });
-  }
-
-  close() {
-    if (this.ws) {
-      try { this.ws.close(); } catch { /* noop */ }
-      this.ws = null;
-    }
-    this.initialised = false;
-  }
-}
-
-let session: AgentSession | null = null;
-
-/** Reset the persistent session (e.g. when switching skills or on logout). */
+/**
+ * No-op in the HTTP-SSE model: each /api/cc/run call is an independent
+ * one-shot turn, so there is no persistent session to reset. Kept exported
+ * for API compatibility (SkillExecutor / future callers import it).
+ */
 export function resetClaudeSession(): void {
-  session?.close();
-  session = null;
+  /* no persistent session to reset in HTTP-SSE mode */
 }
 
 /**
- * Run one turn against the persistent warm Claude Code session.
- * Signature/behaviour is API-compatible with the old SSE function, so
- * SkillExecutor needs no change — but turns after the first are instant.
- * `repo` is accepted for compatibility and currently ignored (the agent
- * runs in a per-user persistent workspace).
+ * Run one turn against the Claude Code sandbox over HTTP SSE.
+ *
+ * POSTs to /api/cc/run and parses the two-layer SSE stream into the existing
+ * CCStreamCallbacks the SkillExecutor UI already renders. Each call is a
+ * fresh one-shot run (no multi-turn session state on the client side).
+ *
+ * `repo` is forwarded; empty/undefined means the sandbox uses its pre-baked
+ * scratch workspace (fastest TTFR). The skill body is delivered via `skillMd`.
  */
 export async function streamClaudeCodeRun(
-  params: { task: string; repo?: string; skillMd?: string; model?: string; fresh?: boolean },
+  params: { task: string; repo?: string; skillMd?: string; model?: string; fast?: boolean; fresh?: boolean },
   cb: CCStreamCallbacks = {},
 ): Promise<void> {
-  if (params.fresh) resetClaudeSession();
-  if (!session) session = new AgentSession();
+  // Forward exactly the fields the /api/cc/run backend understands. Default
+  // `fast` on (matches the verified-fast streaming path) unless the caller
+  // explicitly set it.
+  const body: Record<string, unknown> = {
+    task: params.task,
+    fast: params.fast ?? true,
+  };
+  if (params.repo) body.repo = params.repo;
+  if (params.skillMd) body.skillMd = params.skillMd;
+  if (params.model) body.model = params.model;
+  if (params.fresh) body.fresh = params.fresh;
+
+  let r: Response;
   try {
-    await session.runTurn(
-      { task: params.task, skillMd: params.skillMd, model: params.model },
-      cb,
-    );
+    r = await fetch(`${API_BASE}/cc/run`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
   } catch (e) {
     const err = e instanceof Error ? e : new Error(String(e));
     cb.onError?.(err);
-    // A dead socket shouldn't poison the next turn.
-    resetClaudeSession();
     throw err;
+  }
+
+  if (!r.ok || !r.body) {
+    const text = await r.text().catch(() => '');
+    const e = new Error(`Claude Code Sandbox failed (${r.status}): ${text.slice(0, 200)}`);
+    cb.onError?.(e);
+    throw e;
+  }
+
+  const reader = r.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  const startedAt = Date.now();
+  let firstOutput = false;
+
+  const markFirstOutput = () => {
+    if (!firstOutput) {
+      firstOutput = true;
+      cb.onSandboxEvent?.('claude_ttfo', { ms: Date.now() - startedAt });
+    }
+  };
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      let sep: number;
+      while ((sep = buffer.indexOf('\n\n')) >= 0) {
+        const block = buffer.slice(0, sep);
+        buffer = buffer.slice(sep + 2);
+
+        let event = 'message';
+        let dataStr = '';
+        for (const line of block.split('\n')) {
+          if (line.startsWith('event: ')) event = line.slice(7).trim();
+          else if (line.startsWith('data: '))
+            dataStr = dataStr ? dataStr + '\n' + line.slice(6) : line.slice(6);
+        }
+        if (!dataStr) continue;
+
+        let parsed: any = dataStr;
+        try { parsed = JSON.parse(dataStr); } catch { /* keep raw string */ }
+        cb.onEvent?.(event, parsed);
+
+        // ── Outer envelope events ──────────────────────────────
+        if (event === 'phase') {
+          // Server may send {phase:'claude', model, fastMode} etc.
+          if (parsed?.phase) cb.onPhase?.(parsed.phase);
+          continue;
+        }
+        if (
+          event === 'restore' || event === 'setup' || event === 'snapshot' ||
+          event === 'diff' || event === 'claude_ms' || event === 'done'
+        ) {
+          cb.onSandboxEvent?.(event, parsed);
+          continue;
+        }
+        if (event === 'claude_ttfo') {
+          // Backend's own time-to-first-output marker. Honour it (and mark
+          // firstOutput so we don't double-fire from the first stdout token).
+          firstOutput = true;
+          cb.onSandboxEvent?.('claude_ttfo', parsed);
+          continue;
+        }
+        if (event === 'stall-warning') {
+          cb.onSandboxEvent?.('stall-warning', parsed);
+          continue;
+        }
+        if (event !== 'stdout') continue;
+
+        // ── stdout payloads: Claude Code stream-json ───────────
+        const t = parsed?.type;
+        const sub = parsed?.subtype;
+
+        if (t === 'system' && sub === 'init') {
+          cb.onSystemInit?.({
+            model: parsed.model,
+            tools: parsed.tools,
+            cwd: parsed.cwd,
+          });
+          continue;
+        }
+
+        if (t === 'stream_event') {
+          const ev = parsed.event;
+          if (!ev) continue;
+
+          if (ev.type === 'content_block_start') {
+            markFirstOutput();
+            const b = ev.content_block;
+            if (b?.type === 'text') {
+              cb.onBlockStart?.({ type: 'text', index: ev.index });
+            } else if (b?.type === 'thinking') {
+              cb.onBlockStart?.({ type: 'thinking', index: ev.index });
+            } else if (b?.type === 'tool_use') {
+              cb.onBlockStart?.({
+                type: 'tool_use',
+                index: ev.index,
+                tool: { name: b.name, id: b.id },
+              });
+            }
+          } else if (ev.type === 'content_block_delta') {
+            markFirstOutput();
+            const d = ev.delta;
+            if (d?.type === 'text_delta' && d.text) {
+              cb.onTextDelta?.(d.text, ev.index);
+            } else if (d?.type === 'thinking_delta' && d.thinking) {
+              cb.onThinkingDelta?.(d.thinking, ev.index);
+            } else if (d?.type === 'input_json_delta' && d.partial_json) {
+              cb.onToolInputDelta?.(d.partial_json, ev.index);
+            }
+          } else if (ev.type === 'content_block_stop') {
+            cb.onBlockStop?.(ev.index);
+          }
+          continue;
+        }
+
+        if (t === 'user' && Array.isArray(parsed.message?.content)) {
+          // tool_result blocks come back via a user message
+          for (const blk of parsed.message.content) {
+            if (blk?.type === 'tool_result') {
+              const content = Array.isArray(blk.content)
+                ? blk.content
+                    .map((c: any) => (typeof c === 'string' ? c : c.text || JSON.stringify(c)))
+                    .join('\n')
+                : String(blk.content ?? '');
+              cb.onToolResult?.({
+                toolUseId: blk.tool_use_id,
+                content,
+                isError: blk.is_error,
+              });
+            }
+          }
+          continue;
+        }
+
+        if (t === 'assistant' && Array.isArray(parsed.message?.content)) {
+          const text = parsed.message.content
+            .filter((c: any) => c.type === 'text')
+            .map((c: any) => c.text)
+            .join('');
+          if (text) cb.onAssistantFinal?.(text);
+          continue;
+        }
+
+        if (t === 'result') {
+          if (sub && sub !== 'success') {
+            const err = new Error(parsed.error || `Claude Code run ${sub}`);
+            cb.onError?.(err);
+            throw err;
+          }
+          cb.onResult?.({
+            success: true,
+            durationMs: parsed.duration_ms,
+            usage: parsed.usage,
+          });
+          continue;
+        }
+      }
+    }
+  } finally {
+    try { reader.releaseLock(); } catch { /* noop */ }
   }
 }
 
