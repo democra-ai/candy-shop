@@ -82,6 +82,7 @@ import {
   type OCBudget,
 } from '../../lib/cfOpenCodeClient';
 import { streamLangGraphRun, warmLangGraph } from '../../lib/cfLangGraphClient';
+import { streamN8nRun, warmN8n } from '../../lib/cfN8nClient';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1005,6 +1006,13 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
   const itemFormat = getFormat(skill);
   const runtimeDescriptor = getRuntime(itemFormat);
   const isLangGraph = runtimeDescriptor.runner === 'langgraph-sandbox';
+  // n8n           → runner 'n8n-sandbox' → real n8n workflow execution runtime
+  //                 (cf-n8n worker); streams node-by-node run output.
+  const isN8n = runtimeDescriptor.runner === 'n8n-sandbox';
+  // Formats that run against a dedicated single-runtime sandbox worker
+  // (LangGraph / n8n) share the same "fixed runtime, stream into transcript"
+  // UI shape — distinct from the multi-runtime claude-skill chat path.
+  const isFixedRuntime = isLangGraph || isN8n;
   const isComingSoon = runtimeDescriptor.runner === 'coming-soon';
 
   // Connection state
@@ -1097,6 +1105,12 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       warmLangGraph();
       return;
     }
+    if (isN8n) {
+      // Pre-boot the n8n sandbox container (provision + resident n8n CLI) so
+      // the first run skips the cold boot. Best-effort.
+      warmN8n();
+      return;
+    }
     if (runtimeMode === 'cf-ai') getCFBudget().then(setCfBudget);
     if (runtimeMode === 'cf-cc') {
       getCCBudget().then(setCcBudget);
@@ -1109,7 +1123,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       // skips the cold start (container wake + provider init). Best-effort.
       warmOpenCode();
     }
-  }, [runtimeMode, isComingSoon, isLangGraph]);
+  }, [runtimeMode, isComingSoon, isLangGraph, isN8n]);
 
   // Skill loading state
   const [skillInstructions, setSkillInstructions] = useState<string | null>(null);
@@ -1133,10 +1147,10 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       setConnecting(false);
       return;
     }
-    // LangGraph runs against the cf-langgraph worker directly (no opencode
-    // session/server). Mark connected so the transcript + composer render, and
-    // skip the opencode.connect()/listSessions flow entirely.
-    if (isLangGraph) {
+    // LangGraph / n8n run against their dedicated sandbox worker directly (no
+    // opencode session/server). Mark connected so the transcript + composer
+    // render, and skip the opencode.connect()/listSessions flow entirely.
+    if (isFixedRuntime) {
       setConnected(true);
       setConnecting(false);
       return;
@@ -1207,7 +1221,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       cancelled = true;
       opencode.cleanup();
     };
-  }, [skill, isComingSoon, isLangGraph]);
+  }, [skill, isComingSoon, isFixedRuntime]);
 
   // ── Auto-scroll ─────────────────────────────────────────────────────────
 
@@ -1534,6 +1548,113 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
         if (!runDone) finalize();
       } catch (err) {
         // onError already finalized; this just guards the network/throw path.
+        if (!runDone) {
+          const msg = err instanceof Error ? err.message : String(err);
+          finalize(`\n\n**Error:** ${msg}`);
+        }
+      } finally {
+        setSandboxPhase(null);
+        setIsRunning(false);
+      }
+      return;
+    }
+
+    // ── n8n runtime branch (real workflow execution) ────────────────────
+    // Imports the item's workflow JSON into a headless n8n CLI in the cf-n8n
+    // container sandbox and executes it once, streaming node-by-node execution
+    // + the run result into the transcript as a single, growing markdown part.
+    if (isN8n) {
+      setInput('');
+      setAttachedFiles([]);
+      setIsRunning(true);
+      setConnectionError(null);
+      setSandboxPhase('starting');
+
+      const userEntry: UserEntry = { type: 'user', text, time: Date.now() };
+      const msgId = `n8n-${Date.now()}`;
+      const partId = `n8n-part-${Date.now()}`;
+      const placeholder: AssistantEntry = {
+        type: 'assistant',
+        messageId: msgId,
+        parts: [{ id: partId, sessionID: 'n8n', messageID: msgId, type: 'text', text: '' } as TextPart],
+        isComplete: false,
+      };
+      setEntries(prev => [...prev, userEntry, placeholder]);
+
+      // Build a readable markdown log as events arrive: a "Nodes" list as they
+      // are detected, then the live run output, then the parsed result.
+      const nodes: string[] = [];
+      let runLog = '';
+      let rafScheduled = false;
+      let runDone = false;
+      const composed = () => {
+        let md = '';
+        if (nodes.length) {
+          md += `**Workflow nodes**\n${nodes.map(n => `- ${n}`).join('\n')}\n\n`;
+        }
+        if (runLog.trim()) {
+          md += `**Run log**\n\n\`\`\`\n${runLog.trimEnd()}\n\`\`\`\n`;
+        }
+        return md;
+      };
+      const flush = () => {
+        if (rafScheduled || runDone) return;
+        rafScheduled = true;
+        requestAnimationFrame(() => {
+          rafScheduled = false;
+          const snapshot = composed();
+          setEntries(prev => prev.map(e =>
+            e.type === 'assistant' && e.messageId === msgId
+              ? { ...e, parts: [{ id: partId, sessionID: 'n8n', messageID: msgId, type: 'text', text: snapshot } as TextPart] }
+              : e
+          ));
+        });
+      };
+      const finalize = (extra?: string) => {
+        runDone = true;
+        let md = composed();
+        if (extra) md += extra;
+        const snapshot = md.trim() || '(no output)';
+        setEntries(prev => prev.map(e =>
+          e.type === 'assistant' && e.messageId === msgId
+            ? { ...e, isComplete: true, parts: [{ id: partId, sessionID: 'n8n', messageID: msgId, type: 'text', text: snapshot } as TextPart] }
+            : e
+        ));
+      };
+
+      try {
+        await streamN8nRun(
+          { artifactUrl: skill.artifactUrl, input: text },
+          {
+            onPhase: (phase) => setSandboxPhase(phase),
+            onNode: (n) => { nodes.push(n.name); flush(); },
+            onStdout: (chunk) => { runLog += chunk; flush(); },
+            onResult: (data) => {
+              setSandboxPhase(null);
+              // Append a compact summary of the parsed run result, if present.
+              let summary = '';
+              const r = data.result as
+                | { data?: { resultData?: { lastNodeExecuted?: string; runData?: Record<string, unknown> } }; status?: string }
+                | undefined;
+              if (r && r.data?.resultData) {
+                const last = r.data.resultData.lastNodeExecuted;
+                const status = r.status ?? (data.success ? 'success' : 'error');
+                summary = `\n**Result:** status \`${status}\`${last ? ` · last node \`${last}\`` : ''}${typeof data.exitCode === 'number' ? ` · exit ${data.exitCode}` : ''}\n`;
+              } else {
+                summary = `\n**Result:** ${data.success ? 'success' : 'failed'}${typeof data.exitCode === 'number' ? ` · exit ${data.exitCode}` : ''}\n`;
+              }
+              finalize(summary);
+            },
+            onError: (err) => {
+              setSandboxPhase(null);
+              finalize(`\n\n**Error:** ${err.message}`);
+              setConnectionError(err.message);
+              setTimeout(() => setConnectionError(null), 8000);
+            },
+          },
+        );
+        if (!runDone) finalize();
+      } catch (err) {
         if (!runDone) {
           const msg = err instanceof Error ? err.message : String(err);
           finalize(`\n\n**Error:** ${msg}`);
@@ -2284,7 +2405,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       polling = false;
       window.clearInterval(pollTimer);
     }
-  }, [input, attachedFiles, isRunning, connected, currentSessionId, createNewSession, selectedModel, skill.id, skill.name, skill.description, skill.artifactUrl, skillInstructions, skill.config.systemPrompt, runtimeMode, sandboxRepo, entries, isLangGraph]);
+  }, [input, attachedFiles, isRunning, connected, currentSessionId, createNewSession, selectedModel, skill.id, skill.name, skill.description, skill.artifactUrl, skillInstructions, skill.config.systemPrompt, runtimeMode, sandboxRepo, entries, isLangGraph, isN8n]);
 
   // ── Abort ───────────────────────────────────────────────────────────────
 
@@ -2365,7 +2486,9 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       : null;
 
   // ── Runtime mode badge (langgraph / cf-cc / cf-ai / opencode) ─────────────
-  const modeBadge = isLangGraph
+  const modeBadge = isN8n
+    ? { label: 'n8n Workflow', tone: 'text-mint bg-mint/10 border-mint/20' }
+    : isLangGraph
     ? { label: 'LangGraph', tone: 'text-grape bg-grape/10 border-grape/20' }
     : runtimeMode === 'cf-cc'
       ? { label: 'Claude Code', tone: 'text-primary bg-primary/10 border-primary/20' }
@@ -2591,10 +2714,10 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                 <ExternalLink className="w-2.5 h-2.5 opacity-50" />
               </a>
             )}
-            {isLangGraph ? (
+            {isFixedRuntime ? (
               <div className="hidden sm:flex items-center gap-1.5 px-3 h-9 text-[12px] border border-border/60 rounded-xl text-foreground-secondary font-mono">
                 <Settings className="w-3.5 h-3.5" />
-                <span>Llama 3.3 70B</span>
+                <span>{isN8n ? 'n8n CLI' : 'Llama 3.3 70B'}</span>
               </div>
             ) : (
               <ModelPicker
@@ -3182,8 +3305,9 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
               </div>
               <div className="flex flex-col gap-2.5 mt-2.5 px-0.5 max-w-3xl mx-auto">
                 {/* Optional repo input — empty uses the sandbox's scratch dir.
-                    Hidden for LangGraph (the graph artifact comes from the item). */}
-                {!isLangGraph && (runtimeMode === 'opencode' || runtimeMode === 'cf-cc') && (
+                    Hidden for fixed-runtime formats (LangGraph / n8n): the
+                    artifact comes from the item. */}
+                {!isFixedRuntime && (runtimeMode === 'opencode' || runtimeMode === 'cf-cc') && (
                   <div className="flex items-center gap-2 text-[11px]">
                     <span className="text-foreground-tertiary shrink-0 font-mono uppercase tracking-wide text-[10px]">
                       Repo
@@ -3200,9 +3324,10 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
 
                 <div className="flex justify-between items-center gap-3 flex-wrap">
                   {/* Runtime picker — Claude Code (persistent warm session)
-                      is the primary path and listed first. Hidden for LangGraph,
-                      which has a single, fixed runtime (the cf-langgraph worker). */}
-                  {!isLangGraph ? (
+                      is the primary path and listed first. Hidden for the
+                      fixed-runtime formats (LangGraph / n8n), each of which has
+                      a single dedicated sandbox worker. */}
+                  {!isFixedRuntime ? (
                   <div className="flex items-center gap-0.5 text-[11px] rounded-xl border border-border bg-background-secondary p-1">
                     {([
                       { id: 'cf-cc', label: 'Claude Code', Icon: Zap,
@@ -3229,9 +3354,9 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                     ))}
                   </div>
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 h-7 text-[11px] font-mono text-grape">
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 h-7 text-[11px] font-mono ${isN8n ? 'text-mint' : 'text-grape'}`}>
                       <Workflow className="w-3.5 h-3.5" />
-                      LangGraph runtime
+                      {isN8n ? 'n8n runtime' : 'LangGraph runtime'}
                     </span>
                   )}
 

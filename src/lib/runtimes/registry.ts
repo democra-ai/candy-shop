@@ -25,8 +25,12 @@ import type { Flavor } from '../../utils/candyShells';
  *   runner: 'langgraph-sandbox' → the LangGraph/LangChain execution runtime
  *                                 (cf-langgraph worker + Python container +
  *                                 Workers-AI OpenAI shim). Streams graph output.
+ *   runner: 'n8n-sandbox'       → the n8n workflow execution runtime (cf-n8n
+ *                                 worker + n8n CLI container). Imports the
+ *                                 workflow + runs it headless, streaming
+ *                                 node-by-node execution + the run result.
  */
-export type RuntimeRunner = 'cc-sandbox' | 'langgraph-sandbox' | 'coming-soon';
+export type RuntimeRunner = 'cc-sandbox' | 'langgraph-sandbox' | 'n8n-sandbox' | 'coming-soon';
 
 export interface RuntimeDescriptor {
   /** The format this descriptor describes. */
@@ -58,8 +62,12 @@ export const RUNTIME_REGISTRY: Record<ItemFormat, RuntimeDescriptor> = {
     label: 'n8n Workflow',
     shortLabel: 'n8n',
     accentFlavor: 'Mint',
-    runner: 'coming-soon',
-    importHint: 'Import this workflow JSON into your n8n instance',
+    // Phase 2b: real execution runtime. Imports the workflow JSON into a
+    // headless n8n CLI running in a Cloudflare container sandbox and executes
+    // it once (`import:workflow` + `execute --id --rawOutput`), streaming
+    // node-by-node execution + the run result into the transcript.
+    runner: 'n8n-sandbox',
+    importHint: 'Run this workflow headless (n8n CLI)',
     docsUrl: 'https://n8n.io',
   },
   dify: {
