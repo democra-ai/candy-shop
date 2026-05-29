@@ -20,8 +20,13 @@ import type { ItemFormat, Skill } from '../../data/skillsData';
 import { getFormat } from '../../data/skillsData';
 import type { Flavor } from '../../utils/candyShells';
 
-/** Where (and whether) an item of a given format actually executes. */
-export type RuntimeRunner = 'cc-sandbox' | 'coming-soon';
+/** Where (and whether) an item of a given format actually executes.
+ *
+ *   runner: 'langgraph-sandbox' → the LangGraph/LangChain execution runtime
+ *                                 (cf-langgraph worker + Python container +
+ *                                 Workers-AI OpenAI shim). Streams graph output.
+ */
+export type RuntimeRunner = 'cc-sandbox' | 'langgraph-sandbox' | 'coming-soon';
 
 export interface RuntimeDescriptor {
   /** The format this descriptor describes. */
@@ -71,7 +76,10 @@ export const RUNTIME_REGISTRY: Record<ItemFormat, RuntimeDescriptor> = {
     label: 'LangGraph',
     shortLabel: 'LangGraph',
     accentFlavor: 'Grape',
-    runner: 'coming-soon',
+    // Phase 2a: real execution runtime. Runs the graph in a Cloudflare
+    // container sandbox; the graph's LLM calls go through a Workers-AI-backed
+    // OpenAI shim, and streamed steps render in the transcript.
+    runner: 'langgraph-sandbox',
     importHint: 'Run with LangGraph (Python)',
     docsUrl: 'https://langchain-ai.github.io/langgraph/',
   },

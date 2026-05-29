@@ -67,6 +67,7 @@ import {
   type FileAttachment,
 } from '../../lib/opencode-client';
 import { sendCFChat, getCFBudget, type CFBudget } from '../../lib/cfChatClient';
+import { ModelPicker } from './ModelPicker';
 import {
   streamClaudeCodeRun,
   getCCBudget,
@@ -80,6 +81,7 @@ import {
   warmOpenCode,
   type OCBudget,
 } from '../../lib/cfOpenCodeClient';
+import { streamLangGraphRun, warmLangGraph } from '../../lib/cfLangGraphClient';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -979,12 +981,16 @@ function SessionSidebar({
 
 export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
   // ── Run-dispatch by format/runtime (declared first; used by effects below) ─
-  // claude-skill → runner 'cc-sandbox' → the existing cf-cc/cf-ai/opencode chat
-  // flow, UNCHANGED. Every other format → runner 'coming-soon' → a clean
-  // import/coming-soon panel (early-return before the chat UI).
+  // claude-skill        → runner 'cc-sandbox'        → existing cf-cc/cf-ai/opencode
+  //                       chat flow, UNCHANGED.
+  // langgraph           → runner 'langgraph-sandbox' → real LangGraph execution
+  //                       runtime (cf-langgraph worker); streams graph output
+  //                       into the same transcript UI.
+  // everything else     → runner 'coming-soon'       → the import/coming-soon panel.
   const executorIsDark = useIsDark();
   const itemFormat = getFormat(skill);
   const runtimeDescriptor = getRuntime(itemFormat);
+  const isLangGraph = runtimeDescriptor.runner === 'langgraph-sandbox';
   const isComingSoon = runtimeDescriptor.runner === 'coming-soon';
 
   // Connection state
@@ -1021,8 +1027,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
     fileName: string;
   }>>([]);
 
-  // Fixed OpenCode model – GLM-4.5 on zhipuai-coding-plan provider
-  const selectedModel: ModelConfig = { providerID: 'zhipuai-coding-plan', modelID: 'glm-4.5' };
+  // Model selection is per-runtime state (defined below, after RuntimeMode).
 
   // Runtime picker. `cf-cc` is the primary, production path: a PERSISTENT
   // warm Claude Code session over WebSocket (no per-turn cold start) —
@@ -1033,6 +1038,18 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
   //   opencode → legacy local OpenCode SDK path (kept as a fallback)
   type RuntimeMode = 'opencode' | 'cf-ai' | 'cf-cc';
   const [runtimeMode, setRuntimeMode] = useState<RuntimeMode>('cf-cc');
+
+  // Per-runtime model selection. cc/oc run GLM models on z.ai; cf-ai runs
+  // Workers AI. The <ModelPicker> writes the chosen ModelConfig for whichever
+  // runtime is active; every run path below reads `selectedModel`.
+  const [modelByRuntime, setModelByRuntime] = useState<Record<RuntimeMode, ModelConfig>>({
+    'cf-cc':    { providerID: 'zhipuai-coding-plan', modelID: 'glm-4.5-air' },
+    'opencode': { providerID: 'zhipuai-coding-plan', modelID: 'glm-4.5-air' },
+    'cf-ai':    { providerID: 'workers-ai',          modelID: '@cf/meta/llama-3.1-8b-instruct-fast' },
+  });
+  const selectedModel = modelByRuntime[runtimeMode];
+  const setSelectedModel = (m: ModelConfig) =>
+    setModelByRuntime((prev) => ({ ...prev, [runtimeMode]: m }));
   const [cfBudget, setCfBudget] = useState<CFBudget | null>(null);
   const [ccBudget, setCcBudget] = useState<CCBudget | null>(null);
   const [ocBudget, setOcBudget] = useState<OCBudget | null>(null);
@@ -1060,6 +1077,12 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
   }, [sandboxPhase]);
   useEffect(() => {
     if (isComingSoon) return; // no runtime to warm for import-only formats
+    if (isLangGraph) {
+      // Pre-boot the LangGraph sandbox container so the first run skips the
+      // cold boot. Best-effort; the runtime picker doesn't apply here.
+      warmLangGraph();
+      return;
+    }
     if (runtimeMode === 'cf-ai') getCFBudget().then(setCfBudget);
     if (runtimeMode === 'cf-cc') {
       getCCBudget().then(setCcBudget);
@@ -1072,7 +1095,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       // skips the cold start (container wake + provider init). Best-effort.
       warmOpenCode();
     }
-  }, [runtimeMode, isComingSoon]);
+  }, [runtimeMode, isComingSoon, isLangGraph]);
 
   // Skill loading state
   const [skillInstructions, setSkillInstructions] = useState<string | null>(null);
@@ -1093,6 +1116,14 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
   useEffect(() => {
     // coming-soon formats never touch the sandbox — skip connecting/warming.
     if (isComingSoon) {
+      setConnecting(false);
+      return;
+    }
+    // LangGraph runs against the cf-langgraph worker directly (no opencode
+    // session/server). Mark connected so the transcript + composer render, and
+    // skip the opencode.connect()/listSessions flow entirely.
+    if (isLangGraph) {
+      setConnected(true);
       setConnecting(false);
       return;
     }
@@ -1162,7 +1193,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       cancelled = true;
       opencode.cleanup();
     };
-  }, [skill, isComingSoon]);
+  }, [skill, isComingSoon, isLangGraph]);
 
   // ── Auto-scroll ─────────────────────────────────────────────────────────
 
@@ -1414,6 +1445,92 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       }
     }
 
+    // ── LangGraph runtime branch (real graph execution) ─────────────────
+    // Runs the seed item's graph in the cf-langgraph container sandbox and
+    // streams its output into the transcript as a single, growing text part.
+    // The graph's LLM calls go through the worker's Workers-AI OpenAI shim.
+    if (isLangGraph) {
+      setInput('');
+      setAttachedFiles([]);
+      setIsRunning(true);
+      setConnectionError(null);
+      setSandboxPhase('starting');
+
+      const userEntry: UserEntry = { type: 'user', text, time: Date.now() };
+      const msgId = `lg-${Date.now()}`;
+      const partId = `lg-part-${Date.now()}`;
+      const placeholder: AssistantEntry = {
+        type: 'assistant',
+        messageId: msgId,
+        parts: [{ id: partId, sessionID: 'lg', messageID: msgId, type: 'text', text: '' } as TextPart],
+        isComplete: false,
+      };
+      setEntries(prev => [...prev, userEntry, placeholder]);
+
+      // Accumulate streamed stdout; re-render the placeholder's text part as
+      // chunks arrive (throttled via rAF so token bursts don't tank perf).
+      let log = '';
+      let rafScheduled = false;
+      let runDone = false;
+      const flushLog = () => {
+        if (rafScheduled || runDone) return;
+        rafScheduled = true;
+        requestAnimationFrame(() => {
+          rafScheduled = false;
+          const snapshot = log;
+          setEntries(prev => prev.map(e =>
+            e.type === 'assistant' && e.messageId === msgId
+              ? { ...e, parts: [{ id: partId, sessionID: 'lg', messageID: msgId, type: 'text', text: snapshot } as TextPart] }
+              : e
+          ));
+        });
+      };
+      const finalize = (extra?: string) => {
+        runDone = true;
+        if (extra) log += extra;
+        const snapshot = log.trim() || '(no output)';
+        setEntries(prev => prev.map(e =>
+          e.type === 'assistant' && e.messageId === msgId
+            ? { ...e, isComplete: true, parts: [{ id: partId, sessionID: 'lg', messageID: msgId, type: 'text', text: snapshot } as TextPart] }
+            : e
+        ));
+      };
+
+      try {
+        await streamLangGraphRun(
+          { artifactUrl: skill.artifactUrl, task: text },
+          {
+            onPhase: (phase) => setSandboxPhase(phase),
+            onStdout: (chunk) => {
+              log += chunk;
+              flushLog();
+            },
+            onResult: () => {
+              setSandboxPhase(null);
+              finalize();
+            },
+            onError: (err) => {
+              setSandboxPhase(null);
+              finalize(`\n\n**Error:** ${err.message}`);
+              setConnectionError(err.message);
+              setTimeout(() => setConnectionError(null), 8000);
+            },
+          },
+        );
+        if (!runDone) finalize();
+      } catch (err) {
+        // onError already finalized; this just guards the network/throw path.
+        if (!runDone) {
+          const msg = err instanceof Error ? err.message : String(err);
+          finalize(`\n\n**Error:** ${msg}`);
+        }
+      } finally {
+        setSandboxPhase(null);
+        setIsRunning(false);
+      }
+      return;
+    }
+
     // ── Cloudflare Workers AI branch (single-shot chat) ─────────────────
     if (runtimeMode === 'cf-ai') {
       setInput('');
@@ -1441,10 +1558,13 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
           ? `You are helping with the skill "${skill.name}". Stay on-topic.\n\n${resolvedSkillInstructions.slice(0, 800)}`
           : `You are a concise AI assistant.`;
 
-        const reply = await sendCFChat([
-          { role: 'system', content: systemPrompt },
-          ...history,
-        ]);
+        const reply = await sendCFChat(
+          [
+            { role: 'system', content: systemPrompt },
+            ...history,
+          ],
+          selectedModel?.modelID,
+        );
 
         const msgId = `cf-${Date.now()}`;
         const assistantEntry: AssistantEntry = {
@@ -2148,7 +2268,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       polling = false;
       window.clearInterval(pollTimer);
     }
-  }, [input, attachedFiles, isRunning, connected, currentSessionId, createNewSession, selectedModel, skill.id, skill.name, skill.description, skillInstructions, skill.config.systemPrompt, runtimeMode, sandboxRepo, entries]);
+  }, [input, attachedFiles, isRunning, connected, currentSessionId, createNewSession, selectedModel, skill.id, skill.name, skill.description, skill.artifactUrl, skillInstructions, skill.config.systemPrompt, runtimeMode, sandboxRepo, entries, isLangGraph]);
 
   // ── Abort ───────────────────────────────────────────────────────────────
 
@@ -2228,9 +2348,10 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
       })()
       : null;
 
-  // ── Runtime mode badge (cf-cc / cf-ai / opencode) ─────────────────────────
-  const modeBadge =
-    runtimeMode === 'cf-cc'
+  // ── Runtime mode badge (langgraph / cf-cc / cf-ai / opencode) ─────────────
+  const modeBadge = isLangGraph
+    ? { label: 'LangGraph', tone: 'text-grape bg-grape/10 border-grape/20' }
+    : runtimeMode === 'cf-cc'
       ? { label: 'Claude Code', tone: 'text-primary bg-primary/10 border-primary/20' }
       : runtimeMode === 'cf-ai'
         ? { label: 'Workers AI', tone: 'text-info bg-info/10 border-info/20' }
@@ -2257,7 +2378,11 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
   // Skill identity illustration — DESIGN.md hard rule #1: no emoji as UI.
   const SkillCandy = getCandyIcon(skill.category);
   // The model label depends on runtime mode (Workers AI runs Llama, not GLM).
-  const modelLabel = runtimeMode === 'cf-ai' ? 'Llama 3.1 8B' : 'GLM-4.5';
+  const modelLabel = isLangGraph
+    ? 'Llama 3.3 70B'
+    : runtimeMode === 'cf-ai'
+      ? 'Llama 3.1 8B'
+      : 'GLM-4.5';
 
   // ── Coming-soon dispatch ──────────────────────────────────────────────────
   // Non-claude formats (n8n / dify / langgraph / workflow) have no in-platform
@@ -3037,8 +3162,9 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                 </div>
               </div>
               <div className="flex flex-col gap-2.5 mt-2.5 px-0.5 max-w-3xl mx-auto">
-                {/* Optional repo input — empty uses the sandbox's scratch dir */}
-                {(runtimeMode === 'opencode' || runtimeMode === 'cf-cc') && (
+                {/* Optional repo input — empty uses the sandbox's scratch dir.
+                    Hidden for LangGraph (the graph artifact comes from the item). */}
+                {!isLangGraph && (runtimeMode === 'opencode' || runtimeMode === 'cf-cc') && (
                   <div className="flex items-center gap-2 text-[11px]">
                     <span className="text-foreground-tertiary shrink-0 font-mono uppercase tracking-wide text-[10px]">
                       Repo
@@ -3055,7 +3181,9 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
 
                 <div className="flex justify-between items-center gap-3 flex-wrap">
                   {/* Runtime picker — Claude Code (persistent warm session)
-                      is the primary path and listed first. */}
+                      is the primary path and listed first. Hidden for LangGraph,
+                      which has a single, fixed runtime (the cf-langgraph worker). */}
+                  {!isLangGraph ? (
                   <div className="flex items-center gap-0.5 text-[11px] rounded-xl border border-border bg-background-secondary p-1">
                     {([
                       { id: 'cf-cc', label: 'Claude Code', Icon: Zap,
@@ -3081,6 +3209,12 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                       </button>
                     ))}
                   </div>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 h-7 text-[11px] font-mono text-grape">
+                      <Workflow className="w-3.5 h-3.5" />
+                      LangGraph runtime
+                    </span>
+                  )}
 
                   <div className="flex items-center gap-3 flex-wrap">
                     {/* Budget chip — per mode */}
