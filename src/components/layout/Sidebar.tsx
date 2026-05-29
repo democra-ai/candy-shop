@@ -24,7 +24,6 @@ import type { User as SupabaseUser } from '../../lib/supabaseClient';
 import { supabase } from '../../lib/supabaseClient';
 import { cn } from '../../utils/cn';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { Logo, LogoMark } from '../illustrations';
 
 interface SidebarProps {
   onOpenAuth: () => void;
@@ -292,7 +291,12 @@ export function Sidebar({
             className="flex items-center hover:opacity-80 transition-opacity duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30 rounded-lg px-1"
             aria-label="Go to home page"
           >
-            <Logo size={26} className="text-foreground" />
+            <span className="inline-flex items-center gap-2">
+              <span className="text-[26px] leading-none" aria-hidden="true">🍭</span>
+              <span className="font-candy font-semibold text-lg tracking-tight text-foreground">
+                <span className="text-primary">Candy</span> Shop
+              </span>
+            </span>
           </button>
         )}
         {collapsed && (
@@ -301,7 +305,7 @@ export function Sidebar({
             className="flex items-center justify-center hover:opacity-80 transition-opacity duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30 rounded-lg"
             aria-label="Go to home page"
           >
-            <LogoMark size={28} className="text-primary" />
+            <span className="text-2xl leading-none" aria-hidden="true">🍭</span>
           </button>
         )}
       </div>
@@ -518,7 +522,12 @@ export function Sidebar({
           className="flex items-center hover:opacity-80 transition-opacity"
           aria-label="Go to home page"
         >
-          <Logo size={24} className="text-foreground" />
+          <span className="inline-flex items-center gap-1.5">
+            <span className="text-[22px] leading-none" aria-hidden="true">🍭</span>
+            <span className="font-candy font-semibold text-base tracking-tight text-foreground">
+              <span className="text-primary">Candy</span> Shop
+            </span>
+          </span>
         </button>
 
         <button

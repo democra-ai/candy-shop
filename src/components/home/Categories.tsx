@@ -4,7 +4,6 @@ import { SKILLS_DATA, SKILL_CATEGORIES, REGISTRY_STATS } from '../../data/skills
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useIsDark } from '../../hooks/useIsDark';
 import { getFlavor, flavorForCategory } from '../../utils/candyShells';
-import { getCandyIcon, LogoMark } from '../illustrations';
 import { cn } from '../../utils/cn';
 
 export interface CategoryData {
@@ -15,7 +14,7 @@ export interface CategoryData {
 }
 
 // Per-category "flavor name" label under the title (the boutique copy). Color is
-// carried by the candy illustration + flavor accent, NOT a neon gradient fill.
+// carried by the candy emoji + flavor accent, NOT a neon gradient fill.
 const FLAVOR_LABEL: Record<string, string> = {
   Development: 'Raspberry Bar',
   Design: 'Grape Swirl',
@@ -26,6 +25,19 @@ const FLAVOR_LABEL: Record<string, string> = {
   Mobile: 'Lemon Drop',
   Writing: 'Bubblegum Twist',
 };
+
+// Per-category candy emoji shown in the tinted well (back to emoji per owner).
+const CATEGORY_EMOJI: Record<string, string> = {
+  Development: '🍭',
+  Design: '🍬',
+  Marketing: '🧁',
+  Productivity: '🍫',
+  Tools: '🍰',
+  Research: '🍡',
+  Mobile: '🍪',
+  Writing: '🍩',
+};
+const DEFAULT_CATEGORY_EMOJI = '🍮';
 
 export function Categories({ onSelectCategory, activeCategory }: { onSelectCategory: (category: string | null) => void; activeCategory?: string | null }) {
   const { t } = useLanguage();
@@ -47,10 +59,10 @@ export function Categories({ onSelectCategory, activeCategory }: { onSelectCateg
         <div className="flex items-end justify-between gap-4 mb-8">
           <div className="flex items-center gap-3">
             <span
-              className="grid place-items-center w-11 h-11 rounded-2xl bg-card border border-border shadow-candy-1 dark:shadow-candy-1-dark shrink-0"
+              className="grid place-items-center w-11 h-11 rounded-2xl bg-card border border-border shadow-candy-1 dark:shadow-candy-1-dark shrink-0 text-2xl leading-none"
               aria-hidden="true"
             >
-              <LogoMark size={26} />
+              🍫
             </span>
             <div>
               <h2 className="text-2xl sm:text-3xl font-candy font-bold text-foreground leading-tight">
@@ -111,7 +123,7 @@ export function Categories({ onSelectCategory, activeCategory }: { onSelectCateg
 
           {categories.map((cat, i) => {
             const flavor = getFlavor(cat.name, isDark);
-            const Candy = getCandyIcon(cat.name, isDark);
+            const candyEmoji = CATEGORY_EMOJI[cat.name] ?? DEFAULT_CATEGORY_EMOJI;
             const flavorLabel = FLAVOR_LABEL[cat.name] ?? flavorForCategory(cat.name);
             const isActive = activeCategory === cat.name;
             // Asymmetric sizing: every 5th tile is bigger (lg only) → 2 rows of 8.
@@ -146,16 +158,16 @@ export function Categories({ onSelectCategory, activeCategory }: { onSelectCateg
 
                 <div className={cn('relative p-5 sm:p-6 flex flex-col justify-between', isBig ? 'min-h-[180px]' : 'min-h-[140px]')}>
                   <div className="flex items-start justify-between gap-2">
-                    {/* Candy illustration in a soft flavor-tinted well */}
+                    {/* Candy emoji in a soft flavor-tinted well */}
                     <span
                       className={cn(
-                        'flex items-center justify-center rounded-2xl shrink-0 transition-transform duration-300 ease-candy group-hover:scale-105 group-hover:-rotate-3',
-                        isBig ? 'w-16 h-16' : 'w-12 h-12'
+                        'flex items-center justify-center rounded-2xl shrink-0 leading-none transition-transform duration-300 ease-candy group-hover:scale-105 group-hover:-rotate-3',
+                        isBig ? 'w-16 h-16 text-4xl' : 'w-12 h-12 text-2xl'
                       )}
                       style={{ backgroundColor: flavor.tint }}
                       aria-hidden="true"
                     >
-                      <Candy size={isBig ? 40 : 30} />
+                      {candyEmoji}
                     </span>
                     <span
                       className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold tabular-nums"
