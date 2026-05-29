@@ -15,9 +15,9 @@
  *   │ [ Run ]    View → │  │ 05  ◍  Title          ★4.5   9k │
  *   └───────────────────┘  └─────────────────────────────────┘
  *
- * Clean canvas: bg-card / soft flavor tint wells; color carried by the candy
- * emoji + flavor accents. Clicking a row/hero opens the SkillModal; the hero's
- * Run button calls onRunSkill directly.
+ * Clean canvas: bg-card / soft flavor tint wells; color carried by the category
+ * candy SVG (getCandyIcon) + flavor accents. Clicking a row/hero opens the
+ * SkillModal; the hero's Run button calls onRunSkill directly.
  */
 
 import { useMemo, useState } from 'react';
@@ -27,7 +27,7 @@ import { cn } from '../../utils/cn';
 import { SkillModal } from '../common/SkillModal';
 import { useIsDark } from '../../hooks/useIsDark';
 import { getFlavor } from '../../utils/candyShells';
-import { getCandyEmoji } from '../../utils/candy';
+import { getCandyIcon } from '../illustrations';
 
 interface MostPopularRailProps {
   onRunSkill: (skill: Skill) => void;
@@ -64,6 +64,7 @@ export function MostPopularRail({ onRunSkill }: MostPopularRailProps) {
   const heroFlavor = getFlavor(hero.category, isDark);
   const heroAuthor = authorFor(hero);
   const heroRating = ratingFor(hero, 0);
+  const HeroCandy = getCandyIcon(hero.category, isDark);
 
   return (
     <>
@@ -112,13 +113,12 @@ export function MostPopularRail({ onRunSkill }: MostPopularRailProps) {
               onMouseEnter={(e) => { e.currentTarget.style.borderColor = heroFlavor.base; }}
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = ''; }}
             >
-              {/* faint oversized emoji watermark, bottom-right */}
-              <span
-                className="pointer-events-none absolute -bottom-6 -right-3 text-[120px] leading-none opacity-[0.07] select-none rotate-[-8deg]"
+              {/* faint oversized candy watermark, bottom-right */}
+              <HeroCandy
+                size={150}
+                className="pointer-events-none absolute -bottom-7 -right-5 opacity-[0.08] select-none rotate-[-8deg]"
                 aria-hidden="true"
-              >
-                {getCandyEmoji(hero.id)}
-              </span>
+              />
 
               <div className="relative flex h-full flex-col">
                 {/* eyebrow ribbon */}
@@ -130,12 +130,12 @@ export function MostPopularRail({ onRunSkill }: MostPopularRailProps) {
                   top this week
                 </span>
 
-                {/* big candy emoji in a tinted well */}
+                {/* big candy illustration in a clean well */}
                 <span
-                  className="mt-4 md:mt-5 flex items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-2xl text-4xl md:text-5xl leading-none bg-card shadow-candy-1 dark:shadow-candy-1-dark transition-transform duration-300 ease-candy group-hover:scale-105 group-hover:-rotate-3"
+                  className="mt-4 md:mt-5 flex items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-card shadow-candy-1 dark:shadow-candy-1-dark transition-transform duration-300 ease-candy group-hover:scale-105 group-hover:-rotate-3"
                   aria-hidden="true"
                 >
-                  {getCandyEmoji(hero.id)}
+                  <HeroCandy size={44} />
                 </span>
 
                 {/* category chip */}
@@ -205,6 +205,7 @@ export function MostPopularRail({ onRunSkill }: MostPopularRailProps) {
                   const flavor = getFlavor(skill.category, isDark);
                   const author = authorFor(skill);
                   const rating = ratingFor(skill, rank - 1);
+                  const RowCandy = getCandyIcon(skill.category, isDark);
                   return (
                     <li key={skill.id}>
                       <button
@@ -239,13 +240,13 @@ export function MostPopularRail({ onRunSkill }: MostPopularRailProps) {
                           {String(rank).padStart(2, '0')}
                         </span>
 
-                        {/* emoji well */}
+                        {/* candy well */}
                         <span
-                          className="flex items-center justify-center w-10 h-10 md:w-11 md:h-11 rounded-xl text-xl md:text-2xl leading-none shrink-0 transition-transform duration-200 ease-candy group-hover/row:scale-105"
+                          className="flex items-center justify-center w-10 h-10 md:w-11 md:h-11 rounded-xl shrink-0 transition-transform duration-200 ease-candy group-hover/row:scale-105"
                           style={{ backgroundColor: flavor.tint }}
                           aria-hidden="true"
                         >
-                          {getCandyEmoji(skill.id)}
+                          <RowCandy size={26} />
                         </span>
 
                         {/* title + author */}

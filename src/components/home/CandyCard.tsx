@@ -3,11 +3,12 @@
  *
  * The boutique way: the whole card is flooded with a MUTED PASTEL fill from
  * `getShell(category, isDark)` (dusty rose / sage / lavender in light; deep
- * same-hue tones in dark), with dark same-hue INK text on top. A candy EMOJI
- * carries the playful glyph — no SVG illustration.
+ * same-hue tones in dark), with dark same-hue INK text on top. The category's
+ * custom candy SVG (`getCandyIcon`) carries the playful glyph in a tinted well —
+ * no OS emoji (DESIGN.md HARD RULE #1).
  *
  * Composition:
- *   Top row     : big emoji · category chip · pick/paid/hosted badge
+ *   Top row     : candy illustration · category chip · pick/paid/hosted badge
  *   Title       : 2 lines max, line-clamp-2 with ellipsis, Fredoka
  *   Description : 2 lines line-clamp, secondary ink
  *   Tags        : #tag #tag #tag — first 3 tags, mono (optional)
@@ -28,7 +29,7 @@ import { getFormat } from '../../data/skillsData';
 import { cn } from '../../utils/cn';
 import { useIsDark } from '../../hooks/useIsDark';
 import { getShell, getFlavor } from '../../utils/candyShells';
-import { getCandyEmoji } from '../../utils/candy';
+import { getCandyIcon } from '../illustrations';
 import { getRuntime } from '../../lib/runtimes/registry';
 
 interface CandyCardProps {
@@ -74,7 +75,7 @@ export function CandyCard({
   const isDark = useIsDark();
   const shell = getShell(skill.category, isDark);
   const rating = deriveRating(skill);
-  const emoji = getCandyEmoji(skill.id);
+  const CandyIcon = getCandyIcon(skill.category, isDark);
 
   // ── Format chip: non-claude formats get a clear type chip (n8n / Dify /
   //    LangGraph / Workflow) in the format's accent flavor. claude-skill is the
@@ -129,17 +130,18 @@ export function CandyCard({
           isFeatured ? 'p-5 md:p-6' : 'p-4 md:p-[18px]'
         )}
       >
-        {/* ── Top row: emoji · category chip · status badge ── */}
+        {/* ── Top row: candy illustration · category chip · status badge ── */}
         <div className="flex items-center gap-2.5 min-w-0">
           <span
             className={cn(
-              'shrink-0 leading-none select-none',
-              'transition-transform duration-300 ease-candy group-hover:scale-110',
-              isFeatured ? 'text-5xl' : 'text-[40px]'
+              'shrink-0 grid place-items-center rounded-2xl select-none',
+              'transition-transform duration-300 ease-candy group-hover:scale-110 group-hover:-rotate-3',
+              isFeatured ? 'w-16 h-16' : 'w-14 h-14'
             )}
+            style={{ backgroundColor: shell.chipBg }}
             aria-hidden="true"
           >
-            {emoji}
+            <CandyIcon size={isFeatured ? 44 : 40} />
           </span>
           <div className="flex flex-col items-start gap-1 min-w-0">
             <div className="flex items-center gap-1 min-w-0 flex-wrap">

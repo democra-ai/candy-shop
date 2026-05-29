@@ -5,6 +5,7 @@ import type { User } from '../../lib/supabaseClient';
 import { supabase } from '../../lib/supabaseClient';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { cn } from '../../utils/cn';
+import { Logo } from '../illustrations';
 
 // Candy-flavor swatches — `id`s stay stable (wired to THEME_COLORS + i18n keys).
 const themes = [
@@ -77,12 +78,7 @@ export function Header({
               className="flex items-center hover:opacity-80 transition-opacity"
               aria-label="Go to home page"
             >
-              <span className="inline-flex items-center gap-2">
-                <span className="text-[26px] leading-none" aria-hidden="true">🍭</span>
-                <span className="font-candy font-semibold text-lg tracking-tight text-foreground">
-                  <span className="text-primary">Candy</span> Shop
-                </span>
-              </span>
+              <Logo size={28} className="text-foreground" />
             </button>
 
             {/* Desktop Nav */}

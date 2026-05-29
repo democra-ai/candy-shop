@@ -1,6 +1,10 @@
 import { useMemo } from 'react';
+import { Layers, Check } from 'lucide-react';
 import { SKILLS_DATA, SKILL_CATEGORIES, REGISTRY_STATS } from '../../data/skillsData';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useIsDark } from '../../hooks/useIsDark';
+import { getFlavor, flavorForCategory } from '../../utils/candyShells';
+import { getCandyIcon, LogoMark } from '../illustrations';
 import { cn } from '../../utils/cn';
 
 export interface CategoryData {
@@ -10,92 +14,22 @@ export interface CategoryData {
   color: string;
 }
 
-// Each category gets its own candy "flavor" — bold gradient + emoji set
-const FLAVOR_MAP: Record<string, {
-  bg: string;
-  border: string;
-  ring: string;
-  emoji: string;
-  emojiBg: string;
-  label: string;
-}> = {
-  Development: {
-    bg: 'from-indigo-400 via-blue-500 to-cyan-400',
-    border: 'border-indigo-300',
-    ring: 'ring-indigo-300/50',
-    emoji: '🍭',
-    emojiBg: 'bg-white/30',
-    label: 'Blueberry Pop',
-  },
-  Design: {
-    bg: 'from-pink-400 via-rose-500 to-fuchsia-400',
-    border: 'border-pink-300',
-    ring: 'ring-pink-300/50',
-    emoji: '🍬',
-    emojiBg: 'bg-white/30',
-    label: 'Strawberry Swirl',
-  },
-  Marketing: {
-    bg: 'from-orange-400 via-amber-500 to-yellow-400',
-    border: 'border-orange-300',
-    ring: 'ring-orange-300/50',
-    emoji: '🧁',
-    emojiBg: 'bg-white/30',
-    label: 'Caramel Crunch',
-  },
-  Productivity: {
-    bg: 'from-emerald-400 via-teal-500 to-green-400',
-    border: 'border-emerald-300',
-    ring: 'ring-emerald-300/50',
-    emoji: '🍫',
-    emojiBg: 'bg-white/30',
-    label: 'Mint Chocolate',
-  },
-  Tools: {
-    bg: 'from-violet-400 via-purple-500 to-fuchsia-500',
-    border: 'border-violet-300',
-    ring: 'ring-violet-300/50',
-    emoji: '🍰',
-    emojiBg: 'bg-white/30',
-    label: 'Grape Gummy',
-  },
-  Research: {
-    bg: 'from-cyan-400 via-sky-500 to-blue-400',
-    border: 'border-cyan-300',
-    ring: 'ring-cyan-300/50',
-    emoji: '🍡',
-    emojiBg: 'bg-white/30',
-    label: 'Cotton Candy',
-  },
-  Mobile: {
-    bg: 'from-lime-400 via-green-500 to-emerald-400',
-    border: 'border-lime-300',
-    ring: 'ring-lime-300/50',
-    emoji: '🍪',
-    emojiBg: 'bg-white/30',
-    label: 'Apple Sour',
-  },
-  Writing: {
-    bg: 'from-yellow-400 via-amber-500 to-orange-400',
-    border: 'border-yellow-300',
-    ring: 'ring-yellow-300/50',
-    emoji: '🍩',
-    emojiBg: 'bg-white/30',
-    label: 'Honey Glaze',
-  },
-};
-
-const DEFAULT_FLAVOR = {
-  bg: 'from-slate-400 via-gray-500 to-zinc-400',
-  border: 'border-slate-300',
-  ring: 'ring-slate-300/50',
-  emoji: '🍮',
-  emojiBg: 'bg-white/30',
-  label: 'House Special',
+// Per-category "flavor name" label under the title (the boutique copy). Color is
+// carried by the candy illustration + flavor accent, NOT a neon gradient fill.
+const FLAVOR_LABEL: Record<string, string> = {
+  Development: 'Raspberry Bar',
+  Design: 'Grape Swirl',
+  Marketing: 'Caramel Cube',
+  Productivity: 'Mint Drop',
+  Tools: 'Chocolate Square',
+  Research: 'Blueberry Gum',
+  Mobile: 'Lemon Drop',
+  Writing: 'Bubblegum Twist',
 };
 
 export function Categories({ onSelectCategory, activeCategory }: { onSelectCategory: (category: string | null) => void; activeCategory?: string | null }) {
   const { t } = useLanguage();
+  const isDark = useIsDark();
 
   const categories = useMemo<CategoryData[]>(() => {
     return SKILL_CATEGORIES.map(cat => ({
@@ -112,7 +46,12 @@ export function Categories({ onSelectCategory, activeCategory }: { onSelectCateg
         {/* Section eyebrow */}
         <div className="flex items-end justify-between gap-4 mb-8">
           <div className="flex items-center gap-3">
-            <span className="text-3xl">🍫</span>
+            <span
+              className="grid place-items-center w-11 h-11 rounded-2xl bg-card border border-border shadow-candy-1 dark:shadow-candy-1-dark shrink-0"
+              aria-hidden="true"
+            >
+              <LogoMark size={26} />
+            </span>
             <div>
               <h2 className="text-2xl sm:text-3xl font-candy font-bold text-foreground leading-tight">
                 Browse by Flavor
@@ -126,41 +65,56 @@ export function Categories({ onSelectCategory, activeCategory }: { onSelectCateg
           <button
             onClick={() => onSelectCategory(null)}
             className={cn(
-              'hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-mono font-bold transition-all duration-300 border-2 btn-press',
+              'hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-mono font-bold transition-all duration-300 border btn-press',
               isAllActive
                 ? 'bg-foreground text-background border-foreground shadow-candy'
-                : 'bg-card border-border/60 text-foreground-secondary hover:border-primary/40 hover:text-foreground'
+                : 'bg-card border-border text-foreground-secondary hover:border-primary/40 hover:text-foreground hover:shadow-candy-1 dark:hover:shadow-candy-1-dark'
             )}
           >
-            🍬 All Flavors · {REGISTRY_STATS.totalSkills.toLocaleString()}
+            <Layers className="w-3.5 h-3.5" />
+            All Flavors · {REGISTRY_STATS.totalSkills.toLocaleString()}
           </button>
         </div>
 
-        {/* Bento tile grid — asymmetric on lg */}
+        {/* Tile grid — clean card surfaces, color carried by the candy illustration
+            + a thin flavor accent. Keeps the 2-row asymmetric layout on lg. */}
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 auto-rows-[minmax(140px,auto)]">
           {/* Mobile "All Flavors" tile */}
           <button
             onClick={() => onSelectCategory(null)}
             className={cn(
-              'sm:hidden col-span-2 group relative overflow-hidden rounded-3xl border-2 p-5 text-left transition-all duration-300 btn-press',
+              'sm:hidden col-span-2 group relative overflow-hidden rounded-3xl border p-5 text-left transition-all duration-300 btn-press',
+              'shadow-candy-1 dark:shadow-candy-1-dark hover:shadow-candy-2 dark:hover:shadow-candy-2-dark',
               isAllActive
-                ? 'bg-foreground text-background border-foreground shadow-candy-lg'
-                : 'bg-gradient-to-br from-rose-100 via-amber-50 to-mint/20 border-rose-200 hover:shadow-warm-lg'
+                ? 'bg-foreground text-background border-foreground'
+                : 'bg-card border-border'
             )}
           >
             <div className="flex items-center gap-3">
-              <span className="text-3xl">🍬</span>
+              <span
+                className={cn(
+                  'grid place-items-center w-12 h-12 rounded-2xl shrink-0',
+                  isAllActive ? 'bg-background/15' : 'bg-secondary'
+                )}
+                aria-hidden="true"
+              >
+                <Layers className={cn('w-6 h-6', isAllActive ? 'text-background' : 'text-foreground-secondary')} />
+              </span>
               <div>
                 <div className="font-candy font-bold text-base">All Flavors</div>
-                <div className="text-xs font-mono opacity-80">{REGISTRY_STATS.totalSkills.toLocaleString()} skills</div>
+                <div className={cn('text-xs font-mono', isAllActive ? 'opacity-80' : 'text-foreground-tertiary')}>
+                  {REGISTRY_STATS.totalSkills.toLocaleString()} skills
+                </div>
               </div>
             </div>
           </button>
 
           {categories.map((cat, i) => {
-            const flavor = FLAVOR_MAP[cat.name] || DEFAULT_FLAVOR;
+            const flavor = getFlavor(cat.name, isDark);
+            const Candy = getCandyIcon(cat.name, isDark);
+            const flavorLabel = FLAVOR_LABEL[cat.name] ?? flavorForCategory(cat.name);
             const isActive = activeCategory === cat.name;
-            // Asymmetric sizing: every 5th tile is bigger (lg only)
+            // Asymmetric sizing: every 5th tile is bigger (lg only) → 2 rows of 8.
             const isBig = i === 0 || i === 4;
 
             return (
@@ -168,56 +122,72 @@ export function Categories({ onSelectCategory, activeCategory }: { onSelectCateg
                 key={cat.name}
                 onClick={() => onSelectCategory(cat.name)}
                 className={cn(
-                  'group relative overflow-hidden rounded-3xl border-2 text-left transition-all duration-300 btn-press',
-                  'shadow-candy hover:shadow-candy-lg hover:-translate-y-1',
-                  'focus:outline-none focus:ring-4',
-                  `bg-gradient-to-br ${flavor.bg}`,
-                  flavor.border,
+                  'group relative overflow-hidden rounded-3xl border text-left transition-all duration-300 btn-press',
+                  'bg-card shadow-candy-1 dark:shadow-candy-1-dark',
+                  'hover:-translate-y-1 hover:shadow-candy-2 dark:hover:shadow-candy-2-dark',
+                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                   flavor.ring,
-                  isActive ? 'ring-4 scale-[1.02]' : 'ring-0',
+                  isActive ? 'border-transparent' : 'border-border',
                   isBig ? 'lg:col-span-2 lg:row-span-1' : ''
                 )}
+                style={
+                  isActive
+                    ? { boxShadow: `inset 0 0 0 2px ${flavor.base}` }
+                    : undefined
+                }
+                aria-pressed={isActive}
               >
-                {/* Sprinkle dots overlay */}
-                <div className="absolute inset-0 pointer-events-none opacity-30" aria-hidden="true"
-                  style={{
-                    backgroundImage: 'radial-gradient(circle, white 1px, transparent 1.5px)',
-                    backgroundSize: '24px 24px',
-                  }}
+                {/* Thin flavor accent bar across the top */}
+                <span
+                  className="absolute inset-x-0 top-0 h-1"
+                  style={{ backgroundColor: flavor.base }}
+                  aria-hidden="true"
                 />
-                {/* Glossy top sheen */}
-                <div className="absolute top-0 inset-x-0 h-1/2 bg-gradient-to-b from-white/30 to-transparent pointer-events-none" />
 
                 <div className={cn('relative p-5 sm:p-6 flex flex-col justify-between', isBig ? 'min-h-[180px]' : 'min-h-[140px]')}>
                   <div className="flex items-start justify-between gap-2">
-                    <div className={cn(
-                      'flex items-center justify-center rounded-2xl backdrop-blur-sm border-2 border-white/60 shadow-lg shrink-0',
-                      flavor.emojiBg,
-                      isBig ? 'w-16 h-16 text-4xl' : 'w-12 h-12 text-2xl'
-                    )}>
-                      {flavor.emoji}
-                    </div>
-                    <span className="px-2 py-0.5 rounded-full bg-white/40 backdrop-blur-sm text-[10px] font-mono font-bold text-white border border-white/60">
+                    {/* Candy illustration in a soft flavor-tinted well */}
+                    <span
+                      className={cn(
+                        'flex items-center justify-center rounded-2xl shrink-0 transition-transform duration-300 ease-candy group-hover:scale-105 group-hover:-rotate-3',
+                        isBig ? 'w-16 h-16' : 'w-12 h-12'
+                      )}
+                      style={{ backgroundColor: flavor.tint }}
+                      aria-hidden="true"
+                    >
+                      <Candy size={isBig ? 40 : 30} />
+                    </span>
+                    <span
+                      className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold tabular-nums"
+                      style={{ backgroundColor: flavor.tint, color: flavor.ink }}
+                    >
                       {cat.count}
                     </span>
                   </div>
 
-                  <div className="mt-3">
+                  <div className="mt-3 min-w-0">
                     <h3 className={cn(
-                      'font-candy font-bold text-white drop-shadow-md leading-tight',
-                      isBig ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-xl'
+                      'font-candy font-bold text-foreground leading-tight break-words hyphens-auto line-clamp-2',
+                      isBig ? 'text-lg sm:text-2xl' : 'text-[15px] sm:text-lg'
                     )}>
                       {cat.name}
                     </h3>
-                    <p className="mt-1 text-[11px] font-mono text-white/80 uppercase tracking-wider">
-                      {flavor.label}
+                    <p
+                      className="mt-1 text-[11px] font-mono uppercase tracking-wider truncate"
+                      style={{ color: flavor.ink }}
+                    >
+                      {flavorLabel}
                     </p>
                   </div>
 
                   {isActive && (
-                    <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-white text-[10px] font-mono font-bold text-foreground shadow-md">
-                      ✓ tasting
-                    </div>
+                    <span
+                      className="absolute bottom-3 right-3 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold text-white shadow-candy-1 dark:shadow-candy-1-dark"
+                      style={{ backgroundColor: flavor.base }}
+                    >
+                      <Check className="w-2.5 h-2.5" />
+                      tasting
+                    </span>
                   )}
                 </div>
               </button>

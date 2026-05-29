@@ -5,6 +5,7 @@ import { REGISTRY_STATS } from '../../data/skillsData';
 import { CRAVINGS_DATA } from '../../data/cravingsData';
 import { getFlavor } from '../../utils/candyShells';
 import { useIsDark } from '../../hooks/useIsDark';
+import { LogoMark, getCandyIcon } from '../illustrations';
 
 export type MarketplaceTab = 'candy' | 'craving';
 
@@ -22,9 +23,10 @@ export function Hero({ activeTab, onTabChange, onPostCraving, onPostCandy }: Her
   const { t, language } = useLanguage();
   const isDark = useIsDark();
 
-  // Candy emoji for the "Find Candy" tab; lollipop mascot for cravings.
+  // Brand lollipop for the "Find Candy" tab; blueberry gumball for cravings.
   const raspberry = getFlavor('Development', isDark); // brand flavor tokens
   const blueberry = getFlavor('Research', isDark);    // craving accent (blue family)
+  const CravingCandy = getCandyIcon('Research', isDark); // blueberry gumball
 
   const fullText = activeTab === 'candy'
     ? t('hero.tagline')
@@ -96,7 +98,7 @@ export function Hero({ activeTab, onTabChange, onPostCraving, onPostCandy }: Her
                 : 'text-foreground-secondary hover:text-foreground hover:bg-secondary/60'}
             `}
           >
-            <span className="text-xl leading-none" aria-hidden="true">🍭</span>
+            <LogoMark size={20} color={isCandy ? '#FFFFFF' : undefined} aria-hidden="true" />
             <span>Find Candy</span>
             <span className={`
               text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full
@@ -117,7 +119,7 @@ export function Hero({ activeTab, onTabChange, onPostCraving, onPostCandy }: Her
             `}
             style={!isCandy ? { backgroundColor: blueberry.base } : undefined}
           >
-            <span className="text-xl leading-none" aria-hidden="true">🍬</span>
+            <CravingCandy size={20} color={!isCandy ? '#FFFFFF' : undefined} aria-hidden="true" />
             <span>Find Craving</span>
             <span className={`
               text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full
@@ -157,7 +159,9 @@ export function Hero({ activeTab, onTabChange, onPostCraving, onPostCandy }: Her
                   }
             }
           >
-            <span className="text-xl leading-none" aria-hidden="true">{isCandy ? '🍭' : '🍬'}</span>
+            {isCandy
+              ? <LogoMark size={20} color="#FFFFFF" aria-hidden="true" />
+              : <CravingCandy size={20} color="#FFFFFF" aria-hidden="true" />}
             {isCandy ? 'Browse Candy' : 'Browse Cravings'}
           </button>
 
@@ -187,7 +191,7 @@ export function Hero({ activeTab, onTabChange, onPostCraving, onPostCandy }: Her
             onClick={() => onTabChange('candy')}
             className={`flex items-center gap-2 transition-colors ${isCandy ? 'text-primary' : 'text-foreground-secondary hover:text-foreground'}`}
           >
-            <span className="text-base leading-none" aria-hidden="true">🍭</span>
+            <LogoMark size={16} color="currentColor" aria-hidden="true" />
             <span className="font-bold">{REGISTRY_STATS.totalSkills.toLocaleString()}</span>
             <span className="text-foreground-tertiary">skills</span>
           </button>
@@ -202,7 +206,7 @@ export function Hero({ activeTab, onTabChange, onPostCraving, onPostCandy }: Her
             onClick={() => onTabChange('craving')}
             className={`flex items-center gap-2 transition-colors ${!isCandy ? 'text-primary' : 'text-foreground-secondary hover:text-foreground'}`}
           >
-            <span className="text-base leading-none" aria-hidden="true">🍬</span>
+            <CravingCandy size={16} color="currentColor" aria-hidden="true" />
             <span className="font-bold">{TOTAL_CRAVINGS}</span>
             <span className="text-foreground-tertiary">cravings</span>
           </button>

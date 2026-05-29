@@ -9,7 +9,7 @@ import { CandyCard } from '../components/home/CandyCard';
 import { skillToCard } from '../utils/skillToCard';
 import { useIsDark } from '../hooks/useIsDark';
 import { getFlavor } from '../utils/candyShells';
-import { getCandyEmoji } from '../utils/candy';
+import { EmptyJar, Counter, getCandyIcon } from '../components/illustrations';
 
 type DashboardTab = 'skills' | 'cravings' | 'starred';
 
@@ -36,9 +36,7 @@ export function DashboardPage({ user, onOpenAuth }: DashboardPageProps) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-20 md:py-28">
         <div className="max-w-md mx-auto text-center">
-          <div className="mx-auto mb-6 flex items-center justify-center text-7xl leading-none" aria-hidden="true">
-            🔒
-          </div>
+          <Counter size={104} className="mx-auto mb-6 text-foreground-tertiary" aria-hidden="true" />
           <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-foreground-tertiary mb-2">
             your counter
           </p>
@@ -172,6 +170,7 @@ export function DashboardPage({ user, onOpenAuth }: DashboardPageProps) {
             <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {userCravings.map((craving) => {
                 const f = getFlavor(craving.category ?? craving.tags?.[0], isDark);
+                const CravingCandy = getCandyIcon(craving.category ?? craving.tags?.[0], isDark);
                 return (
                   <button
                     key={craving.id}
@@ -180,11 +179,11 @@ export function DashboardPage({ user, onOpenAuth }: DashboardPageProps) {
                   >
                     <div className="flex items-center gap-2 mb-3">
                       <span
-                        className="inline-flex items-center justify-center w-9 h-9 rounded-xl text-xl leading-none shrink-0"
+                        className="inline-flex items-center justify-center w-9 h-9 rounded-xl shrink-0"
                         style={{ background: f.tint }}
                         aria-hidden="true"
                       >
-                        {getCandyEmoji(craving.id)}
+                        <CravingCandy size={22} />
                       </span>
                       <span
                         className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-widest"
@@ -254,9 +253,7 @@ function EmptyState({
 }) {
   return (
     <div className="text-center py-16 rounded-3xl border border-dashed border-border bg-secondary/40">
-      <div className="mx-auto mb-4 flex items-center justify-center text-5xl leading-none" aria-hidden="true">
-        🍬
-      </div>
+      <EmptyJar size={88} className="mx-auto mb-4 text-foreground-tertiary" aria-hidden="true" />
       <h3 className="font-candy text-xl font-bold text-foreground mb-2">{title}</h3>
       <p className="text-sm text-foreground-secondary mb-6 max-w-sm mx-auto">{body}</p>
       <div className="flex flex-wrap justify-center gap-3">
