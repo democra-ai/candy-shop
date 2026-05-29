@@ -125,6 +125,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/': 'Candy Shop — AI Skills Marketplace',
   '/skills/create': 'Create Skill — Candy Shop',
   '/skills/library': 'My Library — Candy Shop',
+  '/run': 'Running Skill — Candy Shop',
   '/dashboard': 'Dashboard — Candy Shop',
   '/settings': 'Settings — Candy Shop',
   '/auth/callback': 'Signing in... — Candy Shop',
@@ -525,6 +526,7 @@ function AppContent() {
       origin: 'store',
     };
     setExecutingSkill(skill);
+    navigate('/run');
   };
 
   const openAuth = useCallback(() => setIsAuthOpen(true), []);
@@ -666,10 +668,33 @@ function AppContent() {
             <Layout {...sharedLayoutProps}>
               <MySkillsLibrary
                 onCreateNew={() => navigate('/skills/create')}
-                onUseSkill={(skill) => setExecutingSkill(skill)}
+                onUseSkill={(skill) => { setExecutingSkill(skill); navigate('/run'); }}
                 onBack={() => navigate('/')}
               />
             </Layout>
+          }
+        />
+
+        {/* Skill Run — full-page agent executor (not a modal, not wrapped in
+            the marketing Layout). Runs are live SSE streams, so this route is
+            not deep-linkable: a direct visit / refresh with no active skill
+            bounces home. */}
+        <Route
+          path="/run"
+          element={
+            executingSkill ? (
+              <Suspense fallback={null}>
+                <SkillExecutor
+                  skill={executingSkill}
+                  onClose={() => {
+                    setExecutingSkill(null);
+                    navigate('/');
+                  }}
+                />
+              </Suspense>
+            ) : (
+              <Navigate to="/" replace />
+            )
           }
         />
 
@@ -692,12 +717,6 @@ function AppContent() {
       />
 
       <DocsModal isOpen={isDocsOpen} onClose={() => setIsDocsOpen(false)} />
-
-      {executingSkill && (
-        <Suspense fallback={null}>
-          <SkillExecutor skill={executingSkill} onClose={() => setExecutingSkill(null)} />
-        </Suspense>
-      )}
     </>
   );
 }

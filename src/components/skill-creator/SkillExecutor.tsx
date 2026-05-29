@@ -37,8 +37,12 @@ import {
   Terminal,
   Zap,
   ArrowUp,
+  ArrowLeft,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import type { Skill } from '../../types/skill-creator';
+import { getCandyIcon } from '../illustrations';
 import { SKILLS_DATA } from '../../data/skillsData';
 import { storageUtils } from '../../utils/storage';
 import {
@@ -977,7 +981,11 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
   // Session state
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
-  const [showSessions, setShowSessions] = useState(true);
+  // Sessions panel: open by default on desktop, collapsed on small screens so
+  // the transcript + composer aren't squeezed (the top-bar toggle reopens it).
+  const [showSessions, setShowSessions] = useState(
+    () => typeof window === 'undefined' || window.innerWidth >= 768
+  );
 
   // Chat state
   const [entries, setEntries] = useState<ChatEntry[]>([]);
@@ -2215,82 +2223,97 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
     return { label: runtimeMode === 'cf-cc' ? 'warm · ready' : 'ready', dot: 'bg-mint', text: 'text-mint', spin: false };
   })();
 
+  // Skill identity illustration — DESIGN.md hard rule #1: no emoji as UI.
+  const SkillCandy = getCandyIcon(skill.category);
+  // The model label depends on runtime mode (Workers AI runs Llama, not GLM).
+  const modelLabel = runtimeMode === 'cf-ai' ? 'Llama 3.1 8B' : 'GLM-4.5';
+
   return (
-    <div className="fixed inset-0 bg-foreground/50 flex items-center justify-center z-[110] backdrop-blur-md p-3 sm:p-4 animate-fade-in">
-      <div className="relative bg-background rounded-3xl w-full max-w-7xl h-[92vh] overflow-hidden flex flex-col border border-border shadow-candy-3 animate-zoom-in">
-        {/* candy-wrapper hairline */}
-        <div className="absolute inset-x-0 top-0 h-[3px] bg-primary z-10" />
-        {/* ── Header ─────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 border-b border-border/60 glass-strong shrink-0">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="grid place-items-center w-10 h-10 rounded-2xl bg-primary candy-gloss text-xl shadow-candy-1 shrink-0">
-              <span>{skill.icon || '🍭'}</span>
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 min-w-0">
-                <h2 className="text-[15px] font-semibold text-foreground font-candy truncate">{skill.name}</h2>
-                <span className={`hidden sm:inline-flex items-center px-2 h-[18px] rounded-full border text-[10px] font-medium font-mono uppercase tracking-wide shrink-0 ${modeBadge.tone}`}>
-                  {modeBadge.label}
-                </span>
-                {githubUrl && (
-                  <a
-                    href={githubUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hidden md:flex items-center gap-1 px-2 py-0.5 rounded-lg bg-secondary/60 hover:bg-secondary text-foreground-tertiary hover:text-foreground transition-all duration-200 text-[11px] font-medium shrink-0"
-                    title="View on GitHub"
-                  >
-                    <Github className="w-3 h-3" />
-                    <span className="hidden lg:inline">Source</span>
-                    <ExternalLink className="w-2.5 h-2.5 opacity-50" />
-                  </a>
-                )}
-              </div>
-              <div className="flex items-center gap-2 mt-1">
-                <span className={`inline-flex items-center gap-1.5 pl-1.5 pr-2.5 h-[22px] rounded-full bg-foreground/[0.04] border border-border/60 text-[11px] font-mono font-medium ${statusPill.text}`}>
-                  {statusPill.spin ? (
-                    <Loader2 className="w-2.5 h-2.5 animate-spin" />
-                  ) : (
-                    <span className={`w-1.5 h-1.5 rounded-full ${statusPill.dot} ${statusPill.label.endsWith('ready') ? 'animate-pulse' : ''}`} />
-                  )}
-                  {statusPill.label}
-                </span>
-                {serverVersion && (
-                  <span className="hidden sm:inline text-foreground-muted font-mono text-[10px]">v{serverVersion}</span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            {/* Sessions toggle (mobile) */}
-            <button
-              onClick={() => setShowSessions(!showSessions)}
-              className="md:hidden grid place-items-center w-9 h-9 rounded-xl hover:bg-secondary text-foreground-tertiary hover:text-foreground transition-colors"
-              title="Toggle sessions"
-            >
-              <MessageSquare className="w-4 h-4" />
-            </button>
-
-            {/* Model label (fixed to GLM-4.5) */}
-            <div className="hidden sm:flex items-center gap-1.5 px-3 h-9 text-[11px] border border-border/60 rounded-xl text-foreground-secondary font-mono">
-              <Settings className="w-3.5 h-3.5" />
-              <span>GLM-4.5</span>
-            </div>
-
-            {/* Close */}
+    <div className="h-screen w-full flex flex-col bg-background animate-fade-in overflow-hidden">
+      {/* ── Top bar (full-width, solid, no backdrop-blur to avoid scroll
+          flicker on a fixed bar) ────────────────────────────────────── */}
+      <header className="relative shrink-0 bg-card border-b border-border z-20">
+        {/* candy-wrapper hairline accent */}
+        <div className="absolute inset-x-0 top-0 h-[3px] bg-primary" />
+        <div className="flex items-center justify-between gap-3 px-3 sm:px-5 h-16">
+          {/* Left cluster — back + sidebar toggle + skill identity */}
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
               onClick={onClose}
-              className="grid place-items-center w-9 h-9 rounded-full bg-secondary/70 hover:bg-secondary text-foreground-secondary hover:text-foreground transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring"
-              aria-label="Close skill executor"
+              className="group inline-flex items-center gap-1.5 pl-2 pr-3 h-9 rounded-xl bg-secondary/70 hover:bg-secondary text-foreground-secondary hover:text-foreground transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring shrink-0 font-body"
+              aria-label="Back to Candy Shop"
+              title="Back to Candy Shop"
             >
-              <X className="w-5 h-5" />
+              <ArrowLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-0.5" />
+              <span className="hidden sm:inline text-[13px] font-medium">Candy Shop</span>
             </button>
+
+            <button
+              onClick={() => setShowSessions((v) => !v)}
+              className="grid place-items-center w-9 h-9 rounded-xl hover:bg-secondary text-foreground-tertiary hover:text-foreground transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring shrink-0"
+              title={showSessions ? 'Hide sessions' : 'Show sessions'}
+              aria-label={showSessions ? 'Hide sessions panel' : 'Show sessions panel'}
+              aria-pressed={showSessions}
+            >
+              {showSessions ? <PanelLeftClose className="w-4.5 h-4.5" /> : <PanelLeftOpen className="w-4.5 h-4.5" />}
+            </button>
+
+            <div className="h-7 w-px bg-border/70 mx-0.5 hidden sm:block" />
+
+            {/* Skill identity — illustration chip + name + mode badge */}
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="grid place-items-center w-9 h-9 rounded-xl bg-secondary ring-1 ring-border/60 shrink-0 overflow-hidden">
+                <SkillCandy size={26} />
+              </span>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <h1 className="text-[15px] leading-tight font-semibold text-foreground font-candy truncate">{skill.name}</h1>
+                  <span className={`hidden sm:inline-flex items-center px-2 h-[18px] rounded-full border text-[10px] font-medium font-mono uppercase tracking-wide shrink-0 ${modeBadge.tone}`}>
+                    {modeBadge.label}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className={`inline-flex items-center gap-1.5 pl-1.5 pr-2 h-[20px] rounded-full bg-foreground/[0.04] border border-border/60 text-[10px] font-mono font-medium ${statusPill.text}`}>
+                    {statusPill.spin ? (
+                      <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                    ) : (
+                      <span className={`w-1.5 h-1.5 rounded-full ${statusPill.dot} ${statusPill.label.endsWith('ready') ? 'animate-pulse' : ''}`} />
+                    )}
+                    {statusPill.label}
+                  </span>
+                  {serverVersion && (
+                    <span className="hidden md:inline text-foreground-muted font-mono text-[10px]">v{serverVersion}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right cluster — source + model */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {githubUrl && (
+              <a
+                href={githubUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hidden md:inline-flex items-center gap-1.5 px-3 h-9 rounded-xl bg-secondary/60 hover:bg-secondary text-foreground-secondary hover:text-foreground transition-colors duration-200 text-[12px] font-medium shrink-0 font-body"
+                title="View source on GitHub"
+              >
+                <Github className="w-3.5 h-3.5" />
+                <span className="hidden lg:inline">Source</span>
+                <ExternalLink className="w-2.5 h-2.5 opacity-50" />
+              </a>
+            )}
+            <div className="hidden sm:flex items-center gap-1.5 px-3 h-9 text-[12px] border border-border/60 rounded-xl text-foreground-secondary font-mono">
+              <Settings className="w-3.5 h-3.5" />
+              <span>{modelLabel}</span>
+            </div>
           </div>
         </div>
+      </header>
 
-        {/* ── Body ───────────────────────────────────────────────────── */}
-        <div className="flex-1 flex overflow-hidden">
+      {/* ── Body ───────────────────────────────────────────────────── */}
+      <div className="flex-1 flex overflow-hidden min-h-0">
           {/* Session sidebar */}
           {showSessions && (
             <SessionSidebar
@@ -2332,8 +2355,9 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
               </div>
             )}
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto min-h-0 px-4 sm:px-6 py-5 space-y-5 relative bg-background">
+            {/* Messages — full-width scroll region; the transcript itself is a
+                centered, readable column (ChatGPT / Claude.ai pattern). */}
+            <div className="flex-1 overflow-y-auto min-h-0 relative bg-background">
               {/* Connection overlay — shown inside chat area, input stays visible */}
               {connecting && (
                 <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/85 backdrop-blur-sm">
@@ -2381,6 +2405,8 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                   </div>
                 </div>
               )}
+              {/* Centered, readable transcript column */}
+              <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 py-6 space-y-5">
               {/* Skill intro: self-intro + view instructions + edit */}
               {showSkillBanner && skillLoadStatus !== 'idle' && (
                 <div className="rounded-2xl border border-border/70 bg-card/70 text-sm overflow-hidden shadow-candy-1">
@@ -2560,10 +2586,12 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
               )}
 
               <div ref={messagesEndRef} />
+              </div>
             </div>
 
-            {/* ── Question panel ──────────────────────────────────────── */}
+            {/* ── Question panel — centered to the transcript column ──── */}
             {activeQuestion && activeQuestion.questions.length > 0 && (
+              <div className="mx-auto w-full max-w-3xl px-0 sm:px-2">
               <QuestionPanel
                 question={activeQuestion}
                 onAnswer={async (answers) => {
@@ -2738,11 +2766,12 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                   }
                 }}
               />
+              </div>
             )}
 
-            {/* ── Input area ─────────────────────────────────────────── */}
-            <div className="px-4 sm:px-5 py-4 border-t border-border/60 glass shrink-0">
-              <div className="max-w-4xl mx-auto">
+            {/* ── Composer — docked at the bottom of the transcript column ── */}
+            <div className="px-3 sm:px-5 py-3.5 border-t border-border bg-card shrink-0">
+              <div className="max-w-3xl mx-auto">
                 {/* Hidden file input */}
                 <input
                   ref={fileInputRef}
@@ -2856,7 +2885,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                   </div>
                 </div>
               </div>
-              <div className="flex flex-col gap-2.5 mt-2.5 px-0.5 max-w-4xl mx-auto">
+              <div className="flex flex-col gap-2.5 mt-2.5 px-0.5 max-w-3xl mx-auto">
                 {/* Optional repo input — empty uses the sandbox's scratch dir */}
                 {(runtimeMode === 'opencode' || runtimeMode === 'cf-cc') && (
                   <div className="flex items-center gap-2 text-[11px]">
@@ -2868,7 +2897,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                       value={sandboxRepo}
                       onChange={(e) => setSandboxRepo(e.target.value)}
                       placeholder="leave empty for fastest run (uses scratch dir)"
-                      className="flex-1 px-2.5 h-7 rounded-lg border border-border bg-background-secondary text-foreground placeholder-foreground-muted font-mono text-[11px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-colors"
+                      className="flex-1 px-2.5 h-7 rounded-lg border border-input-border bg-input text-foreground placeholder-foreground-muted font-mono text-[11px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-colors"
                     />
                   </div>
                 )}
@@ -2936,7 +2965,6 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
             </div>
           </div>
         </div>
-      </div>
 
       {/* Edit & Save as My Skill Modal */}
       {showEditModal && (
