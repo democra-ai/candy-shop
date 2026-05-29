@@ -132,6 +132,20 @@ function safeString(v: unknown): string {
   try { return JSON.stringify(v, null, 2); } catch { return String(v); }
 }
 
+/**
+ * Format a budget chip label. When `limit`/`remaining` are null the budget is
+ * uncapped (no daily cap configured upstream) — show the used count instead of
+ * the "{remaining}/{limit} … left" form, which would otherwise render a blank
+ * "/ … left" with both null values stringified to "".
+ */
+function budgetChipLabel(
+  b: { used: number; limit: number | null; remaining: number | null },
+  unit: string,
+): string {
+  if (b.limit == null || b.remaining == null) return `${b.used} ${unit} used`;
+  return `${b.remaining}/${b.limit} ${unit} left`;
+}
+
 /** Parse skill Md URL to get path segments for file tree (e.g. ["skills", "find-skills", "SKILL.md"]). */
 function getSkillPathSegments(skillMdUrl: string | undefined): string[] {
   if (!skillMdUrl) return [];
@@ -1675,6 +1689,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
               // reliable fallback so the agent runs AS the skill.
               skillMdUrl: skill.skillMdUrl,
               skillName: skill.name,
+              model: selectedModel.modelID,
             },
             {
               onPhase: (phase) => {
@@ -1773,6 +1788,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
             {
               repo: sandboxRepo || undefined,
               task: text,
+              model: `${selectedModel.providerID}/${selectedModel.modelID}`,
               skillMd: resolvedSkillInstructions ?? undefined,
             },
             {
@@ -2377,12 +2393,7 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
 
   // Skill identity illustration — DESIGN.md hard rule #1: no emoji as UI.
   const SkillCandy = getCandyIcon(skill.category);
-  // The model label depends on runtime mode (Workers AI runs Llama, not GLM).
-  const modelLabel = isLangGraph
-    ? 'Llama 3.3 70B'
-    : runtimeMode === 'cf-ai'
-      ? 'Llama 3.1 8B'
-      : 'GLM-4.5';
+  // Model label/selection is rendered by <ModelPicker> (LangGraph keeps a static chip).
 
   // ── Coming-soon dispatch ──────────────────────────────────────────────────
   // Non-claude formats (n8n / dify / langgraph / workflow) have no in-platform
@@ -2580,10 +2591,18 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                 <ExternalLink className="w-2.5 h-2.5 opacity-50" />
               </a>
             )}
-            <div className="hidden sm:flex items-center gap-1.5 px-3 h-9 text-[12px] border border-border/60 rounded-xl text-foreground-secondary font-mono">
-              <Settings className="w-3.5 h-3.5" />
-              <span>{modelLabel}</span>
-            </div>
+            {isLangGraph ? (
+              <div className="hidden sm:flex items-center gap-1.5 px-3 h-9 text-[12px] border border-border/60 rounded-xl text-foreground-secondary font-mono">
+                <Settings className="w-3.5 h-3.5" />
+                <span>Llama 3.3 70B</span>
+              </div>
+            ) : (
+              <ModelPicker
+                runtimeMode={runtimeMode}
+                selected={selectedModel}
+                onSelect={setSelectedModel}
+              />
+            )}
           </div>
         </div>
       </header>
@@ -3220,17 +3239,17 @@ export function SkillExecutor({ skill, onClose }: SkillExecutorProps) {
                     {/* Budget chip — per mode */}
                     {runtimeMode === 'opencode' && ocBudget && (
                       <span className="text-[11px] text-foreground-tertiary font-mono">
-                        {ocBudget.remaining}/{ocBudget.limit} runs left
+                        {budgetChipLabel(ocBudget, 'runs')}
                       </span>
                     )}
                     {runtimeMode === 'cf-ai' && cfBudget && (
                       <span className="text-[11px] text-foreground-tertiary font-mono">
-                        {cfBudget.remaining}/{cfBudget.limit} chats left
+                        {budgetChipLabel(cfBudget, 'chats')}
                       </span>
                     )}
                     {runtimeMode === 'cf-cc' && ccBudget && (
                       <span className="text-[11px] text-foreground-tertiary font-mono">
-                        {ccBudget.remaining}/{ccBudget.limit} runs left
+                        {budgetChipLabel(ccBudget, 'runs')}
                       </span>
                     )}
 
