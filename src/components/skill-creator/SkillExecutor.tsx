@@ -86,6 +86,12 @@ import {
 } from '../../lib/cfOpenCodeClient';
 import { streamLangGraphRun, warmLangGraph } from '../../lib/cfLangGraphClient';
 import { streamN8nRun, warmN8n } from '../../lib/cfN8nClient';
+import { streamPiRun, warmPi, type PiStdoutEvent } from '../../lib/cfPiClient';
+import {
+  streamDynamicWorkerRun,
+  warmDynamicWorker,
+  DW_RUN_URL,
+} from '../../lib/cfDynamicWorkerClient';
 import { checkAccess, getX402Pricing, formatPrice } from '../../lib/payment/payment-client';
 
 // ---------------------------------------------------------------------------
@@ -1019,10 +1025,23 @@ export function SkillExecutor({ skill, onClose, userId, onRequireAuth, onPurchas
   // n8n           → runner 'n8n-sandbox' → real n8n workflow execution runtime
   //                 (cf-n8n worker); streams node-by-node run output.
   const isN8n = runtimeDescriptor.runner === 'n8n-sandbox';
+  // dynamic-worker → runner 'dw-sandbox' → real Dynamic Worker execution runtime
+  //                  (dw-sandbox worker + Worker Loader); loads a self-contained
+  //                  JS Worker module on the fly and streams the run log + result.
+  const isDynamicWorker = runtimeDescriptor.runner === 'dw-sandbox';
+  // Whether the Dynamic Worker sandbox is actually reachable from the deployed
+  // Pages site. The dw-sandbox build deployed to a PUBLIC workers.dev origin
+  // (account is Worker-Loader closed-beta enrolled), so DW_RUN_URL is public and
+  // the deployed site can reach it. If enrollment were missing, the build would
+  // be local-only (a 127.0.0.1 / localhost dev URL) and the deployed site could
+  // NOT reach it — in that case the run branch renders an inline "pending beta"
+  // note instead of attempting (and failing) a cross-origin run to localhost.
+  const dwDeployed = !/^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/i.test(DW_RUN_URL);
   // Formats that run against a dedicated single-runtime sandbox worker
-  // (LangGraph / n8n) share the same "fixed runtime, stream into transcript"
-  // UI shape — distinct from the multi-runtime claude-skill chat path.
-  const isFixedRuntime = isLangGraph || isN8n;
+  // (LangGraph / n8n / Dynamic Worker) share the same "fixed runtime, stream
+  // into transcript" UI shape — distinct from the multi-runtime claude-skill
+  // chat path.
+  const isFixedRuntime = isLangGraph || isN8n || isDynamicWorker;
   const isComingSoon = runtimeDescriptor.runner === 'coming-soon';
 
   // ── Buyer-side entitlement gate ───────────────────────────────────────────
@@ -1117,16 +1136,20 @@ export function SkillExecutor({ skill, onClose, userId, onRequireAuth, onPurchas
   //   cf-cc    → persistent warm Claude Code agent (cc-sandbox). DEFAULT.
   //   cf-ai    → Workers AI Llama 3.1 8B (single-shot chat, no tools)
   //   opencode → legacy local OpenCode SDK path (kept as a fallback)
-  type RuntimeMode = 'opencode' | 'cf-ai' | 'cf-cc';
+  //   pi       → Pi coding agent (pi-sandbox), headless `pi -p --mode json`,
+  //             KEYLESS over a Workers-AI OpenAI shim; streams real Pi output.
+  type RuntimeMode = 'opencode' | 'cf-ai' | 'cf-cc' | 'pi';
   const [runtimeMode, setRuntimeMode] = useState<RuntimeMode>('cf-cc');
 
-  // Per-runtime model selection. cc/oc run GLM models on z.ai; cf-ai runs
-  // Workers AI. The <ModelPicker> writes the chosen ModelConfig for whichever
-  // runtime is active; every run path below reads `selectedModel`.
+  // Per-runtime model selection. cc/oc run GLM models on z.ai; cf-ai and pi run
+  // Workers AI (pi via its keyless OpenAI-compat shim). The <ModelPicker> writes
+  // the chosen ModelConfig for whichever runtime is active; every run path below
+  // reads `selectedModel`.
   const [modelByRuntime, setModelByRuntime] = useState<Record<RuntimeMode, ModelConfig>>({
     'cf-cc':    { providerID: 'zhipuai-coding-plan', modelID: 'glm-4.5-air' },
     'opencode': { providerID: 'zhipuai-coding-plan', modelID: 'glm-4.5-air' },
     'cf-ai':    { providerID: 'workers-ai',          modelID: '@cf/meta/llama-3.1-8b-instruct-fast' },
+    'pi':       { providerID: 'workers-ai',          modelID: '@cf/meta/llama-3.3-70b-instruct-fp8-fast' },
   });
   const selectedModel = modelByRuntime[runtimeMode];
   const setSelectedModel = (m: ModelConfig) =>
@@ -1173,6 +1196,12 @@ export function SkillExecutor({ skill, onClose, userId, onRequireAuth, onPurchas
       warmN8n();
       return;
     }
+    if (isDynamicWorker) {
+      // Pre-warm the Worker Loader path (loads + invokes the bundled example)
+      // so the first real run is hot. Only when actually reachable from here.
+      if (dwDeployed) warmDynamicWorker();
+      return;
+    }
     if (runtimeMode === 'cf-ai') getCFBudget().then(setCfBudget);
     if (runtimeMode === 'cf-cc') {
       getCCBudget().then(setCcBudget);
@@ -1185,7 +1214,12 @@ export function SkillExecutor({ skill, onClose, userId, onRequireAuth, onPurchas
       // skips the cold start (container wake + provider init). Best-effort.
       warmOpenCode();
     }
-  }, [runtimeMode, isComingSoon, isLangGraph, isN8n, gateBlocksRuntime]);
+    if (runtimeMode === 'pi') {
+      // Pre-boot the Pi sandbox container (provision + resident pi CLI +
+      // models.json) so the first run skips the cold boot. Best-effort.
+      warmPi();
+    }
+  }, [runtimeMode, isComingSoon, isLangGraph, isN8n, isDynamicWorker, dwDeployed, gateBlocksRuntime]);
 
   // Skill loading state
   const [skillInstructions, setSkillInstructions] = useState<string | null>(null);
@@ -1592,7 +1626,10 @@ export function SkillExecutor({ skill, onClose, userId, onRequireAuth, onPurchas
 
       try {
         await streamLangGraphRun(
-          { artifactUrl: skill.artifactUrl, task: text },
+          // `fresh: true` — the sandbox container caches the fetched graph at a
+          // fixed path; without this a warm container would re-run whichever
+          // graph was fetched first instead of THIS item's artifactUrl.
+          { artifactUrl: skill.artifactUrl, task: text, fresh: true },
           {
             onPhase: (phase) => setSandboxPhase(phase),
             onStdout: (chunk) => {
@@ -1690,7 +1727,10 @@ export function SkillExecutor({ skill, onClose, userId, onRequireAuth, onPurchas
 
       try {
         await streamN8nRun(
-          { artifactUrl: skill.artifactUrl, input: text },
+          // `fresh: true` — the sandbox container caches the fetched workflow
+          // JSON at a fixed path; without this a warm container would re-run
+          // whichever workflow was fetched first instead of THIS item's.
+          { artifactUrl: skill.artifactUrl, input: text, fresh: true },
           {
             onPhase: (phase) => setSandboxPhase(phase),
             onNode: (n) => { nodes.push(n.name); flush(); },
@@ -1710,6 +1750,156 @@ export function SkillExecutor({ skill, onClose, userId, onRequireAuth, onPurchas
                 summary = `\n**Result:** ${data.success ? 'success' : 'failed'}${typeof data.exitCode === 'number' ? ` · exit ${data.exitCode}` : ''}\n`;
               }
               finalize(summary);
+            },
+            onError: (err) => {
+              setSandboxPhase(null);
+              finalize(`\n\n**Error:** ${err.message}`);
+              setConnectionError(err.message);
+              setTimeout(() => setConnectionError(null), 8000);
+            },
+          },
+        );
+        if (!runDone) finalize();
+      } catch (err) {
+        if (!runDone) {
+          const msg = err instanceof Error ? err.message : String(err);
+          finalize(`\n\n**Error:** ${msg}`);
+        }
+      } finally {
+        setSandboxPhase(null);
+        setIsRunning(false);
+      }
+      return;
+    }
+
+    // ── Dynamic Worker runtime branch (Worker Loader execution) ─────────
+    // Loads this item's self-contained JS Worker module into the dw-sandbox
+    // worker via the Worker Loader (env.LOADER) and runs it on the fly,
+    // streaming the run log + the module's JSON result into the transcript as a
+    // single, growing markdown part. The user's typed text is forwarded as JSON
+    // `input` to the module's fetch (parsed if it's valid JSON, else wrapped).
+    if (isDynamicWorker) {
+      setInput('');
+      setAttachedFiles([]);
+
+      const userEntry: UserEntry = { type: 'user', text, time: Date.now() };
+      const msgId = `dw-${Date.now()}`;
+      const partId = `dw-part-${Date.now()}`;
+
+      // betaBlocked guard: if dw-sandbox only deployed locally (account not
+      // enrolled in the Worker Loader closed beta), the deployed Pages site
+      // cannot reach the localhost dev URL — so don't attempt a run that would
+      // just error. Render the item + a clear inline note instead.
+      if (!dwDeployed) {
+        const note =
+          `**${runtimeDescriptor.label}** execution is pending Cloudflare closed-beta enrollment — ` +
+          `runs in local dev only.\n\n` +
+          `The \`dw-sandbox\` worker (Worker Loader / \`env.LOADER\`) is not deployed to a public ` +
+          `origin for this account, so the deployed site can't reach it. To try it locally, run ` +
+          `\`cd cf-dynamic-worker && npx wrangler dev --port 8799\` and set ` +
+          `\`VITE_DW_SANDBOX_URL=http://127.0.0.1:8799\`.` +
+          (skill.artifactUrl ? `\n\nModule artifact: ${skill.artifactUrl}` : '');
+        setEntries(prev => [...prev, userEntry, {
+          type: 'assistant',
+          messageId: msgId,
+          parts: [{ id: partId, sessionID: 'dw', messageID: msgId, type: 'text', text: note } as TextPart],
+          isComplete: true,
+        }]);
+        return;
+      }
+
+      setIsRunning(true);
+      setConnectionError(null);
+      setSandboxPhase('starting');
+
+      const placeholder: AssistantEntry = {
+        type: 'assistant',
+        messageId: msgId,
+        parts: [{ id: partId, sessionID: 'dw', messageID: msgId, type: 'text', text: '' } as TextPart],
+        isComplete: false,
+      };
+      setEntries(prev => [...prev, userEntry, placeholder]);
+
+      // Forward the typed text as the module's JSON `input`: if it parses as
+      // JSON use it directly, otherwise pass it as { text } (the example modules
+      // both read `text`). Empty input → undefined (module uses its defaults).
+      let dwInput: unknown;
+      if (text.trim()) {
+        try { dwInput = JSON.parse(text); }
+        catch { dwInput = { text }; }
+      }
+
+      // Build a readable markdown log: source-resolution line, run-log lines,
+      // then the parsed JSON result fenced as a code block.
+      let setupLine = '';
+      const logLines: string[] = [];
+      let resultBlock = '';
+      let rafScheduled = false;
+      let runDone = false;
+      const composed = () => {
+        let md = '';
+        if (setupLine) md += `${setupLine}\n\n`;
+        if (logLines.length) {
+          md += `**Run log**\n\n\`\`\`\n${logLines.join('\n')}\n\`\`\`\n`;
+        }
+        if (resultBlock) md += resultBlock;
+        return md;
+      };
+      const flush = () => {
+        if (rafScheduled || runDone) return;
+        rafScheduled = true;
+        requestAnimationFrame(() => {
+          rafScheduled = false;
+          const snapshot = composed();
+          setEntries(prev => prev.map(e =>
+            e.type === 'assistant' && e.messageId === msgId
+              ? { ...e, parts: [{ id: partId, sessionID: 'dw', messageID: msgId, type: 'text', text: snapshot } as TextPart] }
+              : e
+          ));
+        });
+      };
+      const finalize = (extra?: string) => {
+        runDone = true;
+        let md = composed();
+        if (extra) md += extra;
+        const snapshot = md.trim() || '(no output)';
+        setEntries(prev => prev.map(e =>
+          e.type === 'assistant' && e.messageId === msgId
+            ? { ...e, isComplete: true, parts: [{ id: partId, sessionID: 'dw', messageID: msgId, type: 'text', text: snapshot } as TextPart] }
+            : e
+        ));
+      };
+
+      try {
+        await streamDynamicWorkerRun(
+          // `fresh: true` — force env.LOADER.load so each run re-fetches and runs
+          // THIS item's module rather than serving a hash-cached earlier one.
+          { artifactUrl: skill.artifactUrl, input: dwInput, fresh: true },
+          {
+            onPhase: (phase) => setSandboxPhase(phase),
+            onSetup: (data) => {
+              const src = data.source ?? 'module';
+              const meta = [
+                data.mainModule ? `\`${data.mainModule}\`` : null,
+                typeof data.bytes === 'number' ? `${data.bytes} bytes` : null,
+                data.hash ? `hash \`${data.hash}\`` : null,
+                data.mode ? data.mode : null,
+              ].filter(Boolean).join(' · ');
+              setupLine = `**Module** (${src})${meta ? ` — ${meta}` : ''}`;
+              flush();
+            },
+            onLog: (l) => { logLines.push(l.text); flush(); },
+            onResult: (data) => {
+              setSandboxPhase(null);
+              const status = typeof data.status === 'number' ? data.status : (data.success ? 200 : 500);
+              const payload = data.result !== undefined
+                ? JSON.stringify(data.result, null, 2)
+                : (data.raw ?? '');
+              resultBlock =
+                `\n**Result:** ${data.success ? 'success' : 'failed'} · HTTP \`${status}\`` +
+                (data.hash ? ` · hash \`${data.hash}\`` : '') + `\n\n` +
+                (payload ? `\`\`\`json\n${payload}\n\`\`\`\n` : '');
+              finalize();
             },
             onError: (err) => {
               setSandboxPhase(null);
@@ -1788,6 +1978,150 @@ export function SkillExecutor({ skill, onClose, userId, onRequireAuth, onPurchas
         setTimeout(() => setConnectionError(null), 8000);
       } finally {
         setIsRunning(false);
+      }
+      return;
+    }
+
+    // ── Pi runtime branch (headless `pi -p --mode json`, keyless) ────────
+    // Runs the Pi coding agent in the pi-sandbox container and streams its JSON
+    // event output into a live "terminal log" markdown — setup, session header,
+    // streamed assistant text / reasoning, tool calls, then the result. Mirrors
+    // the OpenCode branch's render shape. The SKILL.md is delivered to Pi via
+    // its appended system prompt (skillMd), so it runs AS the marketplace skill.
+    if (runtimeMode === 'pi') {
+      setInput('');
+      setAttachedFiles([]);
+      setIsRunning(true);
+      setConnectionError(null);
+      setSandboxPhase('starting');
+
+      const userEntry: UserEntry = { type: 'user', text, time: Date.now() };
+      const msgId = `pi-${Date.now()}`;
+      const partId = `pi-part-${Date.now()}`;
+      const placeholder: AssistantEntry = {
+        type: 'assistant',
+        messageId: msgId,
+        parts: [{ id: partId, sessionID: 'pi', messageID: msgId, type: 'text', text: '' } as TextPart],
+        isComplete: false,
+      };
+      setEntries(prev => [...prev, userEntry, placeholder]);
+
+      // Live markdown log buffer, coalesced to one setEntries per animation
+      // frame so Pi's token-level `stdout` text deltas don't tank perceived perf.
+      let log = '';
+      let rafScheduled = false;
+      let runDone = false;
+      const flushLog = () => {
+        if (rafScheduled || runDone) return;
+        rafScheduled = true;
+        requestAnimationFrame(() => {
+          rafScheduled = false;
+          const snapshot = log;
+          setEntries(prev => prev.map(e =>
+            e.type === 'assistant' && e.messageId === msgId
+              ? { ...e, parts: [{ id: partId, sessionID: 'pi', messageID: msgId, type: 'text', text: snapshot } as TextPart] }
+              : e
+          ));
+        });
+      };
+      const finishImmediately = (extraLine?: string) => {
+        if (extraLine) log += extraLine;
+        runDone = true;
+        const snapshot = log.trim() || '(no output)';
+        setEntries(prev => prev.map(e =>
+          e.type === 'assistant' && e.messageId === msgId
+            ? { ...e, isComplete: true, parts: [{ id: partId, sessionID: 'pi', messageID: msgId, type: 'text', text: snapshot } as TextPart] }
+            : e
+        ));
+        setIsRunning(false);
+        setSandboxPhase(null);
+      };
+
+      const startedAt = Date.now();
+      // `fast` uses the smaller/faster Workers-AI model (llama-3.1-8b); the 70B
+      // default carries the model id we seed for pi above.
+      const fast = selectedModel?.modelID?.includes('8b') ?? false;
+
+      try {
+        await streamPiRun(
+          {
+            task: text,
+            skillMd: resolvedSkillInstructions ?? undefined,
+            fast,
+          },
+          {
+            onPhase: (phase) => {
+              setSandboxPhase(phase);
+              flushLog();
+            },
+            onSetup: (data) => {
+              const provider = (data as { provider?: string }).provider;
+              const model = (data as { model?: string }).model;
+              if (model) log += `model: \`${model}\`${provider ? ` _(${provider})_` : ''}\n`;
+              flushLog();
+            },
+            onSession: (s) => {
+              if (s.sessionId) log += `session: \`${s.sessionId}\`${s.cwd ? ` · cwd \`${s.cwd}\`` : ''}\n`;
+              flushLog();
+            },
+            onStdout: (ev: PiStdoutEvent) => {
+              switch (ev.type) {
+                case 'text':
+                  if (ev.text) log += ev.text;
+                  break;
+                case 'reasoning':
+                  if (ev.text) log += `\n> ${ev.text.replace(/\n/g, '\n> ')}\n`;
+                  break;
+                case 'tool_use':
+                  log += `\n🔧 **${ev.name ?? 'tool'}**${ev.args ? ` \`${typeof ev.args === 'string' ? ev.args.slice(0, 200) : JSON.stringify(ev.args).slice(0, 200)}\`` : ''}\n`;
+                  break;
+                case 'tool_result': {
+                  const out = ev.text ?? '';
+                  const trimmed = out.length > 600 ? out.slice(0, 600) + `\n…(+${out.length - 600} chars)` : out;
+                  log += `${ev.isError ? '❌' : '↪'} \`\`\`\n${trimmed}\n\`\`\`\n`;
+                  break;
+                }
+                case 'step_start':
+                  log += `\n▶ _step_\n`;
+                  break;
+                case 'step_finish':
+                  log += `\n_step finished${ev.reason ? ` — ${ev.reason}` : ''}_\n`;
+                  break;
+                default:
+                  if (ev.text) log += ev.text;
+                  break;
+              }
+              flushLog();
+            },
+            onResult: (res) => {
+              // The streamed `stdout` text deltas already carry the complete
+              // answer; result.text is a best-effort accumulation (may clip the
+              // first token), so we don't re-append it — just close out.
+              const dur = ((Date.now() - startedAt) / 1000).toFixed(1);
+              const tail = res.success
+                ? `\n✓ **finished** in ${dur}s${res.model ? ` · \`${res.model}\`` : ''}\n`
+                : `\n❌ **failed**${res.error ? ` — ${res.error}` : ''} (${dur}s)\n`;
+              finishImmediately(tail);
+            },
+            onError: (err) => {
+              setConnectionError(err.message);
+              setTimeout(() => setConnectionError(null), 8000);
+            },
+          },
+        );
+        // Fallback if result never came (network drop, etc.)
+        if (!runDone) {
+          const dur = ((Date.now() - startedAt) / 1000).toFixed(1);
+          finishImmediately(`\n✓ **finished** in ${dur}s\n`);
+        }
+      } catch (err) {
+        if (!runDone) {
+          const msg = err instanceof Error ? err.message : String(err);
+          finishImmediately(`\n\n**Error:** ${msg}`);
+        }
+      } finally {
+        setIsRunning(false);
+        setSandboxPhase(null);
       }
       return;
     }
@@ -2471,7 +2805,7 @@ export function SkillExecutor({ skill, onClose, userId, onRequireAuth, onPurchas
       polling = false;
       window.clearInterval(pollTimer);
     }
-  }, [input, attachedFiles, isRunning, connected, currentSessionId, createNewSession, selectedModel, skill.id, skill.name, skill.description, skill.artifactUrl, skillInstructions, skill.config.systemPrompt, runtimeMode, sandboxRepo, entries, isLangGraph, isN8n]);
+  }, [input, attachedFiles, isRunning, connected, currentSessionId, createNewSession, selectedModel, skill.id, skill.name, skill.description, skill.artifactUrl, skill.skillMdUrl, skillInstructions, skill.config.systemPrompt, runtimeMode, sandboxRepo, entries, isLangGraph, isN8n, isDynamicWorker, dwDeployed, runtimeDescriptor.label]);
 
   // ── Abort ───────────────────────────────────────────────────────────────
 
@@ -2551,16 +2885,20 @@ export function SkillExecutor({ skill, onClose, userId, onRequireAuth, onPurchas
       })()
       : null;
 
-  // ── Runtime mode badge (langgraph / cf-cc / cf-ai / opencode) ─────────────
+  // ── Runtime mode badge (dw / langgraph / n8n / pi / cf-cc / cf-ai / opencode) ─
   const modeBadge = isN8n
     ? { label: 'n8n Workflow', tone: 'text-mint bg-mint/10 border-mint/20' }
     : isLangGraph
     ? { label: 'LangGraph', tone: 'text-grape bg-grape/10 border-grape/20' }
+    : isDynamicWorker
+    ? { label: 'Dynamic Worker', tone: 'text-chocolate bg-chocolate/10 border-chocolate/20' }
     : runtimeMode === 'cf-cc'
       ? { label: 'Claude Code', tone: 'text-primary bg-primary/10 border-primary/20' }
       : runtimeMode === 'cf-ai'
         ? { label: 'Workers AI', tone: 'text-info bg-info/10 border-info/20' }
-        : { label: 'OpenCode', tone: 'text-grape bg-grape/10 border-grape/20' };
+        : runtimeMode === 'pi'
+          ? { label: 'Pi', tone: 'text-caramel bg-caramel/10 border-caramel/20' }
+          : { label: 'OpenCode', tone: 'text-grape bg-grape/10 border-grape/20' };
 
   // ── Live status pill — reads the streaming state with a candy-kitchen
   //    flavor while staying legible (idle / warming / stirring / plating /
@@ -2958,7 +3296,7 @@ export function SkillExecutor({ skill, onClose, userId, onRequireAuth, onPurchas
             {isFixedRuntime ? (
               <div className="hidden sm:flex items-center gap-1.5 px-3 h-9 text-[12px] border border-border/60 rounded-xl text-foreground-secondary font-mono">
                 <Settings className="w-3.5 h-3.5" />
-                <span>{isN8n ? 'n8n CLI' : 'Llama 3.3 70B'}</span>
+                <span>{isN8n ? 'n8n CLI' : isDynamicWorker ? 'Worker Loader' : 'Llama 3.3 70B'}</span>
               </div>
             ) : (
               <ModelPicker
@@ -3577,6 +3915,8 @@ export function SkillExecutor({ skill, onClose, userId, onRequireAuth, onPurchas
                         title: 'Workers AI Llama 3.1 8B — single-shot chat, no tools' },
                       { id: 'opencode', label: 'OpenCode', Icon: Terminal,
                         title: 'Legacy local OpenCode SDK path (fallback)' },
+                      { id: 'pi', label: 'Pi', Icon: Terminal,
+                        title: 'Pi coding agent (pi-sandbox), headless `pi -p --mode json` — runs keyless on a Workers-AI shim and streams real Pi output' },
                     ] as const).map(opt => (
                       <button
                         key={opt.id}
@@ -3595,9 +3935,9 @@ export function SkillExecutor({ skill, onClose, userId, onRequireAuth, onPurchas
                     ))}
                   </div>
                   ) : (
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 h-7 text-[11px] font-mono ${isN8n ? 'text-mint' : 'text-grape'}`}>
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 h-7 text-[11px] font-mono ${isN8n ? 'text-mint' : isDynamicWorker ? 'text-chocolate' : 'text-grape'}`}>
                       <Workflow className="w-3.5 h-3.5" />
-                      {isN8n ? 'n8n runtime' : 'LangGraph runtime'}
+                      {isN8n ? 'n8n runtime' : isDynamicWorker ? 'Dynamic Worker runtime' : 'LangGraph runtime'}
                     </span>
                   )}
 

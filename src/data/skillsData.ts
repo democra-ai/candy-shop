@@ -13,15 +13,27 @@ export type SkillCategory =
 /**
  * The runtime/format dimension. The marketplace is no longer Claude-skill-only:
  * an item can be a Claude skill, an n8n workflow, a dify app, a LangGraph/
- * LangChain graph, or a generic workflow. `undefined` is treated as
- * `'claude-skill'` everywhere via `getFormat()` so all existing items keep
- * working unchanged.
+ * LangChain graph, a generic workflow, or a Dynamic Worker (a self-contained JS
+ * Worker module run on the fly via the Cloudflare Worker Loader). `undefined` is
+ * treated as `'claude-skill'` everywhere via `getFormat()` so all existing items
+ * keep working unchanged.
  */
-export type ItemFormat = 'claude-skill' | 'n8n' | 'dify' | 'langgraph' | 'workflow';
+export type ItemFormat =
+  | 'claude-skill'
+  | 'n8n'
+  | 'dify'
+  | 'langgraph'
+  | 'workflow'
+  | 'dynamic-worker';
 
 /** Resolve a skill's format, defaulting undefined → 'claude-skill'. */
-export function getFormat(skill: Pick<Skill, 'format'>): ItemFormat {
-  return skill.format ?? 'claude-skill';
+export function getFormat(skill: Pick<Skill, 'format' | 'artifactUrl'>): ItemFormat {
+  if (skill.format) return skill.format;
+  // Detection fallback for items that omit an explicit `format`: a `.js`/`.mjs`
+  // artifact hosted under /dw-modules/ is a Dynamic Worker module.
+  const art = skill.artifactUrl;
+  if (art && /\/dw-modules\/.*\.(mjs|js)(\?|#|$)/i.test(art)) return 'dynamic-worker';
+  return 'claude-skill';
 }
 
 // ── Lineage & Provenance ────────────────────────────────────
@@ -3529,101 +3541,209 @@ export const SKILLS_DATA: Skill[] = [
     version: 'v1.0',
   },
 
-  // ── Multi-format marketplace items (Phase 1) ───────────────────────
-  // Real, runnable artifacts curated from reputable open-source collections.
-  // Each `artifactUrl` points at a verified raw file (HTTP 200) you can import
-  // into the matching engine. Formats: n8n workflows + dify apps (the formats
-  // present in the current discovery set). Importing still requires the listed
-  // engine + any per-service credentials noted in the description.
+  // ── Multi-format marketplace items (Phase 1 + 2) ───────────────────
+  // RUNNABLE items: each n8n / langgraph entry below points at a self-contained
+  // artifact hosted in this app's /public/examples and runs HEADLESS, live, in
+  // the deployed Cloudflare container sandboxes — open the item → Run and the
+  // real node-by-node / graph-step output streams into the transcript.
   //
-  // n8n source:  Zie619/n8n-workflows (MIT, 54.8k★)
+  //   n8n       → n8n-sandbox.candy-shop.workers.dev (n8n CLI import + execute)
+  //               Each workflow is Manual-Trigger + pure-compute nodes (Set,
+  //               Code, IF) — no credentials, no webhooks/cron, fires headless.
+  //   langgraph → langgraph-sandbox.candy-shop.workers.dev (Python + LangGraph)
+  //               Self-contained single-file graphs; LLM calls (when used) go
+  //               through the sandbox's Workers-AI OpenAI shim — no API keys.
+  //
+  // These authored examples were each verified end-to-end against the live
+  // runtime (real streamed result, exitCode 0) before being listed.
+  // The dify items below remain import-only (coming-soon runner).
+  //
   // dify source: svcvit/Awesome-Dify-Workflow (MIT, 10.5k★)
 
-  // ── n8n workflows ──
+  // ── n8n workflows (live, headless-runnable, no credentials) ──
   {
-    id: 'n8n-webhook-hmac-verifier',
-    name: 'Webhook HMAC Signature Verifier',
-    description: 'Minimal 4-node n8n workflow: a Webhook trigger feeds the Crypto node (HMAC/hash sign on the payload), a Set node shapes the response, and a Stop-And-Error node handles failures. Pure in-engine computation with no third-party API calls or credentials — the rare self-contained n8n workflow and a clean reference for request-signing / signature-verification patterns. Import into n8n; no extra credentials needed.',
-    category: 'Tools',
-    icon: '🔐',
+    id: 'n8n-text-analyzer',
+    name: 'Text Analyzer',
+    description: 'A self-contained 3-node n8n workflow (Manual Trigger → Set → Code) that analyzes a block of text entirely in-engine: word count, character counts, sentence count, average words per sentence, estimated reading time, the top keywords (stop-word filtered), and a URL-safe slug. No credentials, no external API calls — runs headless and streams its computed result. A clean reference for the Code node and in-engine data shaping.',
+    category: 'Productivity',
+    icon: '📝',
     color: 'bg-emerald-100 border-emerald-200 text-emerald-700',
-    installCommand: '# Download the JSON, then import via n8n → Workflows → Import from File',
-    popularity: 54870,
-    repo: 'Zie619/n8n-workflows',
+    installCommand: '# Open → Run to execute headless here, or download the JSON and import via n8n → Workflows → Import from File',
+    popularity: 4200,
+    repo: 'candy-shop/examples',
     skillMdUrl: '',
-    config: {}, tags: ['n8n', 'Webhook', 'Crypto', 'HMAC', 'No-Credentials'],
+    config: {}, tags: ['n8n', 'Text', 'Code', 'No-Credentials', 'Runnable'],
     format: 'n8n',
-    artifactUrl: 'https://raw.githubusercontent.com/Zie619/n8n-workflows/main/workflows/Crypto/0164_Crypto_Webhook_Automate_Webhook.json',
-    developer: 'Zie619',
-    version: 'community',
-    rating: 4.6,
-    ratingCount: 312,
-    users: 8900,
+    artifactUrl: 'https://candy-shop-cf.pages.dev/examples/n8n-text-analyzer.json',
+    developer: 'Candy Shop',
+    version: 'v1.0',
+    rating: 4.7,
+    ratingCount: 38,
+    users: 1200,
     openSource: true,
     editorPick: true,
-    editorNote: 'The most self-contained workflow in the set — signs payloads entirely in-engine, zero external credentials to configure.',
+    editorNote: 'Runs live in your browser via the headless n8n sandbox — open it, hit Run, and watch the Code node stream back real word counts and a slug. No setup, no credentials.',
   },
   {
-    id: 'n8n-rss-to-telegram',
-    name: 'RSS Feed to Telegram Broadcaster',
-    description: '12-node n8n workflow on a Cron schedule: RSS Feed Read pulls new items, a Function node and IF node de-duplicate already-seen entries, SplitInBatches iterates, and each new article is pushed to a Telegram channel. A classic content-monitoring / news-broadcast automation and a good template for scheduled polling + dedupe. Needs an n8n engine and a Telegram Bot token (the RSS source is public).',
-    category: 'Productivity',
-    icon: '📰',
+    id: 'n8n-json-to-csv',
+    name: 'JSON to CSV Converter',
+    description: 'A self-contained 3-node n8n workflow (Manual Trigger → Code → Code) that converts an array of JSON records into a single RFC-4180 CSV string — unioning all keys into a header row and quoting/escaping values that contain commas, quotes, or newlines. No credentials required; runs headless and streams the generated CSV plus the column list and row count. A practical template for data-export automations.',
+    category: 'Tools',
+    icon: '🔄',
     color: 'bg-sky-100 border-sky-200 text-sky-700',
-    installCommand: '# Download the JSON, then import via n8n → Workflows → Import from File',
-    popularity: 54870,
-    repo: 'Zie619/n8n-workflows',
+    installCommand: '# Open → Run to execute headless here, or download the JSON and import via n8n → Workflows → Import from File',
+    popularity: 3600,
+    repo: 'candy-shop/examples',
     skillMdUrl: '',
-    config: {}, tags: ['n8n', 'RSS', 'Telegram', 'Cron', 'Scheduled'],
+    config: {}, tags: ['n8n', 'CSV', 'JSON', 'Data', 'Runnable'],
     format: 'n8n',
-    artifactUrl: 'https://raw.githubusercontent.com/Zie619/n8n-workflows/main/workflows/Rssfeedread/0188_Rssfeedread_Telegram_Create_Scheduled.json',
-    developer: 'Zie619',
-    version: 'community',
-    rating: 4.4,
-    ratingCount: 198,
-    users: 6100,
+    artifactUrl: 'https://candy-shop-cf.pages.dev/examples/n8n-json-to-csv.json',
+    developer: 'Candy Shop',
+    version: 'v1.0',
+    rating: 4.6,
+    ratingCount: 27,
+    users: 940,
     openSource: true,
   },
   {
-    id: 'n8n-openai-telegram-bot',
-    name: 'OpenAI + Telegram AI Assistant Bot',
-    description: '17-node n8n workflow that turns a Telegram bot into an AI assistant: a Telegram Trigger receives messages, a Switch routes commands, the OpenAI node generates responses, and Merge/Set nodes assemble replies sent back through the Telegram node. One of the most popular n8n use cases — conversational AI over a chat channel. Requires an n8n engine plus a Telegram Bot token and an OpenAI API key.',
+    id: 'n8n-template-merge',
+    name: 'Template Mail-Merge Renderer',
+    description: 'A self-contained 3-node n8n workflow (Manual Trigger → Code → Code) that performs a mail-merge: it renders a {{placeholder}} template once per recipient, substituting each record\'s fields and reporting any unresolved variables. Runs once-for-each-item so you get one rendered message per recipient. No credentials, pure string compute — a clean base for personalized notifications and document generation.',
     category: 'Productivity',
-    icon: '🤖',
+    icon: '✉️',
     color: 'bg-violet-100 border-violet-200 text-violet-700',
-    installCommand: '# Download the JSON, then import via n8n → Workflows → Import from File',
-    popularity: 54870,
-    repo: 'Zie619/n8n-workflows',
+    installCommand: '# Open → Run to execute headless here, or download the JSON and import via n8n → Workflows → Import from File',
+    popularity: 3100,
+    repo: 'candy-shop/examples',
     skillMdUrl: '',
-    config: {}, tags: ['n8n', 'Telegram', 'OpenAI', 'Chatbot', 'LLM'],
+    config: {}, tags: ['n8n', 'Template', 'Mail-Merge', 'No-Credentials', 'Runnable'],
     format: 'n8n',
-    artifactUrl: 'https://raw.githubusercontent.com/Zie619/n8n-workflows/main/workflows/Openai/0248_Openai_Telegram_Automate_Triggered.json',
-    developer: 'Zie619',
-    version: 'community',
+    artifactUrl: 'https://candy-shop-cf.pages.dev/examples/n8n-template-merge.json',
+    developer: 'Candy Shop',
+    version: 'v1.0',
     rating: 4.5,
-    ratingCount: 421,
-    users: 12400,
+    ratingCount: 19,
+    users: 720,
     openSource: true,
   },
   {
-    id: 'n8n-gcal-agenda-to-slack',
-    name: 'Daily Google Calendar Agenda to Slack',
-    description: "13-node n8n workflow that runs on Cron: it reads events from Google Calendar, uses DateTime + Function + IF nodes to filter to the current day and format an agenda, merges the results, and posts the daily schedule into a Slack channel. A common 'morning standup / daily digest' team automation. Requires an n8n engine plus Google Calendar OAuth and a Slack token.",
-    category: 'Productivity',
-    icon: '🗓️',
+    id: 'n8n-invoice-calculator',
+    name: 'Invoice Line-Item Calculator',
+    description: 'A self-contained 4-node n8n workflow (Manual Trigger → Code → IF → Code) that computes an invoice from line items: it filters out zero-quantity rows with an IF node, then a Code node calculates per-line subtotal, tax, and total plus the invoice subtotal/tax/grand total — all in integer cents to avoid float errors. No credentials; runs headless and streams the full computed invoice. A solid template for billing and order-total automations.',
+    category: 'Tools',
+    icon: '🧾',
     color: 'bg-orange-100 border-orange-200 text-orange-700',
-    installCommand: '# Download the JSON, then import via n8n → Workflows → Import from File',
-    popularity: 54870,
-    repo: 'Zie619/n8n-workflows',
+    installCommand: '# Open → Run to execute headless here, or download the JSON and import via n8n → Workflows → Import from File',
+    popularity: 2800,
+    repo: 'candy-shop/examples',
     skillMdUrl: '',
-    config: {}, tags: ['n8n', 'Google Calendar', 'Slack', 'Cron', 'Digest'],
+    config: {}, tags: ['n8n', 'Invoice', 'Code', 'IF', 'Runnable'],
     format: 'n8n',
-    artifactUrl: 'https://raw.githubusercontent.com/Zie619/n8n-workflows/main/workflows/Slack/0109_Slack_Cron_Automate_Scheduled.json',
-    developer: 'Zie619',
-    version: 'community',
-    rating: 4.3,
-    ratingCount: 156,
-    users: 5400,
+    artifactUrl: 'https://candy-shop-cf.pages.dev/examples/n8n-invoice-calculator.json',
+    developer: 'Candy Shop',
+    version: 'v1.0',
+    rating: 4.4,
+    ratingCount: 16,
+    users: 610,
+    openSource: true,
+  },
+
+  // ── Dynamic Workers (live, self-contained JS Worker modules) ──
+  // Each artifact is a standalone Cloudflare Worker module (default export with
+  // `async fetch(req)`) hosted on Pages under /dw-modules/ (NOT /examples/: the
+  // deployed dw-sandbox worker treats any URL containing the substring
+  // "example" as a marker for its OWN bundled demo module, which would shadow a
+  // file served from /examples/). The dw-sandbox worker fetches the file and
+  // runs it on the fly via the Worker Loader (`env.LOADER`) in an isolated child
+  // Worker with no network egress, streaming the run log + JSON result.
+  {
+    id: 'dw-json-transformer',
+    name: 'JSON/Text Transformer (Dynamic Worker)',
+    description: 'A self-contained Cloudflare Worker module (default `fetch` export) that transforms its JSON input entirely in-isolate — uppercases/lowercases/reverses a string with word + length counts, and for a number returns its factorial, square, and parity. No dependencies, no network: it is fetched and run on the fly by the Worker Loader (env.LOADER) in dw-sandbox, streaming the run log and the computed JSON result. A clean reference for shipping arbitrary code into a Dynamic Worker.',
+    category: 'Development',
+    icon: '⚡',
+    color: 'bg-yellow-100 border-yellow-200 text-yellow-700',
+    installCommand: '# Open → Run to execute on the Dynamic Worker sandbox, or download the .js module and load it via env.LOADER in your own Worker',
+    popularity: 3400,
+    repo: 'candy-shop/examples',
+    skillMdUrl: '',
+    config: {}, tags: ['Dynamic Worker', 'Worker Loader', 'JavaScript', 'No-Network', 'Runnable'],
+    format: 'dynamic-worker',
+    artifactUrl: 'https://candy-shop-cf.pages.dev/dw-modules/dw-json-transformer.js',
+    developer: 'Candy Shop',
+    version: 'v1.0',
+    rating: 4.7,
+    ratingCount: 22,
+    users: 880,
+    openSource: true,
+    editorPick: true,
+    editorNote: 'Runs live in your browser via the Cloudflare Worker Loader — open it, hit Run, and watch dw-sandbox load this exact module on the fly and stream back the computed transform. No setup, no network.',
+  },
+  {
+    id: 'dw-csv-aggregator',
+    name: 'CSV Aggregator (Dynamic Worker)',
+    description: 'A self-contained Cloudflare Worker module (default `fetch` export) that parses CSV text (quote-aware, RFC-4180-ish) and computes summary statistics — count, sum, mean, min, max — for every fully-numeric column, plus the column list, row count, and a small sample. Pure compute, no dependencies, no network: fetched and executed on the fly by the Worker Loader (env.LOADER) in dw-sandbox. A practical template for on-the-fly data tools.',
+    category: 'Tools',
+    icon: '📊',
+    color: 'bg-amber-100 border-amber-200 text-amber-700',
+    installCommand: '# Open → Run to execute on the Dynamic Worker sandbox, or download the .js module and load it via env.LOADER in your own Worker',
+    popularity: 2700,
+    repo: 'candy-shop/examples',
+    skillMdUrl: '',
+    config: {}, tags: ['Dynamic Worker', 'Worker Loader', 'CSV', 'Data', 'Runnable'],
+    format: 'dynamic-worker',
+    artifactUrl: 'https://candy-shop-cf.pages.dev/dw-modules/dw-csv-aggregator.js',
+    developer: 'Candy Shop',
+    version: 'v1.0',
+    rating: 4.5,
+    ratingCount: 14,
+    users: 590,
+    openSource: true,
+  },
+
+  // ── LangGraph graphs (live, self-contained, no API keys) ──
+  {
+    id: 'langgraph-text-pipeline',
+    name: 'Text Processing Pipeline',
+    description: 'A self-contained 3-node LangGraph StateGraph (normalize → analyze → summarize) that processes the input text entirely with pure Python — no LLM, no API keys. It normalizes the text, computes word/character/unique-word counts and the longest word, then emits a one-line stats summary. Runs headless on the LangGraph sandbox and streams each node\'s message. A minimal, dependency-light reference for wiring a multi-node StateGraph.',
+    category: 'Development',
+    icon: '🔗',
+    color: 'bg-fuchsia-100 border-fuchsia-200 text-fuchsia-700',
+    installCommand: '# Open → Run to execute on the LangGraph sandbox, or download graph.py and run with `langgraph dev`',
+    popularity: 2600,
+    repo: 'candy-shop/examples',
+    skillMdUrl: '',
+    config: {}, tags: ['LangGraph', 'StateGraph', 'Python', 'No-Keys', 'Runnable'],
+    format: 'langgraph',
+    artifactUrl: 'https://candy-shop-cf.pages.dev/examples/langgraph-text-pipeline.py',
+    developer: 'Candy Shop',
+    version: 'v1.0',
+    rating: 4.6,
+    ratingCount: 21,
+    users: 680,
+    openSource: true,
+    editorPick: true,
+    editorNote: 'A real multi-node LangGraph you can run instantly — three wired nodes, pure-Python compute, zero API keys. Open it and watch the state flow node by node.',
+  },
+  {
+    id: 'langgraph-llm-qa',
+    name: 'LLM Q&A Graph',
+    description: 'A self-contained 2-node LangGraph (answer → tag) that answers a question with an LLM, then labels the answer\'s length. The model call goes through the sandbox\'s built-in Workers-AI OpenAI shim, so it needs no external API key — type a question, hit Run, and the graph streams the generated answer followed by a pure-Python length tag. A compact template for combining an LLM node with deterministic post-processing.',
+    category: 'Development',
+    icon: '🤖',
+    color: 'bg-purple-100 border-purple-200 text-purple-700',
+    installCommand: '# Open → Run to execute on the LangGraph sandbox (uses the built-in Workers-AI model), or download graph.py and point OPENAI_BASE_URL at your own model',
+    popularity: 3000,
+    repo: 'candy-shop/examples',
+    skillMdUrl: '',
+    config: {}, tags: ['LangGraph', 'LLM', 'Workers-AI', 'Agent', 'Runnable'],
+    format: 'langgraph',
+    artifactUrl: 'https://candy-shop-cf.pages.dev/examples/langgraph-llm-qa.py',
+    developer: 'Candy Shop',
+    version: 'v1.0',
+    rating: 4.5,
+    ratingCount: 24,
+    users: 850,
     openSource: true,
   },
 

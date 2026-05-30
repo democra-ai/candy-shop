@@ -1,0 +1,45 @@
+{
+  "name": "JSON to CSV Converter",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger-2",
+      "name": "When clicking Test workflow",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Sample dataset — an array of objects (records).\nconst rows = [\n  { id: 1, name: 'Ada Lovelace',   role: 'Engineer', country: 'UK',  active: true },\n  { id: 2, name: 'Alan Turing',    role: 'Scientist', country: 'UK', active: false },\n  { id: 3, name: 'Grace Hopper',   role: 'Admiral',  country: 'US',  active: true },\n  { id: 4, name: 'Katherine, J.',  role: 'Mathematician', country: 'US', active: true }\n];\nreturn rows.map((r) => ({ json: r }));"
+      },
+      "id": "code-seed-2",
+      "name": "Sample Records",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Convert all incoming items to a single RFC-4180 CSV string. Pure compute.\nconst items = $input.all().map((i) => i.json);\nif (items.length === 0) return [{ json: { csv: '', rowCount: 0, columns: [] } }];\n\n// Union of all keys, preserving first-seen order.\nconst cols = [];\nfor (const obj of items) {\n  for (const k of Object.keys(obj)) if (!cols.includes(k)) cols.push(k);\n}\n\nconst esc = (v) => {\n  if (v === null || v === undefined) return '';\n  const s = String(v);\n  return /[\",\\n]/.test(s) ? '\"' + s.replace(/\"/g, '\"\"') + '\"' : s;\n};\n\nconst header = cols.join(',');\nconst lines = items.map((obj) => cols.map((c) => esc(obj[c])).join(','));\nconst csv = [header, ...lines].join('\\n');\n\nreturn [{ json: { csv, rowCount: items.length, columns: cols } }];"
+      },
+      "id": "code-csv-2",
+      "name": "To CSV",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "When clicking Test workflow": {
+      "main": [[{ "node": "Sample Records", "type": "main", "index": 0 }]]
+    },
+    "Sample Records": {
+      "main": [[{ "node": "To CSV", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

@@ -46,12 +46,12 @@ export async function getCFBudget(): Promise<CFBudget | null> {
 }
 
 /** Non-streaming chat. One request in, one assistant message out. */
-export async function sendCFChat(messages: CFChatMessage[]): Promise<CFChatReply> {
+export async function sendCFChat(messages: CFChatMessage[], model?: string): Promise<CFChatReply> {
   const r = await fetch(`${API_BASE}/ai/chat`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify(model ? { messages, model } : { messages }),
   });
 
   if (r.status === 429) {

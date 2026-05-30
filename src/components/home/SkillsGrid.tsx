@@ -43,6 +43,7 @@ const FORMAT_FILTERS: { id: ItemFormat | null; label: string }[] = [
   { id: 'n8n', label: 'n8n' },
   { id: 'dify', label: 'Dify' },
   { id: 'langgraph', label: 'LangGraph' },
+  { id: 'dynamic-worker', label: 'Dynamic' },
   { id: 'workflow', label: 'Workflows' },
 ];
 

@@ -1,0 +1,72 @@
+{
+  "name": "Template Mail-Merge Renderer",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger-3",
+      "name": "When clicking Test workflow",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Seed a template + a list of recipients. One recipient per item.\nconst template = 'Hi {{name}}, your {{plan}} plan renews on {{date}}. Thanks for being with us since {{year}}!';\nconst recipients = [\n  { name: 'Ada',   plan: 'Pro',        date: '2026-07-01', year: 2021 },\n  { name: 'Linus', plan: 'Team',       date: '2026-06-15', year: 2019 },\n  { name: 'Grace', plan: 'Enterprise', date: '2026-08-30', year: 2018 }\n];\nreturn recipients.map((r) => ({ json: { template, ...r } }));"
+      },
+      "id": "code-seed-3",
+      "name": "Template + Recipients",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Render {{placeholders}} for each recipient. Pure string compute.\nconst item = $input.item.json;\nconst tpl = String(item.template || '');\nconst missing = [];\nconst rendered = tpl.replace(/\\{\\{\\s*(\\w+)\\s*\\}\\}/g, (m, key) => {\n  if (item[key] === undefined) { missing.push(key); return m; }\n  return String(item[key]);\n});\nreturn { json: { name: item.name, rendered, missingVars: missing, length: rendered.length } };",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "code-render-3",
+      "name": "Render",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "When clicking Test workflow": {
+      "main": [
+        [
+          {
+            "node": "Template + Recipients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Template + Recipients": {
+      "main": [
+        [
+          {
+            "node": "Render",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

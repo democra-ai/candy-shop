@@ -29,8 +29,18 @@ import type { Flavor } from '../../utils/candyShells';
  *                                 worker + n8n CLI container). Imports the
  *                                 workflow + runs it headless, streaming
  *                                 node-by-node execution + the run result.
+ *   runner: 'dw-sandbox'        → the Dynamic Worker execution runtime
+ *                                 (dw-sandbox worker + Worker Loader binding).
+ *                                 Loads a self-contained JS Worker module via
+ *                                 `env.LOADER` and runs it on the fly, streaming
+ *                                 the run log + the module's JSON result.
  */
-export type RuntimeRunner = 'cc-sandbox' | 'langgraph-sandbox' | 'n8n-sandbox' | 'coming-soon';
+export type RuntimeRunner =
+  | 'cc-sandbox'
+  | 'langgraph-sandbox'
+  | 'n8n-sandbox'
+  | 'dw-sandbox'
+  | 'coming-soon';
 
 export interface RuntimeDescriptor {
   /** The format this descriptor describes. */
@@ -97,6 +107,19 @@ export const RUNTIME_REGISTRY: Record<ItemFormat, RuntimeDescriptor> = {
     shortLabel: 'Workflow',
     accentFlavor: 'Caramel',
     runner: 'coming-soon',
+  },
+  'dynamic-worker': {
+    format: 'dynamic-worker',
+    label: 'Dynamic Worker',
+    shortLabel: 'Dynamic',
+    accentFlavor: 'Lemon',
+    // Real execution runtime. Loads a self-contained JS Worker module into the
+    // dw-sandbox worker via the Worker Loader (`env.LOADER`) and runs it on the
+    // fly in an isolated child Worker (globalOutbound:null — no network egress),
+    // streaming the run log + the module's JSON result into the transcript.
+    runner: 'dw-sandbox',
+    importHint: 'Run this Worker module on the fly (Worker Loader)',
+    docsUrl: 'https://developers.cloudflare.com/dynamic-workers/',
   },
 };
 

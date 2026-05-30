@@ -19,6 +19,8 @@ metadata:
 
 Active branch: `cloudflare-migration`. Goal is to move OFF Vercel/Supabase ONTO Cloudflare Worker + D1 + KV.
 
+**Live production URL:** `https://candy-shop-cf.pages.dev` (root returns 200, serves the SPA). ⚠️ The preview alias `https://cloudflare-migration.candy-shop-cf.pages.dev` is DEAD — it 404s on every path, so any verification/QA/Playwright script pointed at it silently tests a 404 page. Always target `https://candy-shop-cf.pages.dev`.
+
 - **Worker (`worker/src/index.ts`)** — Hono on Cloudflare. Owns auth (cookie+KV), D1, Stripe checkout+webhook, entitlements, BYOK keys (AES-GCM via env.BYOK_ENC_KEY), TEE proxy, fast skill invocation. **Use this as the source of truth for any new server logic.**
 - **Vercel `/api/*` (`api/`)** — legacy Supabase-backed routes (invoke, skills/upsert, x402). Being phased out. Don't add features here; mirror to Worker instead.
 - **D1 migrations** in `worker/migrations/`. Latest is `0004_skill_tiers.sql` (adds execution_model, system_prompt, tee_*, byok keys table, invocations log).

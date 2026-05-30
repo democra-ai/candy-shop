@@ -94,6 +94,7 @@ function FormatDetailSection({ skill, accent }: { skill: StoreSkill; accent: { b
     format === 'n8n' ? 'Workflow'
     : format === 'dify' ? 'Dify app'
     : format === 'langgraph' ? 'Graph'
+    : format === 'dynamic-worker' ? 'Worker module'
     : 'Workflow';
 
   return (
@@ -186,6 +187,19 @@ function FormatDetailSection({ skill, accent }: { skill: StoreSkill; accent: { b
             <p>
               This is a generic automation workflow. Open the artifact below for the full step definition;
               in-platform execution is coming soon.
+            </p>
+          </div>
+        )}
+
+        {/* dynamic-worker — self-contained Worker module run via Worker Loader */}
+        {format === 'dynamic-worker' && (
+          <div className="space-y-2 text-sm text-foreground-secondary leading-relaxed font-body">
+            <p>
+              This is a self-contained Cloudflare <strong>Worker module</strong> (a default
+              <code className="font-mono text-mint"> fetch</code> export). Open it and hit Run to load it on the
+              fly via the <span className="font-mono text-mint">Worker Loader</span> (<code className="font-mono text-mint">env.LOADER</code>)
+              in an isolated child Worker with no network egress — or download the
+              <code className="font-mono text-mint"> .js</code> and load it from your own Worker.
             </p>
           </div>
         )}

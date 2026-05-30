@@ -1,0 +1,54 @@
+{
+  "name": "Text Analyzer (word count, reading time, slug)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger-1",
+      "name": "When clicking Test workflow",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "text",
+              "value": "n8n is a free and source-available workflow automation tool. This Text Analyzer node computes word count, character count, estimated reading time, the most frequent keywords, and a URL-safe slug — entirely in-engine with no external API calls or credentials.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-input-1",
+      "name": "Sample Text",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pure-compute text analysis — no network, no credentials.\nconst item = $input.first().json;\nconst text = String(item.text || '');\n\nconst words = (text.match(/\\b[\\w']+\\b/g) || []);\nconst wordCount = words.length;\nconst charCount = text.length;\nconst charCountNoSpaces = text.replace(/\\s+/g, '').length;\nconst sentenceCount = (text.match(/[.!?]+/g) || []).length || 1;\n\n// Reading time at 200 wpm.\nconst readingMinutes = Math.max(1, Math.round(wordCount / 200));\n\n// Top keywords (stop-word filtered, length >= 4).\nconst STOP = new Set(['this','that','with','from','have','will','your','into','than','then','they','them','and','the','for','are','but','not','out','its','was','were']);\nconst freq = {};\nfor (const w of words.map(w => w.toLowerCase())) {\n  if (w.length < 4 || STOP.has(w)) continue;\n  freq[w] = (freq[w] || 0) + 1;\n}\nconst topKeywords = Object.entries(freq)\n  .sort((a, b) => b[1] - a[1])\n  .slice(0, 5)\n  .map(([word, count]) => ({ word, count }));\n\n// URL-safe slug from the first 8 words.\nconst slug = words.slice(0, 8).join(' ')\n  .toLowerCase()\n  .replace(/[^a-z0-9]+/g, '-')\n  .replace(/(^-|-$)/g, '');\n\nreturn [{ json: {\n  wordCount,\n  charCount,\n  charCountNoSpaces,\n  sentenceCount,\n  avgWordsPerSentence: Math.round((wordCount / sentenceCount) * 10) / 10,\n  readingMinutes,\n  topKeywords,\n  slug,\n} }];"
+      },
+      "id": "code-analyze-1",
+      "name": "Analyze Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "When clicking Test workflow": {
+      "main": [[{ "node": "Sample Text", "type": "main", "index": 0 }]]
+    },
+    "Sample Text": {
+      "main": [[{ "node": "Analyze Text", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}
