@@ -45,6 +45,9 @@ import {
   Lock,
   ShoppingBag,
   LogIn,
+  Plug,
+  Play,
+  Server,
 } from 'lucide-react';
 import type { Skill } from '../../types/skill-creator';
 import { getCandyIcon } from '../illustrations';
@@ -92,6 +95,14 @@ import {
   warmDynamicWorker,
   DW_RUN_URL,
 } from '../../lib/cfDynamicWorkerClient';
+import {
+  inspectMcp,
+  callMcpTool,
+  warmMcp,
+  type McpToolDescriptor,
+  type McpInspectResult,
+  type McpCallResult,
+} from '../../lib/cfMcpClient';
 import { checkAccess, getX402Pricing, formatPrice } from '../../lib/payment/payment-client';
 
 // ---------------------------------------------------------------------------
@@ -1007,6 +1018,534 @@ function SessionSidebar({
 }
 
 // ---------------------------------------------------------------------------
+// MCP server runtime view
+// ---------------------------------------------------------------------------
+// An MCP server exposes a SET OF TOOLS, not a single task — so its UX differs
+// from the chat / fixed-runtime transcript paths. On open we warm + auto-connect
+// (inspectMcp → handshake + tools/list), render the server info + the full tool
+// list (name + description + input schema), and let the user CALL a tool: pick
+// one, edit JSON args (prefilled from the tool's inputSchema), Call → callMcpTool
+// → show the result. Servers that need credentials still list their tools, with
+// a note that calling may require keys/config.
+
+/** Build a minimal JSON-skeleton string from an MCP tool inputSchema so the
+ *  args textarea is prefilled with the expected keys. Falls back to `{}`. */
+function prefillArgsFromSchema(schema: Record<string, unknown> | undefined): string {
+  if (!schema || typeof schema !== 'object') return '{}';
+  const props = schema.properties as Record<string, Record<string, unknown>> | undefined;
+  if (!props || typeof props !== 'object') return '{}';
+  const required = Array.isArray(schema.required) ? (schema.required as string[]) : null;
+  const keys = Object.keys(props);
+  if (keys.length === 0) return '{}';
+  const obj: Record<string, unknown> = {};
+  for (const key of keys) {
+    // Prefill only required keys by default (or all if none are marked required)
+    if (required && required.length > 0 && !required.includes(key)) continue;
+    const p = props[key] ?? {};
+    const t = p.type as string | undefined;
+    if (Array.isArray((p as { enum?: unknown[] }).enum)) {
+      obj[key] = (p as { enum: unknown[] }).enum[0];
+    } else if (t === 'number' || t === 'integer') obj[key] = 0;
+    else if (t === 'boolean') obj[key] = false;
+    else if (t === 'array') obj[key] = [];
+    else if (t === 'object') obj[key] = {};
+    else obj[key] = '';
+  }
+  // If nothing got prefilled (e.g. all optional), still surface the shape.
+  if (Object.keys(obj).length === 0) {
+    for (const key of keys) obj[key] = '';
+  }
+  return JSON.stringify(obj, null, 2);
+}
+
+/** Stringify an MCP CallToolResult into readable text for the result block. */
+function formatMcpResult(result: unknown): string {
+  if (result == null) return '(no result)';
+  const r = result as { content?: unknown; isError?: boolean } & Record<string, unknown>;
+  // MCP CallToolResult: { content: [{type:'text', text}, ...], isError? }
+  if (Array.isArray(r.content)) {
+    const parts = (r.content as Array<Record<string, unknown>>).map((c) => {
+      if (c.type === 'text' && typeof c.text === 'string') return c.text;
+      if (c.type === 'image') return `[image ${c.mimeType ?? ''}]`;
+      if (c.type === 'resource') return `[resource ${safeString(c.resource)}]`;
+      return safeString(c);
+    });
+    const text = parts.join('\n');
+    return r.isError ? `(tool error)\n${text}` : text;
+  }
+  return safeString(result);
+}
+
+function McpToolRow({
+  tool,
+  selected,
+  onSelect,
+  accentBase,
+}: {
+  tool: McpToolDescriptor;
+  selected: boolean;
+  onSelect: () => void;
+  accentBase: string;
+}) {
+  const [showSchema, setShowSchema] = useState(false);
+  const schemaStr =
+    tool.inputSchema && Object.keys(tool.inputSchema).length > 0
+      ? JSON.stringify(tool.inputSchema, null, 2)
+      : '';
+  return (
+    <div
+      className={`rounded-xl border transition-colors ${
+        selected ? 'bg-card border-transparent ring-2' : 'bg-card/60 border-border/60 hover:border-border-hover'
+      }`}
+      style={selected ? ({ '--tw-ring-color': accentBase } as React.CSSProperties) : undefined}
+    >
+      <div className="flex items-start gap-2.5 px-3 py-2.5">
+        <span
+          className="grid place-items-center w-7 h-7 rounded-lg shrink-0 mt-0.5"
+          style={{ backgroundColor: `${accentBase}1A`, color: accentBase }}
+        >
+          <Wrench className="w-3.5 h-3.5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[13px] font-semibold text-foreground font-mono break-all">{tool.name}</span>
+          </div>
+          {tool.description && (
+            <p className="text-xs text-foreground-secondary mt-0.5 leading-relaxed font-body">{tool.description}</p>
+          )}
+          <div className="flex items-center gap-2 mt-1.5">
+            {schemaStr && (
+              <button
+                type="button"
+                onClick={() => setShowSchema((v) => !v)}
+                className="inline-flex items-center gap-1 px-2 h-6 text-[10px] font-mono rounded-md bg-secondary/70 text-foreground-tertiary hover:text-foreground hover:bg-secondary transition-colors"
+              >
+                {showSchema ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                schema
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onSelect}
+              className="inline-flex items-center gap-1.5 px-2.5 h-6 text-[11px] font-medium rounded-md text-white transition-transform active:scale-95"
+              style={{ backgroundColor: accentBase }}
+            >
+              <Play className="w-3 h-3" />
+              {selected ? 'Selected' : 'Use tool'}
+            </button>
+          </div>
+        </div>
+      </div>
+      {showSchema && schemaStr && (
+        <div className="px-3 pb-3">
+          <CodeBlock label="input schema" value={schemaStr} maxClass="max-h-56" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function McpServerView({
+  skill,
+  onClose,
+  isDark,
+}: {
+  skill: Skill;
+  onClose: () => void;
+  isDark: boolean;
+}) {
+  const runtimeDescriptor = getRuntime('mcp');
+  const accent = getFlavor(runtimeDescriptor.accentFlavor, isDark);
+  const command = skill.installCommand?.trim() || '';
+  const needsCredentials = (skill.tags ?? []).some((t) => /needs-credential/i.test(t));
+  const SkillCandy = getCandyIcon(skill.category);
+
+  const githubUrl = skill.artifactUrl?.startsWith('http')
+    ? skill.artifactUrl
+    : skill.repo
+      ? `https://github.com/${skill.repo}`
+      : null;
+
+  // Connection / inspect state
+  const [connecting, setConnecting] = useState(true);
+  const [serverInfo, setServerInfo] = useState<McpInspectResult['serverInfo']>(null);
+  const [tools, setTools] = useState<McpToolDescriptor[]>([]);
+  const [inspectError, setInspectError] = useState<string | null>(null);
+  const [log, setLog] = useState<string[]>([]);
+
+  // Tool-call state
+  const [selectedTool, setSelectedTool] = useState<string | null>(null);
+  const [argsText, setArgsText] = useState('{}');
+  const [calling, setCalling] = useState(false);
+  const [callResult, setCallResult] = useState<{ text: string; isError: boolean } | null>(null);
+  const [argsError, setArgsError] = useState<string | null>(null);
+
+  const selected = tools.find((t) => t.name === selectedTool) ?? null;
+
+  // Warm + auto-connect on open.
+  useEffect(() => {
+    if (!command) {
+      setConnecting(false);
+      setInspectError('No launch command configured for this MCP server.');
+      return;
+    }
+    let cancelled = false;
+    warmMcp();
+    setConnecting(true);
+    setInspectError(null);
+    setLog([]);
+    inspectMcp(
+      { command },
+      {
+        onLog: (d) => {
+          const stage = typeof d.stage === 'string' ? d.stage : 'log';
+          const detail =
+            typeof d.message === 'string'
+              ? d.message
+              : typeof d.text === 'string'
+                ? d.text
+                : '';
+          if (!cancelled) setLog((prev) => [...prev, detail ? `${stage}: ${detail}` : stage]);
+        },
+        onTools: (data) => {
+          if (cancelled) return;
+          setServerInfo(data.serverInfo ?? null);
+          setTools(Array.isArray(data.tools) ? data.tools : []);
+        },
+        onError: (err) => {
+          if (!cancelled) setInspectError(err.message);
+        },
+        onDone: () => {
+          if (!cancelled) setConnecting(false);
+        },
+      },
+    )
+      .catch((err) => {
+        if (!cancelled) setInspectError(err instanceof Error ? err.message : String(err));
+      })
+      .finally(() => {
+        if (!cancelled) setConnecting(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [command]);
+
+  const handleSelectTool = useCallback(
+    (tool: McpToolDescriptor) => {
+      setSelectedTool(tool.name);
+      setArgsText(prefillArgsFromSchema(tool.inputSchema));
+      setCallResult(null);
+      setArgsError(null);
+    },
+    [],
+  );
+
+  const handleCall = useCallback(async () => {
+    if (!selectedTool || !command) return;
+    let args: Record<string, unknown> = {};
+    if (argsText.trim()) {
+      try {
+        const parsed = JSON.parse(argsText);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          args = parsed as Record<string, unknown>;
+        } else {
+          setArgsError('Arguments must be a JSON object, e.g. { "key": "value" }');
+          return;
+        }
+      } catch {
+        setArgsError('Invalid JSON — check your arguments.');
+        return;
+      }
+    }
+    setArgsError(null);
+    setCalling(true);
+    setCallResult(null);
+    try {
+      await callMcpTool(
+        { command, tool: selectedTool, args },
+        {
+          onResult: (data: McpCallResult) => {
+            const r = data.result as { isError?: boolean } | undefined;
+            setCallResult({ text: formatMcpResult(data.result), isError: Boolean(r?.isError) });
+          },
+          onError: (err) => {
+            setCallResult({ text: err.message, isError: true });
+          },
+        },
+      );
+    } catch (err) {
+      setCallResult({ text: err instanceof Error ? err.message : String(err), isError: true });
+    } finally {
+      setCalling(false);
+    }
+  }, [selectedTool, command, argsText]);
+
+  return (
+    <div className="h-screen w-full flex flex-col bg-background animate-fade-in overflow-hidden">
+      {/* Header */}
+      <header className="relative shrink-0 bg-card border-b border-border z-20">
+        <div className="absolute inset-x-0 top-0 h-[3px]" style={{ backgroundColor: accent.base }} />
+        <div className="flex items-center gap-3 px-3 sm:px-5 h-16">
+          <button
+            onClick={onClose}
+            className="group inline-flex items-center gap-1.5 pl-2 pr-3 h-9 rounded-xl bg-secondary/70 hover:bg-secondary text-foreground-secondary hover:text-foreground transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring shrink-0 font-body"
+            aria-label="Back to Candy Shop"
+            title="Back to Candy Shop"
+          >
+            <ArrowLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-0.5" />
+            <span className="hidden sm:inline text-[13px] font-medium">Candy Shop</span>
+          </button>
+          <div className="h-7 w-px bg-border/70 mx-0.5 hidden sm:block" />
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="grid place-items-center w-9 h-9 rounded-xl bg-secondary ring-1 ring-border/60 shrink-0 overflow-hidden">
+              <SkillCandy size={26} />
+            </span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <h1 className="text-[15px] leading-tight font-semibold text-foreground font-candy truncate">{skill.name}</h1>
+                <span
+                  className="hidden sm:inline-flex items-center gap-1 px-2 h-[18px] rounded-full border text-[10px] font-bold font-mono uppercase tracking-wide shrink-0"
+                  style={{ backgroundColor: accent.tint, color: accent.ink, borderColor: accent.base }}
+                >
+                  <Server className="w-2.5 h-2.5" />
+                  MCP Server
+                </span>
+              </div>
+              <div className="mt-0.5 flex items-center gap-2">
+                <span
+                  className={`inline-flex items-center gap-1.5 pl-1.5 pr-2 h-[20px] rounded-full bg-foreground/[0.04] border border-border/60 text-[10px] font-mono font-medium ${
+                    connecting ? 'text-caramel' : inspectError ? 'text-error' : 'text-mint'
+                  }`}
+                >
+                  {connecting ? (
+                    <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                  ) : (
+                    <span className={`w-1.5 h-1.5 rounded-full ${inspectError ? 'bg-error' : 'bg-mint'} ${!inspectError ? 'animate-pulse' : ''}`} />
+                  )}
+                  {connecting ? 'connecting…' : inspectError ? 'connect failed' : `${tools.length} tools`}
+                </span>
+                {serverInfo?.name && (
+                  <span className="hidden md:inline text-foreground-muted font-mono text-[10px]">
+                    {serverInfo.name}
+                    {serverInfo.version ? ` v${serverInfo.version}` : ''}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="ml-auto flex items-center gap-1.5 shrink-0">
+            {githubUrl && (
+              <a
+                href={githubUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hidden md:inline-flex items-center gap-1.5 px-3 h-9 rounded-xl bg-secondary/60 hover:bg-secondary text-foreground-secondary hover:text-foreground transition-colors duration-200 text-[12px] font-medium shrink-0 font-body"
+                title="View source"
+              >
+                <Github className="w-3.5 h-3.5" />
+                <span className="hidden lg:inline">Source</span>
+                <ExternalLink className="w-2.5 h-2.5 opacity-50" />
+              </a>
+            )}
+            {runtimeDescriptor.docsUrl && (
+              <a
+                href={runtimeDescriptor.docsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hidden md:inline-flex items-center gap-1.5 px-3 h-9 rounded-xl bg-secondary/60 hover:bg-secondary text-foreground-secondary hover:text-foreground transition-colors duration-200 text-[12px] font-medium shrink-0 font-body"
+                title="MCP docs"
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span className="hidden lg:inline">MCP docs</span>
+              </a>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* Body — two readable columns on desktop: tools list + call panel */}
+      <div className="flex-1 overflow-y-auto bg-background">
+        <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 py-6 space-y-5">
+          {/* Identity / launch-command hero */}
+          <div
+            className="rounded-3xl p-5 sm:p-6 border flex items-start gap-4"
+            style={{ backgroundColor: accent.tint, color: accent.ink, borderColor: accent.base }}
+          >
+            <span
+              className="grid place-items-center w-12 h-12 rounded-2xl shrink-0 text-white shadow-candy-1"
+              style={{ backgroundColor: accent.base }}
+              aria-hidden="true"
+            >
+              <Plug className="w-6 h-6" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="font-mono text-[11px] uppercase tracking-[0.18em] opacity-80">MCP Server · stdio</div>
+              <h2 className="font-candy font-bold text-xl leading-tight mt-1">{skill.name}</h2>
+              <p className="text-sm mt-1.5 leading-relaxed opacity-90 font-body">{skill.description}</p>
+              {command && (
+                <div className="mt-3 rounded-xl bg-background/70 border border-border/50 overflow-hidden">
+                  <div className="flex items-center gap-2 px-3 h-8 border-b border-border/40">
+                    <Terminal className="w-3.5 h-3.5 text-foreground-tertiary" />
+                    <span className="text-[10px] font-mono uppercase tracking-[0.12em] text-foreground-tertiary">launch command</span>
+                    <CopyButton value={command} className="ml-auto -mr-1" />
+                  </div>
+                  <pre className="px-3 py-2 text-[12px] font-mono text-foreground-secondary overflow-x-auto">{command}</pre>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Needs-credentials note */}
+          {needsCredentials && (
+            <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-xl border border-warning/30 bg-warning/[0.06] text-sm">
+              <Lock className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+              <div className="font-body text-foreground-secondary leading-relaxed">
+                This server <strong className="text-foreground">requires credentials</strong>. Its tools are listed below,
+                but calling a tool may fail unless the API key / token in the launch command is configured.
+              </div>
+            </div>
+          )}
+
+          {/* Inspect error */}
+          {inspectError && (
+            <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-xl border border-error/25 bg-error/[0.06] text-sm">
+              <AlertCircle className="w-4 h-4 text-error shrink-0 mt-0.5" />
+              <div className="font-body text-error leading-relaxed break-words">{inspectError}</div>
+            </div>
+          )}
+
+          {/* Connecting overlay state */}
+          {connecting && tools.length === 0 && !inspectError && (
+            <div className="rounded-2xl border border-border bg-card p-8 text-center shadow-candy-1">
+              <div className="grid place-items-center w-12 h-12 rounded-2xl bg-primary/10 mx-auto mb-3">
+                <Loader2 className="w-6 h-6 text-primary animate-spin" />
+              </div>
+              <h3 className="text-[15px] font-semibold text-foreground font-candy">Connecting to the MCP server</h3>
+              <p className="text-xs text-foreground-tertiary mt-1.5 font-body">
+                Spawning <span className="font-mono">{command.split(' ').slice(0, 3).join(' ')}…</span> and listing its tools
+              </p>
+              {log.length > 0 && (
+                <div className="mt-4 max-w-md mx-auto text-left">
+                  <CodeBlock label="bridge log" value={log.slice(-8).join('\n')} maxClass="max-h-32" />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tools + call panel */}
+          {tools.length > 0 && (
+            <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
+              {/* Tools list */}
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <Wrench className="w-3.5 h-3.5 text-foreground-tertiary" />
+                  <span className="text-[10px] font-semibold text-foreground-tertiary uppercase tracking-[0.14em] font-mono">
+                    Tools ({tools.length})
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {tools.map((tool) => (
+                    <McpToolRow
+                      key={tool.name}
+                      tool={tool}
+                      selected={selectedTool === tool.name}
+                      onSelect={() => handleSelectTool(tool)}
+                      accentBase={accent.base}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Call panel */}
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <Play className="w-3.5 h-3.5 text-foreground-tertiary" />
+                  <span className="text-[10px] font-semibold text-foreground-tertiary uppercase tracking-[0.14em] font-mono">
+                    Call a tool
+                  </span>
+                </div>
+                <div className="rounded-2xl border border-border bg-card p-4 shadow-candy-1 lg:sticky lg:top-2">
+                  {!selected ? (
+                    <p className="text-sm text-foreground-tertiary font-body leading-relaxed py-6 text-center">
+                      Pick a tool on the left to call it. The arguments below are prefilled from the tool's input schema.
+                    </p>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2 mb-3">
+                        <span
+                          className="grid place-items-center w-7 h-7 rounded-lg shrink-0"
+                          style={{ backgroundColor: `${accent.base}1A`, color: accent.base }}
+                        >
+                          <Wrench className="w-3.5 h-3.5" />
+                        </span>
+                        <span className="text-[13px] font-semibold text-foreground font-mono break-all">{selected.name}</span>
+                      </div>
+                      {selected.description && (
+                        <p className="text-xs text-foreground-secondary mb-3 leading-relaxed font-body">{selected.description}</p>
+                      )}
+                      <label className="block text-[10px] font-semibold text-foreground-tertiary uppercase tracking-[0.12em] mb-1.5 font-mono">
+                        Arguments (JSON)
+                      </label>
+                      <textarea
+                        value={argsText}
+                        onChange={(e) => setArgsText(e.target.value)}
+                        rows={6}
+                        spellCheck={false}
+                        className="w-full px-3 py-2.5 rounded-xl border border-input-border bg-input text-foreground font-mono text-[12px] leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 resize-y transition-colors"
+                        placeholder="{}"
+                        aria-label="Tool arguments JSON"
+                      />
+                      {argsError && (
+                        <p className="text-[11px] text-error mt-1.5 font-mono">{argsError}</p>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleCall}
+                        disabled={calling}
+                        className="mt-3 inline-flex items-center justify-center gap-2 w-full h-11 rounded-2xl text-sm font-semibold font-body text-white shadow-candy-1 transition-transform duration-150 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-card"
+                        style={{ backgroundColor: accent.base }}
+                      >
+                        {calling ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Calling {selected.name}…
+                          </>
+                        ) : (
+                          <>
+                            <Play className="w-4 h-4" />
+                            Call {selected.name}
+                          </>
+                        )}
+                      </button>
+                      {needsCredentials && (
+                        <p className="text-[11px] text-foreground-tertiary mt-2 font-body leading-relaxed">
+                          Note: this call may require credentials set in the launch command.
+                        </p>
+                      )}
+                      {callResult && (
+                        <div className="mt-4">
+                          <CodeBlock
+                            label={callResult.isError ? 'error' : 'result'}
+                            value={callResult.text}
+                            tone={callResult.isError ? 'error' : 'neutral'}
+                            maxClass="max-h-80"
+                          />
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
 
@@ -1029,6 +1568,11 @@ export function SkillExecutor({ skill, onClose, userId, onRequireAuth, onPurchas
   //                  (dw-sandbox worker + Worker Loader); loads a self-contained
   //                  JS Worker module on the fly and streams the run log + result.
   const isDynamicWorker = runtimeDescriptor.runner === 'dw-sandbox';
+  // mcp → runner 'mcp-sandbox' → real MCP server runtime (mcp-sandbox worker).
+  //       An MCP server exposes a SET OF TOOLS rather than running a single task,
+  //       so it renders its own dedicated view (McpServerView): warm + connect
+  //       (inspect → tools/list), then pick + call a tool (callMcpTool).
+  const isMcp = runtimeDescriptor.runner === 'mcp-sandbox';
   // Whether the Dynamic Worker sandbox is actually reachable from the deployed
   // Pages site. The dw-sandbox build deployed to a PUBLIC workers.dev origin
   // (account is Worker-Loader closed-beta enrolled), so DW_RUN_URL is public and
@@ -1181,6 +1725,7 @@ export function SkillExecutor({ skill, onClose, userId, onRequireAuth, onPurchas
   }, [sandboxPhase]);
   useEffect(() => {
     if (isComingSoon) return; // no runtime to warm for import-only formats
+    if (isMcp) return; // MCP renders its own view (McpServerView), which warms itself
     // Gated/while-checking: do NOT warm any container for a skill the user
     // can't run yet. Warming resumes automatically once the gate clears.
     if (gateBlocksRuntime) return;
@@ -1219,7 +1764,7 @@ export function SkillExecutor({ skill, onClose, userId, onRequireAuth, onPurchas
       // models.json) so the first run skips the cold boot. Best-effort.
       warmPi();
     }
-  }, [runtimeMode, isComingSoon, isLangGraph, isN8n, isDynamicWorker, dwDeployed, gateBlocksRuntime]);
+  }, [runtimeMode, isComingSoon, isMcp, isLangGraph, isN8n, isDynamicWorker, dwDeployed, gateBlocksRuntime]);
 
   // Skill loading state
   const [skillInstructions, setSkillInstructions] = useState<string | null>(null);
@@ -1239,7 +1784,8 @@ export function SkillExecutor({ skill, onClose, userId, onRequireAuth, onPurchas
 
   useEffect(() => {
     // coming-soon formats never touch the sandbox — skip connecting/warming.
-    if (isComingSoon) {
+    // MCP renders its own dedicated view, so the opencode chat path never runs.
+    if (isComingSoon || isMcp) {
       setConnecting(false);
       return;
     }
@@ -1321,7 +1867,7 @@ export function SkillExecutor({ skill, onClose, userId, onRequireAuth, onPurchas
       cancelled = true;
       opencode.cleanup();
     };
-  }, [skill, isComingSoon, isFixedRuntime, gateBlocksRuntime]);
+  }, [skill, isComingSoon, isMcp, isFixedRuntime, gateBlocksRuntime]);
 
   // ── Auto-scroll ─────────────────────────────────────────────────────────
 
@@ -3095,6 +3641,16 @@ export function SkillExecutor({ skill, onClose, userId, onRequireAuth, onPurchas
         </div>
       </div>
     );
+  }
+
+  // ── MCP dispatch ──────────────────────────────────────────────────────────
+  // An MCP server exposes a SET OF TOOLS rather than running a single task, so
+  // it gets its own dedicated view: warm + auto-connect (inspect → tools/list),
+  // render the server info + tool list (name + description + input schema), then
+  // pick a tool, supply JSON args, and call it live (callMcpTool). Resolved here
+  // — AFTER the entitlement gate — so a paid MCP item is still gated first.
+  if (isMcp) {
+    return <McpServerView skill={skill} onClose={onClose} isDark={executorIsDark} />;
   }
 
   // ── Coming-soon dispatch ──────────────────────────────────────────────────

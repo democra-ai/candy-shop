@@ -40,6 +40,7 @@ export type RuntimeRunner =
   | 'langgraph-sandbox'
   | 'n8n-sandbox'
   | 'dw-sandbox'
+  | 'mcp-sandbox'
   | 'coming-soon';
 
 export interface RuntimeDescriptor {
@@ -120,6 +121,21 @@ export const RUNTIME_REGISTRY: Record<ItemFormat, RuntimeDescriptor> = {
     runner: 'dw-sandbox',
     importHint: 'Run this Worker module on the fly (Worker Loader)',
     docsUrl: 'https://developers.cloudflare.com/dynamic-workers/',
+  },
+  mcp: {
+    format: 'mcp',
+    label: 'MCP Server',
+    shortLabel: 'MCP',
+    accentFlavor: 'Bubblegum',
+    // Real execution runtime. Launches the MCP server over stdio inside the
+    // mcp-sandbox Cloudflare container (via the Sandbox SDK), performs the MCP
+    // handshake, LISTS its tools (inspect), and CALLS a tool (call) — streaming
+    // server info + the tool list + tool results into the transcript. Unlike the
+    // other fixed runtimes, an MCP server exposes a SET OF TOOLS rather than
+    // running a single task, so its UX is connect → list tools → pick + call.
+    runner: 'mcp-sandbox',
+    importHint: 'Connect + list tools, then call a tool live (MCP sandbox)',
+    docsUrl: 'https://modelcontextprotocol.io',
   },
 };
 
