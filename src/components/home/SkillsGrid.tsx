@@ -1,7 +1,7 @@
 import { Search, X, ChevronLeft, ChevronRight, Plus, Database, ExternalLink, Download, Loader2 } from 'lucide-react';
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import Masonry from 'react-masonry-css';
-import { SKILLS_DATA, REGISTRY_STATS, loadFullRegistry, getFormat, type Skill, type RegistryEntry, type ItemFormat } from '../../data/skillsData';
+import { SKILLS_DATA, REGISTRY_STATS, loadFullRegistry, loadFormatRegistry, FORMAT_REGISTRY_FILES, getFormat, type Skill, type RegistryEntry, type ItemFormat } from '../../data/skillsData';
 import { SkillModal } from '../common/SkillModal';
 import { storageUtils } from '../../utils/storage';
 import { cn } from '../../utils/cn';
@@ -77,6 +77,48 @@ export function SkillsGrid({
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
   // Format filter (multi-format browse) — null = all formats.
   const [formatFilter, setFormatFilter] = useState<ItemFormat | null>(null);
+
+  // ── Lazy per-format bulk registries ──────────────────────────────
+  // Each format's FULL set lives as a static JSON under public/registry/ and is
+  // fetched on demand the first time its chip is selected (mirrors the lazy
+  // skills registry). `registryItems` merges every already-loaded format's
+  // items into the browse catalog; `loadingFormats` drives the inline spinner.
+  const [registryItems, setRegistryItems] = useState<Record<string, Skill[]>>({});
+  const [loadingFormats, setLoadingFormats] = useState<Set<string>>(() => new Set());
+
+  const ensureFormatLoaded = useCallback((fmt: ItemFormat | null) => {
+    if (!fmt) return;
+    if (!FORMAT_REGISTRY_FILES[fmt]) return; // no bulk file (e.g. dynamic-worker)
+    // already loaded or in flight → nothing to do
+    setRegistryItems((prev) => {
+      if (prev[fmt]) return prev;
+      // kick off the fetch exactly once
+      setLoadingFormats((lf) => {
+        if (lf.has(fmt)) return lf;
+        const next = new Set(lf);
+        next.add(fmt);
+        return next;
+      });
+      loadFormatRegistry(fmt)
+        .then((items) => {
+          setRegistryItems((p) => (p[fmt] ? p : { ...p, [fmt]: items }));
+        })
+        .finally(() => {
+          setLoadingFormats((lf) => {
+            if (!lf.has(fmt)) return lf;
+            const next = new Set(lf);
+            next.delete(fmt);
+            return next;
+          });
+        });
+      return prev;
+    });
+  }, []);
+
+  // Load the selected format's registry when the chip changes.
+  useEffect(() => {
+    ensureFormatLoaded(formatFilter);
+  }, [formatFilter, ensureFormatLoaded]);
   const [likedSkills, setLikedSkills] = useState<Set<string>>(() => new Set(storageUtils.getLikes()));
   const searchInputRef = useRef<HTMLInputElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -125,7 +167,12 @@ export function SkillsGrid({
     }
   };
 
-  const allSkills = useMemo(() => [...userCandies, ...SKILLS_DATA], [userCandies]);
+  // Merge user candies + inline seed + every loaded per-format registry.
+  // Registries are already deduped against the inline seed in loadFormatRegistry.
+  const allSkills = useMemo(() => {
+    const loaded = Object.values(registryItems).flat();
+    return [...userCandies, ...SKILLS_DATA, ...loaded];
+  }, [userCandies, registryItems]);
 
   const filteredSkills = useMemo(() => {
     const filtered = allSkills.filter((skill) => {
@@ -166,6 +213,9 @@ export function SkillsGrid({
     [filteredSkills, visibleCount]
   );
   const hasMore = visibleCount < filteredSkills.length;
+
+  // Is the currently-selected format's bulk registry still fetching?
+  const isSelectedFormatLoading = formatFilter != null && loadingFormats.has(formatFilter);
 
   // Skeleton count when debouncing — stable visual mass to avoid layout jumps
   const lastVisibleCountRef = useRef(visibleSkills.length || PAGE_SIZE);
@@ -280,10 +330,12 @@ export function SkillsGrid({
               const count = opt.id === null
                 ? Object.values(formatCounts).reduce((a, b) => a + b, 0)
                 : (formatCounts[opt.id] ?? 0);
+              const isLoading = opt.id != null && loadingFormats.has(opt.id);
               return (
                 <button
                   key={opt.id ?? 'all'}
                   onClick={() => setFormatFilter(opt.id)}
+                  onMouseEnter={() => ensureFormatLoaded(opt.id)}
                   aria-pressed={active}
                   className={cn(
                     'inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[12px] font-mono font-medium',
@@ -294,12 +346,19 @@ export function SkillsGrid({
                   )}
                 >
                   {opt.label}
-                  <span className={cn(
-                    'tabular-nums text-[10px]',
-                    active ? 'text-primary-foreground/70' : 'text-foreground-tertiary'
-                  )}>
-                    {count}
-                  </span>
+                  {isLoading ? (
+                    <Loader2 className={cn(
+                      'w-3 h-3 animate-spin',
+                      active ? 'text-primary-foreground/70' : 'text-foreground-tertiary'
+                    )} />
+                  ) : (
+                    <span className={cn(
+                      'tabular-nums text-[10px]',
+                      active ? 'text-primary-foreground/70' : 'text-foreground-tertiary'
+                    )}>
+                      {count}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -323,6 +382,16 @@ export function SkillsGrid({
                 />
               ))}
             </Masonry>
+          )}
+
+          {/* Format registry loading — only when nothing to show yet */}
+          {!isDebouncing && isSelectedFormatLoading && filteredSkills.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <Loader2 className="w-8 h-8 text-foreground-tertiary animate-spin mb-4" />
+              <p className="text-sm font-mono text-foreground-tertiary">
+                loading the full {formatFilter} jar…
+              </p>
+            </div>
           )}
 
           {/* ── True masonry layout — variable card heights, no gaps ──
@@ -371,7 +440,7 @@ export function SkillsGrid({
             </div>
           )}
 
-          {!isDebouncing && filteredSkills.length === 0 && (
+          {!isDebouncing && filteredSkills.length === 0 && !isSelectedFormatLoading && (
             <div className="flex flex-col items-center justify-center py-24 text-center">
               <div className="w-20 h-20 rounded-2xl glass flex items-center justify-center mb-6 shadow-warm">
                 <Search className="w-8 h-8 text-foreground-tertiary" />

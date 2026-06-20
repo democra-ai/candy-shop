@@ -185,6 +185,139 @@ export function registryEntryToSkill(entry: RegistryEntry): Skill {
   };
 }
 
+// ── Per-format bulk registries (lazy, runtime-fetched) ──────────────
+//
+// Phase 2: each item format has a big JSON array of items living as a STATIC
+// asset under `public/registry/<file>.json` (served at `<base>registry/...`).
+// These are NOT imported into the JS bundle — they're `fetch`ed on demand the
+// first time a shopper selects that format's chip, mirroring how
+// `loadFullRegistry()` above lazily pulls the 88K skills registry. Each file is
+// already authored in the `Skill` shape, so the per-entry mapping is mostly an
+// identity pass plus a format-string normalization and a dedupe against the
+// inline `SKILLS_DATA` seed.
+//
+// Map ItemFormat → the static file under public/registry/. Note two files use a
+// plural/legacy name that differs from the canonical ItemFormat id:
+//   claude-skill → skills.json   (file says "format":"skills")
+//   loop         → loops.json    (file says "format":"loops")
+// `dynamic-worker` has no bulk registry file (its items are the inline seed
+// dw-modules), so it's intentionally absent here.
+export const FORMAT_REGISTRY_FILES: Partial<Record<ItemFormat, string>> = {
+  'claude-skill': 'skills',
+  mcp: 'mcp',
+  n8n: 'n8n',
+  dify: 'dify',
+  langgraph: 'langgraph',
+  loop: 'loops',
+  workflow: 'workflow',
+};
+
+// Normalize the raw `format` string a registry file ships with into a canonical
+// ItemFormat. Files predate the enum rename, so "skills"→"claude-skill" and
+// "loops"→"loop"; everything else already matches.
+const RAW_FORMAT_ALIASES: Record<string, ItemFormat> = {
+  skills: 'claude-skill',
+  loops: 'loop',
+};
+function normalizeRegistryFormat(raw: unknown, fallback: ItemFormat): ItemFormat {
+  if (typeof raw === 'string' && raw in RAW_FORMAT_ALIASES) return RAW_FORMAT_ALIASES[raw];
+  if (typeof raw === 'string') return raw as ItemFormat;
+  return fallback;
+}
+
+// Build the public-asset URL for a registry file, honoring the Vite base path
+// (`/` on Pages/Vercel, `/candy-shop/` on GitHub Pages). BASE_URL always ends
+// with a trailing slash.
+function registryFileUrl(file: string): string {
+  const base = (import.meta.env.BASE_URL || '/');
+  return `${base}registry/${file}.json`;
+}
+
+// Dedupe key: registry items that already exist in the inline seed must not
+// double-show. We match on id OR on (format + lowercased name) — the loops
+// registry, for instance, mirrors the 42 inline loops under a `loops-` id
+// prefix (vs the inline `loop-` prefix), so id alone misses them.
+function seedDedupeKeys(): { ids: Set<string>; nameKeys: Set<string> } {
+  const ids = new Set<string>();
+  const nameKeys = new Set<string>();
+  for (const s of SKILLS_DATA) {
+    ids.add(s.id);
+    nameKeys.add(`${getFormat(s)}::${s.name.trim().toLowerCase()}`);
+  }
+  return { ids, nameKeys };
+}
+
+// Per-format cache (raw fetched + mapped Skill[]). Populated once per format.
+const _formatRegistryCache: Partial<Record<ItemFormat, Skill[]>> = {};
+const _formatRegistryInflight: Partial<Record<ItemFormat, Promise<Skill[]>>> = {};
+
+/**
+ * Lazy-load a format's full bulk registry from its static JSON asset, map each
+ * entry to a `Skill`, dedupe against the inline seed, and cache. Concurrent
+ * callers share one in-flight fetch. Returns `[]` for formats with no registry
+ * file (e.g. dynamic-worker) and on fetch failure (the chip then just shows the
+ * inline seed items).
+ */
+export async function loadFormatRegistry(format: ItemFormat): Promise<Skill[]> {
+  const cached = _formatRegistryCache[format];
+  if (cached) return cached;
+  const inflight = _formatRegistryInflight[format];
+  if (inflight) return inflight;
+
+  const file = FORMAT_REGISTRY_FILES[format];
+  if (!file) {
+    _formatRegistryCache[format] = [];
+    return [];
+  }
+
+  const promise = (async () => {
+    const res = await fetch(registryFileUrl(file));
+    if (!res.ok) throw new Error(`registry ${file} HTTP ${res.status}`);
+    const raw = (await res.json()) as Array<Partial<Skill> & { id: string; name: string }>;
+    const { ids, nameKeys } = seedDedupeKeys();
+    const seen = new Set<string>();
+    const mapped: Skill[] = [];
+    for (const entry of raw) {
+      const fmt = normalizeRegistryFormat((entry as { format?: unknown }).format, format);
+      const nameKey = `${fmt}::${(entry.name || '').trim().toLowerCase()}`;
+      // Skip anything already in the inline seed (by id or format+name) and
+      // any intra-file id duplicates.
+      if (ids.has(entry.id) || nameKeys.has(nameKey) || seen.has(entry.id)) continue;
+      seen.add(entry.id);
+      mapped.push({
+        category: 'Tools' as SkillCategory,
+        icon: '📦',
+        color: 'bg-gray-100 border-gray-200 text-gray-700',
+        installCommand: '',
+        tags: [],
+        popularity: 0,
+        repo: '',
+        skillMdUrl: '',
+        config: {},
+        ...entry,
+        format: fmt,
+      } as Skill);
+    }
+    _formatRegistryCache[format] = mapped;
+    return mapped;
+  })();
+
+  _formatRegistryInflight[format] = promise;
+  try {
+    return await promise;
+  } catch {
+    _formatRegistryCache[format] = [];
+    return [];
+  } finally {
+    delete _formatRegistryInflight[format];
+  }
+}
+
+/** Synchronously read an already-loaded format registry (or `null`). */
+export function getLoadedFormatRegistry(format: ItemFormat): Skill[] | null {
+  return _formatRegistryCache[format] ?? null;
+}
+
 // ── skill-crawler adapter ──────────────────────────────────────────
 // Convert a skill-crawler API row into our UI Skill type so the
 // existing components (SkillsGrid, SkillModal, ...) keep working.

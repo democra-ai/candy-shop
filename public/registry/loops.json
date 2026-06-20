@@ -1,0 +1,1507 @@
+[
+  {
+    "id": "loops-ship-pr-until-green",
+    "name": "Ship PR Until Green",
+    "description": "Implement on a branch, run tests, push, open a PR, wait for CI, and loop until checks pass and the PR is ready to merge.",
+    "category": "CI",
+    "icon": "🟢",
+    "color": "bg-emerald-100 border-emerald-200 text-emerald-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/ship-pr-until-green",
+    "popularity": 2234,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "pr",
+      "ci",
+      "ship",
+      "continuous-claude",
+      "manual",
+      "claude-code",
+      "cursor",
+      "codex",
+      "Needs-Key",
+      "agent-loop",
+      "ci_green"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Start the \"Ship PR Until Green\" loop.\n\nGoal: PR is open with all CI checks passing\nMax iterations: 10\nBetween iterations run: gh pr checks\nExit when: all PR checks are success\n\nStep 1: Implement the change, test locally, push, open PR, and fix CI until green.\n\nSelf-pace this loop. After each iteration, run the check command, read the output, and only continue if the exit condition is not met. Stop when the exit condition passes or max iterations is reached. Give a short status update each pass."
+    }
+  },
+  {
+    "id": "loops-pre-commit-guard",
+    "name": "Pre-Commit Guard",
+    "description": "Hook that runs tests before git commit commands to block commits when the suite is red.",
+    "category": "Testing",
+    "icon": "🧪",
+    "color": "bg-sky-100 border-sky-200 text-sky-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/pre-commit-guard",
+    "popularity": 1785,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "hooks",
+      "testing",
+      "git",
+      "pre-commit",
+      "event",
+      "cursor",
+      "claude-code",
+      "No-Credentials",
+      "agent-loop",
+      "tests_pass"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Install and run the \"Pre-Commit Guard\" loop.\n\nGoal: block git commits when tests are failing.\nBetween iterations run: npm test\nExit when: tests exit 0 before each commit.\n\nStep 1: Before any git commit, run tests. Fix failures before committing."
+    }
+  },
+  {
+    "id": "loops-flaky-test-triage",
+    "name": "Flaky Test Triage",
+    "description": "Run failing tests repeatedly, classify each failure as flaky or real, and fix only confirmed regressions.",
+    "category": "Testing",
+    "icon": "🧪",
+    "color": "bg-violet-100 border-violet-200 text-violet-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/flaky-test-triage",
+    "popularity": 1929,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "testing",
+      "flaky",
+      "triage",
+      "manual",
+      "cursor",
+      "claude-code",
+      "No-Credentials",
+      "agent-loop"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Start the \"Flaky Test Triage\" loop.\n\nGoal: classify failing tests as flaky vs real and fix only real regressions\nMax iterations: 5\nBetween iterations run: npm test -- --testPathPattern=<failing-suite>\nExit when: every failure is classified and real regressions are fixed or explicitly deferred\n\nStep 1: Run the failing suite multiple times. Classify each failure, fix real ones, and document flaky behavior.\n\nSelf-pace this loop. After each iteration, run the check command, read the output, and only continue if the exit condition is not met. Stop when the exit condition passes or max iterations is reached. Give a short status update each pass."
+    }
+  },
+  {
+    "id": "loops-guardrails-learning-loop",
+    "name": "Guardrails Learning Loop",
+    "description": "When a check fails twice the same way, append a guardrail sign to .ralph/guardrails.md so the next iteration avoids repeating it.",
+    "category": "Automation",
+    "icon": "🔁",
+    "color": "bg-amber-100 border-amber-200 text-amber-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/guardrails-learning-loop",
+    "popularity": 2187,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "ralph",
+      "guardrails",
+      "learning",
+      "manual",
+      "cursor",
+      "claude-code",
+      "codex",
+      "No-Credentials",
+      "agent-loop",
+      "tests_pass"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Start the \"Guardrails Learning Loop\" loop.\n\nGoal: tests and lint pass without repeating prior failure patterns\nMax iterations: 12\nBetween iterations run: npm test && npm run lint\nExit when: all checks pass\n\nStep 1: Read .ralph/guardrails.md, run checks, and if a failure repeats, add a sign before fixing.\n\nSelf-pace this loop. After each iteration, run the check command, read the output, and only continue if the exit condition is not met. Stop when the exit condition passes or max iterations is reached. Give a short status update each pass."
+    }
+  },
+  {
+    "id": "loops-npm-audit-fix-loop",
+    "name": "npm Audit Fix Loop",
+    "description": "Fix high/critical npm audit findings one at a time with test verification — not a blind npm audit fix --force.",
+    "category": "Security",
+    "icon": "🔒",
+    "color": "bg-rose-100 border-rose-200 text-rose-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/npm-audit-fix-loop",
+    "popularity": 1752,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "security",
+      "npm",
+      "audit",
+      "manual",
+      "cursor",
+      "claude-code",
+      "any",
+      "Needs-Key",
+      "agent-loop",
+      "lint_clean"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Start the \"npm Audit Fix Loop\" loop.\n\nGoal: no high or critical npm audit vulnerabilities\nMax iterations: 10\nBetween iterations run: npm audit --audit-level=high && npm test\nExit when: npm audit reports no high/critical issues\n\nStep 1: Pick one high/critical advisory, apply the safest fix, run tests, and repeat.\n\nSelf-pace this loop. After each iteration, run the check command, read the output, and only continue if the exit condition is not met. Stop when the exit condition passes or max iterations is reached. Give a short status update each pass."
+    }
+  },
+  {
+    "id": "loops-docs-sync-after-edits",
+    "name": "Docs Sync After Edits",
+    "description": "After code changes, find affected docs and update README, API references, and inline comments to match.",
+    "category": "Maintenance",
+    "icon": "🧹",
+    "color": "bg-slate-100 border-slate-200 text-slate-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/docs-sync-after-edits",
+    "popularity": 1465,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "docs",
+      "maintenance",
+      "sync",
+      "manual",
+      "cursor",
+      "any",
+      "No-Credentials",
+      "agent-loop"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Start the \"Docs Sync After Edits\" loop.\n\nGoal: documentation matches the current code changes\nMax iterations: 3\nBetween iterations run: git diff main...HEAD --name-only\nExit when: all affected docs are updated and verified\n\nStep 1: Review the diff, find stale docs, update them, and verify accuracy.\n\nSelf-pace this loop. After each iteration, run the check command, read the output, and only continue if the exit condition is not met. Stop when the exit condition passes or max iterations is reached. Give a short status update each pass."
+    }
+  },
+  {
+    "id": "loops-post-merge-regression-guard",
+    "name": "Post-Merge Regression Guard",
+    "description": "Hook that runs smoke tests after git merge or rebase to catch integration regressions immediately.",
+    "category": "Testing",
+    "icon": "🧪",
+    "color": "bg-teal-100 border-teal-200 text-teal-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/post-merge-regression-guard",
+    "popularity": 1653,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "hooks",
+      "testing",
+      "git",
+      "merge",
+      "event",
+      "cursor",
+      "claude-code",
+      "No-Credentials",
+      "agent-loop",
+      "tests_pass"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Install and run the \"Post-Merge Regression Guard\" loop.\n\nGoal: smoke tests pass immediately after every merge or rebase.\nBetween iterations run: npm run test:smoke\nExit when: smoke suite exits 0.\n\nStep 1: After a merge, run smoke tests. Fix regressions before continuing other work."
+    }
+  },
+  {
+    "id": "loops-a11y-audit-until-clean",
+    "name": "A11y Audit Until Clean",
+    "description": "Run automated accessibility checks on changed routes, fix violations, and repeat until the audit is clean.",
+    "category": "Quality",
+    "icon": "✨",
+    "color": "bg-indigo-100 border-indigo-200 text-indigo-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/a11y-audit-until-clean",
+    "popularity": 1819,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "a11y",
+      "quality",
+      "frontend",
+      "manual",
+      "cursor",
+      "claude-code",
+      "any",
+      "No-Credentials",
+      "agent-loop",
+      "tests_pass"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Start the \"A11y Audit Until Clean\" loop.\n\nGoal: zero serious accessibility violations on changed UI\nMax iterations: 8\nBetween iterations run: npm run test:a11y\nExit when: a11y audit exits 0\n\nStep 1: Run the a11y audit on changed routes. Fix each violation, prioritizing keyboard and screen reader issues.\n\nSelf-pace this loop. After each iteration, run the check command, read the output, and only continue if the exit condition is not met. Stop when the exit condition passes or max iterations is reached. Give a short status update each pass."
+    }
+  },
+  {
+    "id": "loops-post-edit-test-guard",
+    "name": "Post-Edit Test Guard",
+    "description": "Hook-based loop that runs related tests after file edits to catch regressions early.",
+    "category": "Testing",
+    "icon": "🧪",
+    "color": "bg-lime-100 border-lime-200 text-lime-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/post-edit-test-guard",
+    "popularity": 1345,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "hooks",
+      "testing",
+      "regression",
+      "event",
+      "cursor",
+      "claude-code",
+      "No-Credentials",
+      "agent-loop",
+      "tests_pass"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Install and run the \"Post-Edit Test Guard\" loop.\n\nGoal: after each batch of file edits, related tests must pass before continuing.\nBetween iterations run: npm test -- --findRelatedTests <edited files>\nExit when: related tests exit 0.\n\nStep 1: After edits, run related tests. If they fail, fix before making more changes."
+    }
+  },
+  {
+    "id": "loops-independent-verifier-pass",
+    "name": "Independent Verifier Pass",
+    "description": "When implementation claims done, a separate verifier pass runs build, lint, and tests with no access to the implementer's rationale.",
+    "category": "Testing",
+    "icon": "🧪",
+    "color": "bg-fuchsia-100 border-fuchsia-200 text-fuchsia-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/independent-verifier-pass",
+    "popularity": 1253,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "verification",
+      "testing",
+      "letitloop",
+      "manual",
+      "claude-code",
+      "cursor",
+      "No-Credentials",
+      "agent-loop",
+      "tests_pass"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Start the \"Independent Verifier Pass\" loop.\n\nGoal: build, lint, and tests pass under independent verification\nMax iterations: 8\nBetween iterations run: npm run build && npm run lint && npm test\nExit when: all verifier commands exit 0\n\nStep 1: Run build, lint, and tests as a verifier. Trust only command output, not prior claims.\n\nSelf-pace this loop. After each iteration, run the check command, read the output, and only continue if the exit condition is not met. Stop when the exit condition passes or max iterations is reached. Give a short status update each pass."
+    }
+  },
+  {
+    "id": "loops-ci-failure-watcher",
+    "name": "CI Failure Watcher",
+    "description": "Poll CI on an interval, investigate failures when checks go red, and push fixes until green.",
+    "category": "CI",
+    "icon": "🟢",
+    "color": "bg-cyan-100 border-cyan-200 text-cyan-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/ci-failure-watcher",
+    "popularity": 1832,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "ci",
+      "github",
+      "devops",
+      "interval",
+      "cursor",
+      "claude-code",
+      "Needs-Key",
+      "agent-loop",
+      "ci_green"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "/loop 5m Start the \"CI Failure Watcher\" loop.\n\nGoal: latest CI run on this branch is green.\nMax iterations: 12.\nBetween iterations run: gh run list --branch $(git branch --show-current) --limit 1\nExit when: latest run conclusion is success.\n\nStep 1: Check CI status. If failed, read logs, fix root cause, verify locally, and push if needed."
+    }
+  },
+  {
+    "id": "loops-dependency-audit-weekly",
+    "name": "Dependency Audit Weekly",
+    "description": "Weekly loop to check outdated dependencies, propose safe upgrades, and open a summary.",
+    "category": "Maintenance",
+    "icon": "🧹",
+    "color": "bg-orange-100 border-orange-200 text-orange-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/dependency-audit-weekly",
+    "popularity": 1713,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "dependencies",
+      "maintenance",
+      "security",
+      "interval",
+      "cursor",
+      "claude-code",
+      "No-Credentials",
+      "agent-loop",
+      "manual"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "/loop 7d Start the \"Dependency Audit Weekly\" loop.\n\nGoal: deliver a weekly dependency audit summary.\nBetween iterations run: npm outdated || true\nExit when: summary is posted with recommended upgrades.\n\nStep 1: Run npm outdated, categorize updates, and propose a safe upgrade plan."
+    }
+  },
+  {
+    "id": "loops-deploy-verification-loop",
+    "name": "Deploy Verification Loop",
+    "description": "On an interval, hit health and smoke endpoints after a deploy until all checks return healthy responses.",
+    "category": "DevOps",
+    "icon": "🚀",
+    "color": "bg-emerald-100 border-emerald-200 text-emerald-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/deploy-verification-loop",
+    "popularity": 1196,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "deploy",
+      "devops",
+      "smoke-test",
+      "interval",
+      "codex",
+      "cursor",
+      "claude-code",
+      "Needs-Key",
+      "agent-loop",
+      "ci_green"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "/loop 15m Start the \"Deploy Verification Loop\".\n\nGoal: all post-deploy health and smoke endpoints return success.\nMax iterations: 8.\nBetween iterations run: curl -fsS <your-health-url>\nExit when: every configured endpoint succeeds.\n\nStep 1: Hit health/smoke URLs. If any fail, inspect deploy logs and fix or escalate."
+    }
+  },
+  {
+    "id": "loops-pr-self-review",
+    "name": "PR Self-Review",
+    "description": "Review your own diff like a senior reviewer, fix issues, and repeat for three passes before opening the PR.",
+    "category": "Review",
+    "icon": "🔍",
+    "color": "bg-sky-100 border-sky-200 text-sky-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/pr-self-review",
+    "popularity": 2039,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "review",
+      "pr",
+      "quality",
+      "manual",
+      "cursor",
+      "claude-code",
+      "any",
+      "No-Credentials",
+      "agent-loop",
+      "max_iterations"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Start the \"PR Self-Review\" loop.\n\nGoal: three clean self-review passes on the current diff\nMax iterations: 3\nBetween iterations run: git diff main...HEAD\nExit when: three passes complete with no critical findings\n\nStep 1: Review the diff like a senior reviewer. Fix findings, then re-review.\n\nSelf-pace this loop. After each iteration, run the check command, read the output, and only continue if the exit condition is not met. Stop when the exit condition passes or max iterations is reached. Give a short status update each pass."
+    }
+  },
+  {
+    "id": "loops-coverage-until-threshold",
+    "name": "Coverage Until Threshold",
+    "description": "Add focused tests until coverage meets your threshold (e.g. 80%), without changing production behavior unnecessarily.",
+    "category": "Testing",
+    "icon": "🧪",
+    "color": "bg-violet-100 border-violet-200 text-violet-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/coverage-until-threshold",
+    "popularity": 1820,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "coverage",
+      "testing",
+      "quality",
+      "manual",
+      "claude-code",
+      "cursor",
+      "No-Credentials",
+      "agent-loop",
+      "tests_pass"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Start the \"Coverage Until Threshold\" loop.\n\nGoal: coverage meets the target threshold (default 80%) with all tests passing\nMax iterations: 12\nBetween iterations run: npm test -- --coverage\nExit when: coverage threshold is met and tests exit 0\n\nStep 1: Run coverage. Add focused tests for the biggest uncovered gaps, then repeat.\n\nSelf-pace this loop. After each iteration, run the check command, read the output, and only continue if the exit condition is not met. Stop when the exit condition passes or max iterations is reached. Give a short status update each pass."
+    }
+  },
+  {
+    "id": "loops-knip-until-clean",
+    "name": "Knip Until Clean",
+    "description": "Find and remove dead exports, unused files, and orphan dependencies — loop until knip reports clean.",
+    "category": "Maintenance",
+    "icon": "🧹",
+    "color": "bg-amber-100 border-amber-200 text-amber-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/knip-until-clean",
+    "popularity": 1450,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "maintenance",
+      "dead-code",
+      "deps",
+      "manual",
+      "cursor",
+      "any",
+      "No-Credentials",
+      "agent-loop",
+      "lint_clean"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Start the \"Knip Until Clean\" loop.\n\nGoal: knip reports no unused code or dependencies\nMax iterations: 5\nBetween iterations run: npx knip\nExit when: knip exits 0\n\nStep 1: Run knip. Remove dead exports and unused deps with minimal diffs; verify tests still pass.\n\nSelf-pace this loop. After each iteration, run the check command, read the output, and only continue if the exit condition is not met. Stop when the exit condition passes or max iterations is reached. Give a short status update each pass."
+    }
+  },
+  {
+    "id": "loops-bundle-size-budget",
+    "name": "Bundle Size Budget",
+    "description": "Ship features without bloating the client bundle — loop until size checks pass under your budget threshold.",
+    "category": "Performance",
+    "icon": "⚡",
+    "color": "bg-rose-100 border-rose-200 text-rose-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/bundle-size-budget",
+    "popularity": 1727,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "performance",
+      "bundle",
+      "frontend",
+      "manual",
+      "cursor",
+      "any",
+      "No-Credentials",
+      "agent-loop",
+      "tests_pass"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Start the \"Bundle Size Budget\" loop.\n\nGoal: client bundle stays under the size-limit budget\nMax iterations: 6\nBetween iterations run: npm run build && npm run size-limit\nExit when: size-limit exits 0\n\nStep 1: Build and measure bundle size. If over budget, lazy-load or trim deps until size-limit passes.\n\nSelf-pace this loop. After each iteration, run the check command, read the output, and only continue if the exit condition is not met. Stop when the exit condition passes or max iterations is reached. Give a short status update each pass."
+    }
+  },
+  {
+    "id": "loops-test-until-green",
+    "name": "Test Until Green",
+    "description": "Run your test suite, fix the smallest root cause on failure, and repeat until every test passes.",
+    "category": "Testing",
+    "icon": "🧪",
+    "color": "bg-slate-100 border-slate-200 text-slate-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/test-until-green",
+    "popularity": 1731,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "testing",
+      "tdd",
+      "ci",
+      "manual",
+      "cursor",
+      "claude-code",
+      "any",
+      "No-Credentials",
+      "agent-loop",
+      "tests_pass"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Start the \"Test Until Green\" loop.\n\nGoal: all tests pass\nMax iterations: 10\nBetween iterations run: npm test\nExit when: tests exit 0\n\nStep 1: Run tests. If there are failures, fix the smallest root cause, then repeat.\n\nSelf-pace this loop. After each iteration, run the check command, read the output, and only continue if the exit condition is not met. Stop when the exit condition passes or max iterations is reached. Give a short status update each pass."
+    }
+  },
+  {
+    "id": "loops-reflexion-debug-loop",
+    "name": "Reflexion Debug Loop",
+    "description": "On each failed repro attempt, write a short reflection to disk, then retry with that memory — avoids repeating the same wrong fix.",
+    "category": "Debugging",
+    "icon": "🐛",
+    "color": "bg-teal-100 border-teal-200 text-teal-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/reflexion-debug-loop",
+    "popularity": 1360,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "debugging",
+      "reflexion",
+      "memory",
+      "manual",
+      "cursor",
+      "claude-code",
+      "any",
+      "No-Credentials",
+      "agent-loop",
+      "tests_pass"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Start the \"Reflexion Debug Loop\" loop.\n\nGoal: the failing test or repro passes\nMax iterations: 8\nBetween iterations run: npm test -- --testNamePattern=<failing-test>\nExit when: the repro test exits 0\n\nStep 1: Reproduce the bug. If it fails, append a reflection to .loops/reflexion.md before trying a new fix.\n\nSelf-pace this loop. After each iteration, run the check command, read the output, and only continue if the exit condition is not met. Stop when the exit condition passes or max iterations is reached. Give a short status update each pass."
+    }
+  },
+  {
+    "id": "loops-pr-watch-loop",
+    "name": "PR Watch Loop",
+    "description": "Poll open PRs labeled codex-watch every 15 minutes, review activity, and flag regressions or stale threads.",
+    "category": "CI",
+    "icon": "🟢",
+    "color": "bg-indigo-100 border-indigo-200 text-indigo-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/pr-watch-loop",
+    "popularity": 1656,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "ci",
+      "pr",
+      "watch",
+      "codex",
+      "interval",
+      "cursor",
+      "Needs-Key",
+      "agent-loop",
+      "manual"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "/loop 15m Start the \"PR Watch Loop\".\n\nGoal: keep codex-watch PRs healthy and unblocked.\nBetween iterations run: gh pr list --label codex-watch --json number,title,state,statusCheckRollup\nExit when: status report is delivered for every watched PR.\n\nStep 1: List codex-watch PRs, check CI and reviews, and report or fix trivial blockers."
+    }
+  },
+  {
+    "id": "loops-dependency-upgrade-one-by-one",
+    "name": "Dependency Upgrade One-by-One",
+    "description": "Upgrade a single outdated package per iteration, fix breakages, and commit — safer than bulk npm update.",
+    "category": "Maintenance",
+    "icon": "🧹",
+    "color": "bg-lime-100 border-lime-200 text-lime-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/dependency-upgrade-one-by-one",
+    "popularity": 1195,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "dependencies",
+      "maintenance",
+      "upgrades",
+      "manual",
+      "cursor",
+      "claude-code",
+      "any",
+      "No-Credentials",
+      "agent-loop"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Start the \"Dependency Upgrade One-by-One\" loop.\n\nGoal: critical outdated deps are upgraded with green tests\nMax iterations: 15\nBetween iterations run: npm outdated && npm test && npm run build\nExit when: npm outdated shows no critical packages left or user stops\n\nStep 1: Pick one outdated package, upgrade it, fix breakages, commit, and stop. One package per iteration.\n\nSelf-pace this loop. After each iteration, run the check command, read the output, and only continue if the exit condition is not met. Stop when the exit condition passes or max iterations is reached. Give a short status update each pass."
+    }
+  },
+  {
+    "id": "loops-ralph-story-executor",
+    "name": "Ralph Story Executor",
+    "description": "Fresh-context loop: pick one incomplete story from prd.json, implement it, run backpressure checks, commit, and update progress before the next iteration.",
+    "category": "Automation",
+    "icon": "🔁",
+    "color": "bg-fuchsia-100 border-fuchsia-200 text-fuchsia-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/ralph-story-executor",
+    "popularity": 1367,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "ralph",
+      "automation",
+      "prd",
+      "fresh-context",
+      "manual",
+      "cursor",
+      "claude-code",
+      "codex",
+      "No-Credentials",
+      "agent-loop"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Start the \"Ralph Story Executor\" loop.\n\nGoal: every story in .ralph/prd.json has passes: true\nMax iterations: 20\nBetween iterations run: npm test && npm run lint && npm run build\nExit when: no stories remain with passes: false (respond \"ALL STORIES ARE COMPLETE\")\n\nStep 1: Read .ralph/prd.json and .ralph/progress.md. Pick one incomplete story, implement it, run backpressure checks, commit, update prd.json and progress.md, then stop this iteration.\n\nSelf-pace this loop. Each iteration does exactly one story. State lives on disk, not in chat history."
+    }
+  },
+  {
+    "id": "loops-investigation-script-loop",
+    "name": "Investigation Script Loop",
+    "description": "Write a small throwaway script to reproduce a bug, run it, read output, and iterate until the root cause is proven.",
+    "category": "Debugging",
+    "icon": "🐛",
+    "color": "bg-cyan-100 border-cyan-200 text-cyan-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/investigation-script-loop",
+    "popularity": 1548,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "debugging",
+      "repro",
+      "scripts",
+      "manual",
+      "cursor",
+      "claude-code",
+      "codex",
+      "any",
+      "No-Credentials",
+      "agent-loop"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Start the \"Investigation Script Loop\" loop.\n\nGoal: prove the root cause with a minimal repro script\nMax iterations: 8\nBetween iterations run: node scripts/investigate.mjs\nExit when: script output demonstrates root cause\n\nStep 1: Write a tiny throwaway script that reproduces the issue. Run it and iterate on what the output shows.\n\nSelf-pace this loop. After each iteration, run the check command, read the output, and only continue if the exit condition is not met. Stop when the exit condition passes or max iterations is reached. Give a short status update each pass."
+    }
+  },
+  {
+    "id": "loops-changelog-sync-after-ship",
+    "name": "Changelog Sync After Ship",
+    "description": "After shipping a feature, loop until CHANGELOG.md has a user-facing entry and conventional commits are reflected.",
+    "category": "Docs",
+    "icon": "📝",
+    "color": "bg-orange-100 border-orange-200 text-orange-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/changelog-sync-after-ship",
+    "popularity": 1396,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "docs",
+      "changelog",
+      "release",
+      "manual",
+      "cursor",
+      "claude-code",
+      "any",
+      "No-Credentials",
+      "agent-loop"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Start the \"Changelog Sync After Ship\" loop.\n\nGoal: CHANGELOG.md has accurate [Unreleased] entries for this ship\nMax iterations: 3\nBetween iterations run: git log -5 --oneline\nExit when: changelog covers all user-visible changes\n\nStep 1: Review recent commits, write Keep-a-Changelog entries for user-visible changes, and verify completeness.\n\nSelf-pace this loop. After each iteration, run the check command, read the output, and only continue if the exit condition is not met. Stop when the exit condition passes or max iterations is reached. Give a short status update each pass."
+    }
+  },
+  {
+    "id": "loops-autoloop-tdd",
+    "name": "Autoloop TDD",
+    "description": "Test-first loop: write a failing test, implement the minimum code to pass, refactor, and repeat.",
+    "category": "Testing",
+    "icon": "🧪",
+    "color": "bg-emerald-100 border-emerald-200 text-emerald-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/autoloop-tdd",
+    "popularity": 1594,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "tdd",
+      "testing",
+      "red-green-refactor",
+      "manual",
+      "cursor",
+      "claude-code",
+      "No-Credentials",
+      "agent-loop",
+      "tests_pass"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Start the \"Autoloop TDD\" loop.\n\nGoal: implement the target behavior test-first with a green suite\nMax iterations: 12\nBetween iterations run: npm test\nExit when: target behavior is covered and all tests pass\n\nStep 1: Write a failing test for the next behavior, implement the minimum code to pass, refactor, and repeat.\n\nSelf-pace this loop. After each iteration, run the check command, read the output, and only continue if the exit condition is not met. Stop when the exit condition passes or max iterations is reached. Give a short status update each pass."
+    }
+  },
+  {
+    "id": "loops-openapi-sync-until-valid",
+    "name": "OpenAPI Sync Until Valid",
+    "description": "Keep openapi.yaml valid and in sync with route handlers — lint the spec and fix drift each pass.",
+    "category": "API",
+    "icon": "🔌",
+    "color": "bg-sky-100 border-sky-200 text-sky-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/openapi-sync-until-valid",
+    "popularity": 1663,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "api",
+      "openapi",
+      "docs",
+      "manual",
+      "cursor",
+      "any",
+      "No-Credentials",
+      "agent-loop",
+      "lint_clean"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Start the \"OpenAPI Sync Until Valid\" loop.\n\nGoal: openapi.yaml lints clean and matches implemented routes\nMax iterations: 8\nBetween iterations run: npx @redocly/cli lint openapi.yaml\nExit when: OpenAPI lint exits 0\n\nStep 1: Lint openapi.yaml. Fix spec errors and handler drift until lint passes.\n\nSelf-pace this loop. After each iteration, run the check command, read the output, and only continue if the exit condition is not met. Stop when the exit condition passes or max iterations is reached. Give a short status update each pass."
+    }
+  },
+  {
+    "id": "loops-staging-smoke-test",
+    "name": "Staging Smoke Test",
+    "description": "Run a fixed smoke checklist against staging after deploy: auth, core flows, and error budgets.",
+    "category": "DevOps",
+    "icon": "🚀",
+    "color": "bg-violet-100 border-violet-200 text-violet-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/staging-smoke-test",
+    "popularity": 1422,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "staging",
+      "smoke-test",
+      "deploy",
+      "manual",
+      "cursor",
+      "claude-code",
+      "Needs-Key",
+      "agent-loop",
+      "ci_green"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Start the \"Staging Smoke Test\" loop.\n\nGoal: staging smoke checklist passes\nMax iterations: 6\nBetween iterations run: npm run smoke:staging\nExit when: smoke command exits 0\n\nStep 1: Run the staging smoke checklist. Fix the first failing item, then repeat.\n\nSelf-pace this loop. After each iteration, run the check command, read the output, and only continue if the exit condition is not met. Stop when the exit condition passes or max iterations is reached. Give a short status update each pass."
+    }
+  },
+  {
+    "id": "loops-de-sloppify-pass",
+    "name": "De-Sloppify Pass",
+    "description": "After implementation, run a cleanup pass: remove debug code, tighten naming, delete dead branches, and align with project conventions.",
+    "category": "Review",
+    "icon": "🔍",
+    "color": "bg-amber-100 border-amber-200 text-amber-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/de-sloppify-pass",
+    "popularity": 2017,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "review",
+      "quality",
+      "cleanup",
+      "manual",
+      "cursor",
+      "claude-code",
+      "any",
+      "No-Credentials",
+      "agent-loop",
+      "lint_clean"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Start the \"De-Sloppify Pass\" loop.\n\nGoal: recent changes are clean, minimal, and convention-aligned\nMax iterations: 4\nBetween iterations run: npm run lint && npm test\nExit when: review finds no slop and checks pass\n\nStep 1: Review the diff for debug code, dead branches, and naming issues. Fix them with minimal diffs.\n\nSelf-pace this loop. After each iteration, run the check command, read the output, and only continue if the exit condition is not met. Stop when the exit condition passes or max iterations is reached. Give a short status update each pass."
+    }
+  },
+  {
+    "id": "loops-pr-babysitter",
+    "name": "PR Babysitter",
+    "description": "Every 15 minutes, inspect open PRs with a watch label: nudge reviewers, fix CI, rebase if behind main.",
+    "category": "CI",
+    "icon": "🟢",
+    "color": "bg-rose-100 border-rose-200 text-rose-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/pr-babysitter",
+    "popularity": 1216,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "pr",
+      "github",
+      "ci",
+      "boris-cherny",
+      "interval",
+      "codex",
+      "cursor",
+      "Needs-Key",
+      "agent-loop",
+      "manual"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "/loop 15m Start the \"PR Babysitter\" loop.\n\nGoal: open PRs labeled codex-watch are healthy (CI green, rebased, not stale).\nMax iterations: 20.\nBetween iterations run: gh pr list --label \"codex-watch\"\nExit when: each watched PR is green and current, or escalated.\n\nStep 1: List watched PRs. Fix CI once, rebase if behind, comment if stale. Escalate repeated failures."
+    }
+  },
+  {
+    "id": "loops-api-contract-until-match",
+    "name": "API Contract Until Match",
+    "description": "Loop until API responses match the OpenAPI or JSON Schema contract — catch drift between docs and implementation.",
+    "category": "API",
+    "icon": "🔌",
+    "color": "bg-slate-100 border-slate-200 text-slate-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/api-contract-until-match",
+    "popularity": 1753,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "api",
+      "openapi",
+      "contract-testing",
+      "manual",
+      "cursor",
+      "claude-code",
+      "any",
+      "No-Credentials",
+      "agent-loop",
+      "tests_pass"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Start the \"API Contract Until Match\" loop.\n\nGoal: API implementation matches the published contract\nMax iterations: 10\nBetween iterations run: npm run test:contract\nExit when: contract test suite exits 0\n\nStep 1: Run contract tests. Fix each schema/response mismatch with minimal diffs, then re-run.\n\nSelf-pace this loop. After each iteration, run the check command, read the output, and only continue if the exit condition is not met. Stop when the exit condition passes or max iterations is reached. Give a short status update each pass."
+    }
+  },
+  {
+    "id": "loops-lint-typecheck-fix",
+    "name": "Lint and Typecheck Fix",
+    "description": "Run lint and typecheck, fix reported issues, and loop until the codebase is clean.",
+    "category": "Testing",
+    "icon": "🧪",
+    "color": "bg-teal-100 border-teal-200 text-teal-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/lint-typecheck-fix",
+    "popularity": 1739,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "lint",
+      "typescript",
+      "quality",
+      "manual",
+      "cursor",
+      "any",
+      "No-Credentials",
+      "agent-loop",
+      "lint_clean"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Start the \"Lint and Typecheck Fix\" loop.\n\nGoal: lint and typecheck are clean\nMax iterations: 8\nBetween iterations run: npm run lint && npx tsc --noEmit\nExit when: both commands exit 0\n\nStep 1: Run lint and typecheck. Fix reported issues with minimal diffs, then repeat.\n\nSelf-pace this loop. After each iteration, run the check command, read the output, and only continue if the exit condition is not met. Stop when the exit condition passes or max iterations is reached. Give a short status update each pass."
+    }
+  },
+  {
+    "id": "loops-fix-ci-until-green",
+    "name": "Fix CI Until Green",
+    "description": "Fetch the latest failed CI run, reproduce the failure locally, fix it, and repeat until checks pass.",
+    "category": "CI",
+    "icon": "🟢",
+    "color": "bg-indigo-100 border-indigo-200 text-indigo-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/fix-ci-until-green",
+    "popularity": 2063,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "ci",
+      "github",
+      "fix",
+      "manual",
+      "cursor",
+      "claude-code",
+      "Needs-Key",
+      "agent-loop",
+      "ci_green"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Start the \"Fix CI Until Green\" loop.\n\nGoal: latest CI run on this branch passes\nMax iterations: 8\nBetween iterations run: gh run list --branch $(git branch --show-current) --limit 1 --json conclusion -q '.[0].conclusion'\nExit when: latest run conclusion is success\n\nStep 1: Find the latest failed CI run, read logs, reproduce locally, fix root cause, push, and verify.\n\nSelf-pace this loop. After each iteration, run the check command, read the output, and only continue if the exit condition is not met. Stop when the exit condition passes or max iterations is reached. Give a short status update each pass."
+    }
+  },
+  {
+    "id": "loops-migration-until-applied",
+    "name": "Migration Until Applied",
+    "description": "Run database migrations, fix schema issues, and loop until migrations apply cleanly in dev.",
+    "category": "Database",
+    "icon": "🗄️",
+    "color": "bg-lime-100 border-lime-200 text-lime-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/migration-until-applied",
+    "popularity": 1663,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "database",
+      "prisma",
+      "migrations",
+      "manual",
+      "cursor",
+      "claude-code",
+      "No-Credentials",
+      "agent-loop",
+      "tests_pass"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Start the \"Migration Until Applied\" loop.\n\nGoal: all database migrations apply cleanly\nMax iterations: 6\nBetween iterations run: npx prisma migrate status\nExit when: migrate status shows no pending failures\n\nStep 1: Run migrations. Fix schema or SQL errors, then repeat until status is clean.\n\nSelf-pace this loop. After each iteration, run the check command, read the output, and only continue if the exit condition is not met. Stop when the exit condition passes or max iterations is reached. Give a short status update each pass."
+    }
+  },
+  {
+    "id": "loops-format-until-clean",
+    "name": "Format Until Clean",
+    "description": "Run the formatter, fix any remaining style issues, and loop until the codebase formats cleanly with no diffs.",
+    "category": "Testing",
+    "icon": "🧪",
+    "color": "bg-fuchsia-100 border-fuchsia-200 text-fuchsia-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/format-until-clean",
+    "popularity": 1709,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "format",
+      "prettier",
+      "quality",
+      "manual",
+      "cursor",
+      "any",
+      "No-Credentials",
+      "agent-loop",
+      "lint_clean"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Start the \"Format Until Clean\" loop.\n\nGoal: formatter runs cleanly with no remaining diff\nMax iterations: 5\nBetween iterations run: npm run format\nExit when: format command succeeds and git diff is empty\n\nStep 1: Run the formatter. Fix any issues it cannot auto-fix, then repeat.\n\nSelf-pace this loop. After each iteration, run the check command, read the output, and only continue if the exit condition is not met. Stop when the exit condition passes or max iterations is reached. Give a short status update each pass."
+    }
+  },
+  {
+    "id": "loops-spec-first-ship",
+    "name": "Spec-First Ship",
+    "description": "Implement from a written spec.md checklist — each iteration completes one unchecked requirement with verification.",
+    "category": "Planning",
+    "icon": "🗺️",
+    "color": "bg-cyan-100 border-cyan-200 text-cyan-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/spec-first-ship",
+    "popularity": 2136,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "planning",
+      "spec",
+      "requirements",
+      "manual",
+      "cursor",
+      "claude-code",
+      "codex",
+      "any",
+      "No-Credentials",
+      "agent-loop"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Start the \"Spec-First Ship\" loop.\n\nGoal: every requirement in spec.md is implemented and checked off\nMax iterations: 15\nBetween iterations run: npm test\nExit when: spec.md has no unchecked requirements\n\nStep 1: Read spec.md, implement the first unchecked item, verify it, mark [x], and stop this iteration.\n\nSelf-pace this loop. After each iteration, run the check command, read the output, and only continue if the exit condition is not met. Stop when the exit condition passes or max iterations is reached. Give a short status update each pass."
+    }
+  },
+  {
+    "id": "loops-security-audit-weekly",
+    "name": "Security Audit Weekly",
+    "description": "Weekly npm audit scan, triage vulnerabilities by severity, and propose or apply safe patches.",
+    "category": "Maintenance",
+    "icon": "🧹",
+    "color": "bg-orange-100 border-orange-200 text-orange-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/security-audit-weekly",
+    "popularity": 1095,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "security",
+      "npm",
+      "audit",
+      "maintenance",
+      "interval",
+      "cursor",
+      "claude-code",
+      "No-Credentials",
+      "agent-loop",
+      "manual"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "/loop 7d Start the \"Security Audit Weekly\" loop.\n\nGoal: deliver a weekly npm audit summary with a remediation plan.\nBetween iterations run: npm audit --json\nExit when: summary is posted with prioritized fixes.\n\nStep 1: Run npm audit, triage by severity, and propose safe remediation steps."
+    }
+  },
+  {
+    "id": "loops-build-until-green",
+    "name": "Build Until Green",
+    "description": "Run the production build, fix compile and bundling errors, and loop until the build succeeds.",
+    "category": "Testing",
+    "icon": "🧪",
+    "color": "bg-emerald-100 border-emerald-200 text-emerald-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/build-until-green",
+    "popularity": 1921,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "build",
+      "compile",
+      "ci",
+      "manual",
+      "cursor",
+      "claude-code",
+      "No-Credentials",
+      "agent-loop",
+      "tests_pass"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Start the \"Build Until Green\" loop.\n\nGoal: production build succeeds\nMax iterations: 10\nBetween iterations run: npm run build\nExit when: npm run build exits 0\n\nStep 1: Run the build. If it fails, fix the first error, then repeat until green.\n\nSelf-pace this loop. After each iteration, run the check command, read the output, and only continue if the exit condition is not met. Stop when the exit condition passes or max iterations is reached. Give a short status update each pass."
+    }
+  },
+  {
+    "id": "loops-e2e-until-green",
+    "name": "E2E Until Green",
+    "description": "Run end-to-end tests, fix UI and integration failures, and loop until the E2E suite passes.",
+    "category": "Testing",
+    "icon": "🧪",
+    "color": "bg-sky-100 border-sky-200 text-sky-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/e2e-until-green",
+    "popularity": 1564,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "e2e",
+      "playwright",
+      "testing",
+      "manual",
+      "cursor",
+      "claude-code",
+      "No-Credentials",
+      "agent-loop",
+      "tests_pass"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Start the \"E2E Until Green\" loop.\n\nGoal: E2E suite passes\nMax iterations: 10\nBetween iterations run: npm run test:e2e\nExit when: E2E command exits 0\n\nStep 1: Run E2E tests. Fix the first failing spec, then repeat.\n\nSelf-pace this loop. After each iteration, run the check command, read the output, and only continue if the exit condition is not met. Stop when the exit condition passes or max iterations is reached. Give a short status update each pass."
+    }
+  },
+  {
+    "id": "loops-merge-conflict-resolver",
+    "name": "Merge Conflict Resolver",
+    "description": "Rebase or merge target branch, resolve conflicts file by file, and loop until the branch is current and tests pass.",
+    "category": "Git",
+    "icon": "🌿",
+    "color": "bg-violet-100 border-violet-200 text-violet-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/merge-conflict-resolver",
+    "popularity": 1566,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "git",
+      "rebase",
+      "merge",
+      "manual",
+      "cursor",
+      "claude-code",
+      "No-Credentials",
+      "agent-loop",
+      "tests_pass"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Start the \"Merge Conflict Resolver\" loop.\n\nGoal: branch is rebased on main with no conflicts and tests pass\nMax iterations: 8\nBetween iterations run: npm test\nExit when: rebase completes and tests exit 0\n\nStep 1: Rebase on main. Resolve conflicts one file at a time, run tests, continue.\n\nSelf-pace this loop. After each iteration, run the check command, read the output, and only continue if the exit condition is not met. Stop when the exit condition passes or max iterations is reached. Give a short status update each pass."
+    }
+  },
+  {
+    "id": "loops-visual-regression-until-match",
+    "name": "Visual Regression Until Match",
+    "description": "Run Playwright or Percy visual snapshots on UI changes; fix unintended diffs until baselines match intentionally.",
+    "category": "Testing",
+    "icon": "🧪",
+    "color": "bg-amber-100 border-amber-200 text-amber-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/visual-regression-until-match",
+    "popularity": 1324,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "testing",
+      "visual",
+      "playwright",
+      "ui",
+      "manual",
+      "cursor",
+      "any",
+      "No-Credentials",
+      "agent-loop",
+      "tests_pass"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Start the \"Visual Regression Until Match\" loop.\n\nGoal: visual regression suite passes with intentional UI only\nMax iterations: 6\nBetween iterations run: npx playwright test --grep @visual\nExit when: visual tests exit 0\n\nStep 1: Run visual tests. Fix unintended UI diffs; update baselines only for deliberate design changes.\n\nSelf-pace this loop. After each iteration, run the check command, read the output, and only continue if the exit condition is not met. Stop when the exit condition passes or max iterations is reached. Give a short status update each pass."
+    }
+  },
+  {
+    "id": "loops-loop-kit-mql1vea1",
+    "name": "loop-kit",
+    "description": "Add an autonomous Loop Engineering triage loop to any repo.",
+    "category": "Review",
+    "icon": "🔍",
+    "color": "bg-rose-100 border-rose-200 text-rose-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/loop-kit-mql1vea1",
+    "popularity": 1200,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "manual",
+      "claude-code",
+      "No-Credentials",
+      "agent-loop"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "/plugin marketplace add yuzhiquan/loop-kit\r\n/plugin install loop-kit@loop-kit"
+    }
+  },
+  {
+    "id": "loops-cardxc-mqi8i0wc",
+    "name": "cardxc",
+    "description": "A CI testing loop that automatically runs card exchange (cardxc) test suites, validates outputs, and reports results.",
+    "category": "Testing",
+    "icon": "🧪",
+    "color": "bg-slate-100 border-slate-200 text-slate-700",
+    "installCommand": "",
+    "artifactUrl": "https://loops.elorm.xyz/loops/cardxc-mqi8i0wc",
+    "popularity": 1200,
+    "repo": "loops.elorm.xyz",
+    "skillMdUrl": "",
+    "tags": [
+      "manual",
+      "cursor",
+      "claude-code",
+      "any",
+      "No-Credentials",
+      "agent-loop"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "You are a CI testing agent for the cardxc project. Your job is to:\r\n1. Run the full test suite using the available test runner (e.g., `npm test`, `pytest`, or equivalent)\r\n2. Analyze any failing tests and identify root causes\r\n3. Fix failing tests or flag them with a clear explanation\r\n4. Validate that all outputs match expected results\r\n5. Generate a concise test report summarizing passed, failed, and skipped tests\r\n\r\nStart by checking the project structure and available test commands, then execute the tests and report back."
+    }
+  },
+  {
+    "id": "loops-ralph-wiggum-feature",
+    "name": "Ralph: Feature Implementation",
+    "description": "Anthropic ralph-wiggum plugin loop: build a complete feature with tests, re-injecting the prompt on every exit until the completion promise prints.",
+    "category": "Automation",
+    "icon": "🔁",
+    "color": "bg-teal-100 border-teal-200 text-teal-700",
+    "installCommand": "/plugin install ralph-wiggum@anthropics/claude-code",
+    "artifactUrl": "https://github.com/anthropics/claude-code/tree/main/plugins/ralph-wiggum",
+    "popularity": 5200,
+    "repo": "anthropics/claude-code",
+    "skillMdUrl": "",
+    "tags": [
+      "ralph",
+      "claude-code",
+      "plugin",
+      "Needs-Key",
+      "agent-loop",
+      "completion-promise"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "/ralph-loop \"Implement [FEATURE_NAME]. Requirements: full implementation, input validation, and passing tests. Read changed files, test results, and git history each pass. Output <promise>COMPLETE</promise> when every requirement is met.\" --max-iterations 30 --completion-promise \"COMPLETE\"\n\nSelf-pace: after each iteration run the tests, read the output, and only continue if the completion promise has not printed. Stop at the promise or max iterations."
+    }
+  },
+  {
+    "id": "loops-ralph-wiggum-tdd",
+    "name": "Ralph: TDD Development",
+    "description": "Test-driven Ralph loop — write a failing test, make it pass, refactor, repeat until the feature is fully covered and DONE is emitted.",
+    "category": "Testing",
+    "icon": "🧪",
+    "color": "bg-indigo-100 border-indigo-200 text-indigo-700",
+    "installCommand": "/plugin install ralph-wiggum@anthropics/claude-code",
+    "artifactUrl": "https://github.com/anthropics/claude-code/tree/main/plugins/ralph-wiggum",
+    "popularity": 4800,
+    "repo": "anthropics/claude-code",
+    "skillMdUrl": "",
+    "tags": [
+      "ralph",
+      "tdd",
+      "claude-code",
+      "No-Credentials",
+      "agent-loop",
+      "completion-promise"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "/ralph-loop \"Implement [FEATURE] using strict TDD: write a failing test, make it pass with the minimal change, then refactor. Repeat for each requirement. Output <promise>DONE</promise> when all tests pass and coverage is complete.\" --max-iterations 50 --completion-promise \"DONE\"\n\nSelf-pace this loop. Run the test suite each iteration and continue only while tests fail or requirements remain."
+    }
+  },
+  {
+    "id": "loops-ralph-wiggum-bugfix",
+    "name": "Ralph: Bug Fixing",
+    "description": "Reproduce a bug, identify the root cause, fix it, add a regression test, and loop until the repro passes and FIXED is emitted.",
+    "category": "Debugging",
+    "icon": "🐛",
+    "color": "bg-lime-100 border-lime-200 text-lime-700",
+    "installCommand": "/plugin install ralph-wiggum@anthropics/claude-code",
+    "artifactUrl": "https://github.com/anthropics/claude-code/tree/main/plugins/ralph-wiggum",
+    "popularity": 4100,
+    "repo": "anthropics/claude-code",
+    "skillMdUrl": "",
+    "tags": [
+      "ralph",
+      "bugfix",
+      "claude-code",
+      "No-Credentials",
+      "agent-loop",
+      "completion-promise"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "/ralph-loop \"Fix bug: [DESCRIPTION]. First write a failing test that reproduces it, then fix the root cause, then keep the regression test green. Output <promise>FIXED</promise> when the repro test and the full suite pass.\" --max-iterations 20 --completion-promise \"FIXED\"\n\nSelf-pace: rerun the repro test each pass; stop when it passes or max iterations is reached."
+    }
+  },
+  {
+    "id": "loops-ralph-wiggum-refactor",
+    "name": "Ralph: Safe Refactor",
+    "description": "Refactor a component toward a goal while keeping every test green on each iteration; exit when REFACTORED is emitted.",
+    "category": "Review",
+    "icon": "🔍",
+    "color": "bg-fuchsia-100 border-fuchsia-200 text-fuchsia-700",
+    "installCommand": "/plugin install ralph-wiggum@anthropics/claude-code",
+    "artifactUrl": "https://github.com/anthropics/claude-code/tree/main/plugins/ralph-wiggum",
+    "popularity": 3600,
+    "repo": "anthropics/claude-code",
+    "skillMdUrl": "",
+    "tags": [
+      "ralph",
+      "refactor",
+      "claude-code",
+      "No-Credentials",
+      "agent-loop",
+      "completion-promise"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "/ralph-loop \"Refactor [COMPONENT] for [GOAL]. Make small, behavior-preserving changes and keep the full test suite green after every step. Output <promise>REFACTORED</promise> when the goal is met and all tests still pass.\" --max-iterations 25 --completion-promise \"REFACTORED\"\n\nSelf-pace: run tests each iteration; never proceed on red."
+    }
+  },
+  {
+    "id": "loops-continuous-claude-coverage",
+    "name": "Continuous Claude: Coverage Until Covered",
+    "description": "continuous-claude runs Claude Code in a PR loop — branch, change, push, open PR, wait for gh pr checks, merge, pull main, repeat until coverage is complete.",
+    "category": "CI",
+    "icon": "🟢",
+    "color": "bg-cyan-100 border-cyan-200 text-cyan-700",
+    "installCommand": "curl -fsSL https://raw.githubusercontent.com/AnandChowdhary/continuous-claude/main/install.sh | bash",
+    "artifactUrl": "https://github.com/AnandChowdhary/continuous-claude",
+    "popularity": 3900,
+    "repo": "AnandChowdhary/continuous-claude",
+    "skillMdUrl": "",
+    "tags": [
+      "continuous-claude",
+      "pr",
+      "ci",
+      "Needs-Key",
+      "agent-loop",
+      "ci_green"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Run a continuous-claude loop with the task: \"add unit tests until all code is covered\". Each iteration: create a branch, generate changes, commit and push, open a PR with gh, monitor with `gh pr checks`, wait for required checks, squash-merge on success, pull main, and repeat. Record learnings in the shared notes file between iterations. Stop when coverage is complete or no further improvement is possible."
+    }
+  },
+  {
+    "id": "loops-continuous-claude-quality",
+    "name": "Continuous Claude: Improve Quality",
+    "description": "PR-per-iteration loop that keeps improving code quality (lint, types, structure), merging green PRs autonomously and carrying notes forward.",
+    "category": "Review",
+    "icon": "🔍",
+    "color": "bg-orange-100 border-orange-200 text-orange-700",
+    "installCommand": "curl -fsSL https://raw.githubusercontent.com/AnandChowdhary/continuous-claude/main/install.sh | bash",
+    "artifactUrl": "https://github.com/AnandChowdhary/continuous-claude",
+    "popularity": 2600,
+    "repo": "AnandChowdhary/continuous-claude",
+    "skillMdUrl": "",
+    "tags": [
+      "continuous-claude",
+      "pr",
+      "quality",
+      "Needs-Key",
+      "agent-loop",
+      "ci_green"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Run a continuous-claude loop with the task: \"improve code quality\". Each iteration: branch, make one focused quality improvement (lint/type/structure), push, open a PR, wait for `gh pr checks` to pass, squash-merge, pull main, repeat. Append a short note about what changed to the shared notes file each pass. Stop when no meaningful improvement remains."
+    }
+  },
+  {
+    "id": "loops-snarktank-ralph-prd",
+    "name": "Ralph (snarktank): PRD Until Complete",
+    "description": "snarktank/ralph loop — each pass spawns a fresh agent, picks the top incomplete story from prd.json, implements it, runs typecheck+tests, commits, and marks it done; exits when all stories pass.",
+    "category": "Automation",
+    "icon": "🔁",
+    "color": "bg-emerald-100 border-emerald-200 text-emerald-700",
+    "installCommand": "./scripts/ralph/ralph.sh --tool claude 10",
+    "artifactUrl": "https://github.com/snarktank/ralph",
+    "popularity": 3100,
+    "repo": "snarktank/ralph",
+    "skillMdUrl": "",
+    "tags": [
+      "ralph",
+      "prd",
+      "claude-code",
+      "No-Credentials",
+      "agent-loop",
+      "completion-promise"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "You are one iteration of the Ralph PRD loop. Read prd.json and progress.txt. Select the highest-priority story where passes:false. Implement exactly that one story. Run the quality checks (typecheck, tests). If they pass, commit, set the story to passes:true in prd.json, and append your learnings to progress.txt. If all stories now have passes:true, output <promise>COMPLETE</promise>. Use only git history, progress.txt, and prd.json as memory — do not rely on accumulated context."
+    }
+  },
+  {
+    "id": "loops-vercel-ralph-loop-agent",
+    "name": "Vercel Ralph Loop Agent",
+    "description": "vercel-labs continuous-autonomy loop for the AI SDK: keep feeding the agent the task prompt until the job is done.",
+    "category": "Automation",
+    "icon": "🔁",
+    "color": "bg-sky-100 border-sky-200 text-sky-700",
+    "installCommand": "npx ralph-loop-agent",
+    "artifactUrl": "https://github.com/vercel-labs/ralph-loop-agent",
+    "popularity": 2900,
+    "repo": "vercel-labs/ralph-loop-agent",
+    "skillMdUrl": "",
+    "tags": [
+      "ralph",
+      "ai-sdk",
+      "vercel",
+      "Needs-Key",
+      "agent-loop"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Run a Ralph-style continuous-autonomy loop: repeatedly feed the agent the task prompt, letting it read the previous iteration's diff, test output, and git history each pass, and keep iterating until the completion criteria are satisfied. Give a one-line status update each iteration and stop when the task is provably done or the max iteration budget is exhausted."
+    }
+  },
+  {
+    "id": "loops-ralph-loop-agnostic",
+    "name": "Ralph Loop (agent-agnostic)",
+    "description": "syuya2036/ralph-loop orchestrates the Ralph autonomous coding pattern across Claude, Codex, Gemini, or local Ollama/Qwen models.",
+    "category": "Automation",
+    "icon": "🔁",
+    "color": "bg-violet-100 border-violet-200 text-violet-700",
+    "installCommand": "",
+    "artifactUrl": "https://github.com/syuya2036/ralph-loop",
+    "popularity": 1800,
+    "repo": "syuya2036/ralph-loop",
+    "skillMdUrl": "",
+    "tags": [
+      "ralph",
+      "multi-agent",
+      "ollama",
+      "No-Credentials",
+      "agent-loop"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Run the agent-agnostic Ralph loop: read the task list, implement the next incomplete item, run the project's quality checks, commit on green, and re-enter the loop. Persist memory only through git history and the progress log. Continue until the task list is empty, then stop."
+    }
+  },
+  {
+    "id": "loops-frankbria-ralph-exit-detection",
+    "name": "Ralph Claude Code (smart exit)",
+    "description": "frankbria/ralph-claude-code adds intelligent exit detection, rate limiting, and session continuity around the Ralph autonomous development loop.",
+    "category": "Automation",
+    "icon": "🔁",
+    "color": "bg-amber-100 border-amber-200 text-amber-700",
+    "installCommand": "",
+    "artifactUrl": "https://github.com/frankbria/ralph-claude-code",
+    "popularity": 1700,
+    "repo": "frankbria/ralph-claude-code",
+    "skillMdUrl": "",
+    "tags": [
+      "ralph",
+      "claude-code",
+      "exit-detection",
+      "No-Credentials",
+      "agent-loop"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "Run the Ralph Claude Code loop with intelligent exit detection: each iteration implement the next task, run checks, commit on success, and evaluate whether the goal is genuinely complete before re-looping (don't loop on an already-finished task). Respect rate limits between iterations and keep session continuity. Stop as soon as the exit detector confirms completion."
+    }
+  },
+  {
+    "id": "loops-goal-primitive",
+    "name": "Claude Code /goal — Verify Until Met",
+    "description": "Built-in /goal primitive: hold a verifiable condition across turns and keep working until it is satisfied.",
+    "category": "Testing",
+    "icon": "🧪",
+    "color": "bg-rose-100 border-rose-200 text-rose-700",
+    "installCommand": "",
+    "artifactUrl": "https://docs.claude.com/en/docs/claude-code",
+    "popularity": 4500,
+    "repo": "anthropics/claude-code",
+    "skillMdUrl": "",
+    "tags": [
+      "primitive",
+      "claude-code",
+      "goal",
+      "No-Credentials",
+      "agent-loop"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "/goal all tests in test/auth pass and lint is clean\n\nKeep iterating across turns: after each change run the test and lint commands, read the output, and only stop when both conditions hold. Report progress briefly each pass."
+    }
+  },
+  {
+    "id": "loops-loop-primitive",
+    "name": "Claude Code /loop — Poll on Interval",
+    "description": "Built-in /loop primitive: repeat or poll a check on a fixed interval until a condition becomes true (e.g. a deploy finishing).",
+    "category": "DevOps",
+    "icon": "🚀",
+    "color": "bg-slate-100 border-slate-200 text-slate-700",
+    "installCommand": "",
+    "artifactUrl": "https://docs.claude.com/en/docs/claude-code",
+    "popularity": 4200,
+    "repo": "anthropics/claude-code",
+    "skillMdUrl": "",
+    "tags": [
+      "primitive",
+      "claude-code",
+      "interval",
+      "Needs-Key",
+      "agent-loop"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "/loop 5m check if the deploy finished\n\nEvery interval, run the status check, read the result, and continue polling until the deploy reports success or failure. Summarize the final state and stop."
+    }
+  },
+  {
+    "id": "loops-batch-primitive",
+    "name": "Claude Code /batch — Parallel Worktrees",
+    "description": "Built-in /batch primitive: fan a large change across parallel git-worktree agents, each looping on its slice until done.",
+    "category": "Automation",
+    "icon": "🔁",
+    "color": "bg-teal-100 border-teal-200 text-teal-700",
+    "installCommand": "",
+    "artifactUrl": "https://docs.claude.com/en/docs/claude-code",
+    "popularity": 3800,
+    "repo": "anthropics/claude-code",
+    "skillMdUrl": "",
+    "tags": [
+      "primitive",
+      "claude-code",
+      "worktree",
+      "parallel",
+      "No-Credentials",
+      "agent-loop"
+    ],
+    "format": "loops",
+    "config": {
+      "systemPrompt": "/batch \"migrate src/ from Jest to Vitest\"\n\nSplit the migration across parallel worktree agents. Each agent loops on its assigned files: convert, run the Vitest suite, fix until green, and commit. Aggregate results when every slice passes."
+    }
+  }
+]
