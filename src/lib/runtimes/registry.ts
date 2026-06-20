@@ -137,6 +137,22 @@ export const RUNTIME_REGISTRY: Record<ItemFormat, RuntimeDescriptor> = {
     importHint: 'Connect + list tools, then call a tool live (MCP sandbox)',
     docsUrl: 'https://modelcontextprotocol.io',
   },
+  loop: {
+    format: 'loop',
+    label: 'Loop',
+    shortLabel: 'Loop',
+    accentFlavor: 'Caramel',
+    // Loops reuse the existing Claude Code execution path (runner 'cc-sandbox').
+    // A loop item carries its kickoff prompt in config.systemPrompt, so the
+    // claude-skill run path seeds the agent with the loop's kickoff on open —
+    // no new worker, no SkillExecutor change. Because the runner is 'cc-sandbox'
+    // (not a fixed runtime, not mcp-sandbox, not coming-soon), a loop item falls
+    // straight through to the standard Claude Code chat path.
+    runner: 'cc-sandbox',
+    importHint:
+      'Runs as a Claude Code kickoff on a scratch workspace; copy into your own IDE for repo/CI loops',
+    docsUrl: 'https://loops.elorm.xyz',
+  },
 };
 
 /** Resolve a format to its runtime descriptor (always defined). */

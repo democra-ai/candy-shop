@@ -45,6 +45,7 @@ const FORMAT_FILTERS: { id: ItemFormat | null; label: string }[] = [
   { id: 'langgraph', label: 'LangGraph' },
   { id: 'dynamic-worker', label: 'Dynamic' },
   { id: 'mcp', label: 'MCP' },
+  { id: 'loop', label: 'Loops' },
   { id: 'workflow', label: 'Workflows' },
 ];
 
