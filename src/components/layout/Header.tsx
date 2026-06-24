@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { ShoppingBag, User as UserIcon, LogOut, Plus, Library, Menu, X, Moon, Sun, Check, Settings, Globe } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import type { User } from '../../lib/supabaseClient';
-import { supabase } from '../../lib/supabaseClient';
+import type { User } from '../../lib/supabaseAuth';
+import { supabaseAuth } from '../../lib/supabaseAuth';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { cn } from '../../utils/cn';
 
@@ -79,8 +79,9 @@ export function Header({
             >
               <span className="inline-flex items-center gap-2">
                 <span className="text-[26px] leading-none" aria-hidden="true">🍭</span>
-                <span className="font-candy font-semibold text-lg tracking-tight text-foreground">
-                  <span className="text-primary">Candy</span> Shop
+                <span className="font-candy font-semibold text-lg tracking-tight text-foreground inline-flex items-center">
+                  <span className="text-primary">Candy</span>
+                  <span className="ml-0.5"> Shop</span>
                 </span>
               </span>
             </button>
@@ -220,7 +221,7 @@ export function Header({
                   </span>
                 </div>
                 <button
-                  onClick={() => supabase.auth.signOut()}
+                  onClick={() => supabaseAuth.auth.signOut()}
                   className="p-2 text-foreground-secondary hover:text-error rounded-lg transition-colors"
                   title={t('logout')}
                 >

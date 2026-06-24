@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { supabase } from '../../lib/supabaseClient';
-import { Mail, Loader2 } from 'lucide-react';
+import { supabaseAuth } from '../../lib/supabaseAuth';
+import { Mail, Loader2, Check } from 'lucide-react';
 import { ModalShell } from '../ui/ModalShell';
 
 interface AuthModalProps {
@@ -9,25 +9,48 @@ interface AuthModalProps {
 }
 
 export function AuthModal({ isOpen, onClose }: AuthModalProps) {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<'google' | 'github' | 'email' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
+  const [emailSent, setEmailSent] = useState(false);
 
-  const handleSocialLogin = async (provider: 'google' | 'github' | 'wechat' | 'notion') => {
-    setLoading(true);
+  const handleSocialLogin = async (provider: 'google' | 'github') => {
+    setLoading(provider);
     setError(null);
     try {
-      const redirectUrl = `${window.location.origin}/auth/callback`;
+      const redirectTo = `${window.location.origin}/auth/callback`;
+      const { error } = await supabaseAuth.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo },
+      });
+      // On success the browser is redirected to the provider, so this line
+      // is normally never reached. If it returns with an error, surface it.
+      if (error) throw error;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setLoading(null);
+    }
+  };
 
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: provider as any,
-        options: {
-          redirectTo: redirectUrl,
-        }
+  const handleEmailLogin = async () => {
+    const trimmed = email.trim();
+    if (!trimmed) {
+      setError('Enter your email address first.');
+      return;
+    }
+    setLoading('email');
+    setError(null);
+    try {
+      const { error } = await supabaseAuth.auth.signInWithOtp({
+        email: trimmed,
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
       });
       if (error) throw error;
-    } catch (err: any) {
-      setError(err.message);
-      setLoading(false);
+      setEmailSent(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(null);
     }
   };
 
@@ -55,11 +78,11 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
         {/* Google */}
         <button
           onClick={() => handleSocialLogin('google')}
-          disabled={loading}
+          disabled={loading !== null}
           className="w-full h-12 flex items-center justify-center gap-3 bg-card border border-border rounded-xl text-foreground font-medium hover:bg-secondary hover:border-border-hover transition-colors duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring"
-          aria-label="Sign in with Google"
+          aria-label="Continue with Google"
         >
-          {loading ? (
+          {loading === 'google' ? (
             <Loader2 className="w-5 h-5 animate-spin" />
           ) : (
             <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
@@ -83,6 +106,27 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
           )}
           Continue with Google
         </button>
+
+        {/* GitHub */}
+        <button
+          onClick={() => handleSocialLogin('github')}
+          disabled={loading !== null}
+          className="w-full h-12 flex items-center justify-center gap-3 bg-card border border-border rounded-xl text-foreground font-medium hover:bg-secondary hover:border-border-hover transition-colors duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring"
+          aria-label="Continue with GitHub"
+        >
+          {loading === 'github' ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : (
+            <svg className="w-5 h-5 text-foreground" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path
+                fillRule="evenodd"
+                clipRule="evenodd"
+                d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0022 12.017C22 6.484 17.522 2 12 2z"
+              />
+            </svg>
+          )}
+          Continue with GitHub
+        </button>
       </div>
 
       <div className="relative my-6">
@@ -94,13 +138,41 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
         </div>
       </div>
 
-      <button
-        className="w-full h-10 flex items-center justify-center gap-2 text-foreground-secondary hover:bg-secondary hover:text-foreground rounded-xl transition-colors duration-200 text-sm font-medium cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring"
-        aria-label="Sign in with email"
-      >
-        <Mail className="w-4 h-4" />
-        Sign in with Email code
-      </button>
+      {emailSent ? (
+        <div className="flex items-center justify-center gap-2 p-3 bg-success/10 border border-success/20 text-success text-sm rounded-xl font-medium" role="status">
+          <Check className="w-4 h-4" />
+          Magic link sent — check your inbox.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleEmailLogin();
+            }}
+            placeholder="you@example.com"
+            autoComplete="email"
+            disabled={loading !== null}
+            className="w-full h-11 px-4 bg-card border border-border rounded-xl text-foreground text-sm placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-ring focus:border-border-hover transition-colors duration-200 disabled:opacity-50"
+            aria-label="Email address"
+          />
+          <button
+            onClick={handleEmailLogin}
+            disabled={loading !== null}
+            className="w-full h-10 flex items-center justify-center gap-2 text-foreground-secondary hover:bg-secondary hover:text-foreground rounded-xl transition-colors duration-200 text-sm font-medium cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Send magic link"
+          >
+            {loading === 'email' ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Mail className="w-4 h-4" />
+            )}
+            Send magic link
+          </button>
+        </div>
+      )}
 
       <p className="mt-8 text-center text-xs text-foreground-tertiary">
         By continuing, you agree to our Terms of Service and Privacy Policy.

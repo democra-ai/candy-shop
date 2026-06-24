@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useSyncExternalStore, Component, Suspense, lazy, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, Navigate, useLocation, useSearchParams } from 'react-router-dom';
 import { Toaster, toast } from 'sonner';
-import type { User } from './lib/supabaseClient';
-import { supabase } from './lib/supabaseClient';
+import type { User } from './lib/supabaseAuth';
+import { supabaseAuth } from './lib/supabaseAuth';
 import { Layout } from './components/layout/Layout';
 import { Hero, type MarketplaceTab } from './components/home/Hero';
 import { SkillsGrid } from './components/home/SkillsGrid';
@@ -346,13 +346,15 @@ function AppContent() {
   });
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }: { data: { session: { user: User } | null } }) => {
+    // Identity comes from the REAL Supabase client now. Data still flows
+    // through the worker shim (`supabase`) elsewhere in the app.
+    supabaseAuth.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
     });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event: string, session: { user: User } | null) => {
+    } = supabaseAuth.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
     });
 

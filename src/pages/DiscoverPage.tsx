@@ -8,7 +8,7 @@ import { PostCandyModal } from '../components/home/PostCandyModal';
 import { storageUtils } from '../utils/storage';
 import { type Skill as StoreSkill } from '../data/skillsData';
 import type { Craving } from '../data/cravingsData';
-import type { User } from '../lib/supabaseClient';
+import type { User } from '../lib/supabaseAuth';
 import { toast } from 'sonner';
 import { cn } from '../utils/cn';
 import { Candy, Heart } from 'lucide-react';

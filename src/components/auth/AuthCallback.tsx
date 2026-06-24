@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../lib/supabaseClient';
+import { supabaseAuth } from '../../lib/supabaseAuth';
 
 export function AuthCallback() {
   const navigate = useNavigate();
@@ -9,11 +9,12 @@ export function AuthCallback() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        // Supabase automatically processes OAuth tokens from URL hash
-        // Wait a moment for Supabase to process the hash, then check session
+        // The real Supabase client (detectSessionInUrl + PKCE) auto-exchanges
+        // the `?code=...` in the redirect URL for a session on load. Give it a
+        // beat to finish, then read the session.
         await new Promise(resolve => setTimeout(resolve, 500));
-        
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+        const { data: { session }, error: sessionError } = await supabaseAuth.auth.getSession();
         
         if (sessionError) {
           console.error('Error getting session:', sessionError);
@@ -34,7 +35,7 @@ export function AuthCallback() {
           navigate('/', { replace: true });
         } else {
           // No session found, wait for auth state change
-          const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
+          const { data: { subscription } } = supabaseAuth.auth.onAuthStateChange((event, session) => {
             if (event === 'SIGNED_IN' && session) {
               window.history.replaceState(null, '', window.location.pathname);
               navigate('/', { replace: true });

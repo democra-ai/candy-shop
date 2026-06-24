@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Heart, Star, Package, Plus, ArrowRight } from 'lucide-react';
-import type { User } from '../lib/supabaseClient';
+import type { User } from '../lib/supabaseAuth';
 import { storageUtils } from '../utils/storage';
 import { SKILLS_DATA } from '../data/skillsData';
 import { cn } from '../utils/cn';

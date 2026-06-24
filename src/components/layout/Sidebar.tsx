@@ -20,8 +20,8 @@ import {
   Heart,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import type { User as SupabaseUser } from '../../lib/supabaseClient';
-import { supabase } from '../../lib/supabaseClient';
+import type { User as SupabaseUser } from '../../lib/supabaseAuth';
+import { supabaseAuth } from '../../lib/supabaseAuth';
 import { cn } from '../../utils/cn';
 import { useLanguage } from '../../contexts/LanguageContext';
 
@@ -193,7 +193,7 @@ export function Sidebar({
   };
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await supabaseAuth.auth.signOut();
   };
 
   const handleThemeChange = (themeId: string) => {
@@ -293,8 +293,9 @@ export function Sidebar({
           >
             <span className="inline-flex items-center gap-2">
               <span className="text-[26px] leading-none" aria-hidden="true">🍭</span>
-              <span className="font-candy font-semibold text-lg tracking-tight text-foreground">
-                <span className="text-primary">Candy</span> Shop
+              <span className="font-candy font-semibold text-lg tracking-tight text-foreground inline-flex items-center">
+                <span className="text-primary">Candy</span>
+                <span className="ml-0.5"> Shop</span>
               </span>
             </span>
           </button>
@@ -524,8 +525,9 @@ export function Sidebar({
         >
           <span className="inline-flex items-center gap-1.5">
             <span className="text-[22px] leading-none" aria-hidden="true">🍭</span>
-            <span className="font-candy font-semibold text-base tracking-tight text-foreground">
-              <span className="text-primary">Candy</span> Shop
+            <span className="font-candy font-semibold text-base tracking-tight text-foreground inline-flex items-center">
+              <span className="text-primary">Candy</span>
+              <span className="ml-0.5"> Shop</span>
             </span>
           </span>
         </button>

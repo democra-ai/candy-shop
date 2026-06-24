@@ -69,7 +69,7 @@ const STATIC_CATALOG: Record<RuntimeKind, ModelOption[]> = {
 
 /** Map the SkillExecutor's RuntimeMode string to a catalog kind. */
 export function runtimeKind(runtimeMode: string): RuntimeKind {
-  if (runtimeMode === 'cf-ai') return 'ai';
+  if (runtimeMode === 'cf-ai' || runtimeMode === 'pi') return 'ai';
   if (runtimeMode === 'opencode') return 'oc';
   return 'cc'; // cf-cc (default)
 }

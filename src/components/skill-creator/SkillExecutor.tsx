@@ -35,7 +35,6 @@ import {
   Copy,
   Check,
   Terminal,
-  Zap,
   ArrowUp,
   ArrowLeft,
   PanelLeftClose,
@@ -1683,7 +1682,10 @@ export function SkillExecutor({ skill, onClose, userId, onRequireAuth, onPurchas
   //   pi       → Pi coding agent (pi-sandbox), headless `pi -p --mode json`,
   //             KEYLESS over a Workers-AI OpenAI shim; streams real Pi output.
   type RuntimeMode = 'opencode' | 'cf-ai' | 'cf-cc' | 'pi';
-  const [runtimeMode, setRuntimeMode] = useState<RuntimeMode>('cf-cc');
+  // Pi is the one and only agent runtime exposed to users — every skill runs on
+  // pi-sandbox. The other backends (Claude Code / Workers AI / OpenCode) stay in
+  // the code for internal use but are hidden from the picker.
+  const [runtimeMode] = useState<RuntimeMode>('pi');
 
   // Per-runtime model selection. cc/oc run GLM models on z.ai; cf-ai and pi run
   // Workers AI (pi via its keyless OpenAI-compat shim). The <ModelPicker> writes
@@ -4463,33 +4465,15 @@ export function SkillExecutor({ skill, onClose, userId, onRequireAuth, onPurchas
                       fixed-runtime formats (LangGraph / n8n), each of which has
                       a single dedicated sandbox worker. */}
                   {!isFixedRuntime ? (
-                  <div className="flex items-center gap-0.5 text-[11px] rounded-xl border border-border bg-background-secondary p-1">
-                    {([
-                      { id: 'cf-cc', label: 'Claude Code', Icon: Zap,
-                        title: 'Persistent warm Claude Code session over WebSocket — no per-turn cold start, instant after the first turn. Recommended.' },
-                      { id: 'cf-ai', label: 'Workers AI', Icon: Sparkles,
-                        title: 'Workers AI Llama 3.1 8B — single-shot chat, no tools' },
-                      { id: 'opencode', label: 'OpenCode', Icon: Terminal,
-                        title: 'Legacy local OpenCode SDK path (fallback)' },
-                      { id: 'pi', label: 'Pi', Icon: Terminal,
-                        title: 'Pi coding agent (pi-sandbox), headless `pi -p --mode json` — runs keyless on a Workers-AI shim and streams real Pi output' },
-                    ] as const).map(opt => (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => setRuntimeMode(opt.id)}
-                        title={opt.title}
-                        className={`inline-flex items-center gap-1.5 px-2.5 h-7 rounded-lg font-medium transition-colors ${
-                          runtimeMode === opt.id
-                            ? 'bg-primary text-primary-foreground shadow-candy-1'
-                            : 'text-foreground-secondary hover:text-foreground hover:bg-secondary/70'
-                        }`}
-                      >
-                        <opt.Icon className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">{opt.label}</span>
-                      </button>
-                    ))}
-                  </div>
+                  /* Pi is the sole agent runtime — show it as a static label,
+                     no switcher. Every skill executes on pi-sandbox. */
+                  <span
+                    className="inline-flex items-center gap-1.5 px-2.5 h-7 rounded-lg text-[11px] font-medium bg-primary text-primary-foreground shadow-candy-1"
+                    title="Pi coding agent (pi-sandbox), headless `pi -p --mode json` — runs keyless on a Workers-AI shim and streams real Pi output"
+                  >
+                    <Terminal className="w-3.5 h-3.5" />
+                    <span>Pi</span>
+                  </span>
                   ) : (
                     <span className={`inline-flex items-center gap-1.5 px-2.5 h-7 text-[11px] font-mono ${isN8n ? 'text-mint' : isDynamicWorker ? 'text-chocolate' : 'text-grape'}`}>
                       <Workflow className="w-3.5 h-3.5" />

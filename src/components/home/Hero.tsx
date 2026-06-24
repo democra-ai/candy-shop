@@ -5,6 +5,7 @@ import { REGISTRY_STATS } from '../../data/skillsData';
 import { CRAVINGS_DATA } from '../../data/cravingsData';
 import { getFlavor } from '../../utils/candyShells';
 import { useIsDark } from '../../hooks/useIsDark';
+import { CandyLogo } from '../common/CandyLogo';
 
 export type MarketplaceTab = 'candy' | 'craving';
 
@@ -61,6 +62,23 @@ export function Hero({ activeTab, onTabChange, onPostCraving, onPostCandy }: Her
           layer in Layout (capsules + dots), which shows through here. */}
 
       <div className="flex flex-col items-center text-center gap-8 relative">
+        {/* Glossy jelly "Candy" wordmark — translucent candy gel via drei
+            MeshTransmissionMaterial on a runtime Text3D (the same liquid-glass
+            technique as the haoqi reference). Find-Candy tab only; lazy WebGL
+            with the flat candy wordmark as the fallback. */}
+        {isCandy && (
+          <div className="w-full flex justify-center select-none -mb-2 sm:-mb-4" aria-hidden="true">
+            <CandyLogo
+              text="Candy"
+              width={640}
+              height={220}
+              size={1}
+              zoom={2.7}
+              fallbackClassName="font-candy font-bold text-6xl sm:text-7xl text-primary justify-center"
+            />
+          </div>
+        )}
+
         {/* Badge */}
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-card border border-border text-primary text-xs font-mono font-medium shadow-candy-1 dark:shadow-candy-1-dark">
           <span className="flex h-1.5 w-1.5 rounded-full bg-primary" />

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ArrowUp } from 'lucide-react';
-import type { User } from '../../lib/supabaseClient';
+import type { User } from '../../lib/supabaseAuth';
 import { Sidebar } from './Sidebar';
 import { useLanguage } from '../../contexts/LanguageContext';
 
