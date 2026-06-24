@@ -1,7 +1,7 @@
 import { Search, X, ChevronLeft, ChevronRight, Plus, Database, ExternalLink, Download, Loader2 } from 'lucide-react';
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import Masonry from 'react-masonry-css';
-import { SKILLS_DATA, REGISTRY_STATS, loadFullRegistry, loadFormatRegistry, FORMAT_REGISTRY_FILES, getFormat, type Skill, type RegistryEntry, type ItemFormat } from '../../data/skillsData';
+import { SKILLS_DATA, REGISTRY_STATS, loadFullRegistry, loadFormatRegistry, getLoadedFormatRegistry, FORMAT_REGISTRY_FILES, getFormat, type Skill, type RegistryEntry, type ItemFormat } from '../../data/skillsData';
 import { SkillModal } from '../common/SkillModal';
 import { storageUtils } from '../../utils/storage';
 import { cn } from '../../utils/cn';
@@ -57,6 +57,55 @@ const POPULAR_TAGS = (() => {
     .slice(0, 6)
     .map(([tag]) => tag);
 })();
+
+// ── Format badge counts ──────────────────────────────────────────────
+// The chip count badge must equal the REAL number of items a format yields
+// once its lazy bulk registry is loaded — not the inline-seed subset (which
+// is what the live `formatCounts` memo sees before the per-format JSON has
+// been fetched). e.g. "n8n" seeds 4 inline items but its registry adds ~2000.
+//
+// `SEED_FORMAT_COUNTS` is how many inline-seed (SKILLS_DATA) items each format
+// contributes — known synchronously, always.
+const SEED_FORMAT_COUNTS: Record<string, number> = (() => {
+  const c: Record<string, number> = {};
+  for (const s of SKILLS_DATA) {
+    const f = getFormat(s);
+    c[f] = (c[f] || 0) + 1;
+  }
+  return c;
+})();
+
+// `FORMAT_REGISTRY_SIZES` is the count of items each per-format bulk registry
+// adds on top of the seed (i.e. the length `loadFormatRegistry(fmt)` resolves
+// to, already deduped against the inline seed). These mirror the static JSON
+// assets under public/registry/. They let the badge show a correct, STABLE
+// total the instant the grid renders — before the chip is ever clicked — so we
+// never flash a wrong "0" or "4". If a registry's real loaded length differs
+// from this map (data drift), the live count takes precedence once loaded, so
+// the badge self-corrects (see `formatBadgeCount`).
+const FORMAT_REGISTRY_SIZES: Partial<Record<ItemFormat, number>> = {
+  'claude-skill': 1979,
+  n8n: 2000,
+  dify: 574,
+  langgraph: 400,
+  mcp: 1500,
+  loop: 13,
+  workflow: 600,
+};
+
+// The full, stable total a format's chip filters to: inline seed + its bulk
+// registry. `dynamic-worker` has no registry file, so it's just its seed count.
+const FORMAT_TOTALS: Record<string, number> = (() => {
+  const totals: Record<string, number> = { ...SEED_FORMAT_COUNTS };
+  for (const [fmt, size] of Object.entries(FORMAT_REGISTRY_SIZES)) {
+    totals[fmt] = (SEED_FORMAT_COUNTS[fmt] || 0) + (size || 0);
+  }
+  return totals;
+})();
+
+// Sum of every format's full total — the stable "All" badge value. Computed
+// once so it never drifts as individual registries lazily stream in.
+const ALL_FORMAT_TOTAL = Object.values(FORMAT_TOTALS).reduce((a, b) => a + b, 0);
 
 export function SkillsGrid({
   searchQuery,
@@ -122,13 +171,17 @@ export function SkillsGrid({
   const [likedSkills, setLikedSkills] = useState<Set<string>>(() => new Set(storageUtils.getLikes()));
   const searchInputRef = useRef<HTMLInputElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
-  const sentinelRef = useRef<HTMLDivElement>(null);
 
   // Infinite scroll: load `PAGE_SIZE` items per sentinel intersection
   const PAGE_SIZE = 24;
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
-  const fetchInFlightRef = useRef(false);
+  // Refs read by the (stable) IntersectionObserver so it never needs to be
+  // torn down/recreated as `visibleCount`/`filteredSkills` change — recreating
+  // it on every page was the source of the stalled "loading more" spinner.
+  const sentinelInViewRef = useRef(false);
+  const totalCountRef = useRef(0);
+  const visibleCountRef = useRef(PAGE_SIZE);
 
   // Reset visible count when filters change
   useEffect(() => {
@@ -197,7 +250,10 @@ export function SkillsGrid({
     });
   }, [debouncedSearchQuery, tagFilter, formatFilter, allSkills]);
 
-  // Per-format counts (over the full catalog) for the filter chip badges.
+  // Per-format counts over whatever is CURRENTLY loaded (inline seed + any
+  // already-fetched registries). This is correct only for formats whose bulk
+  // registry has been loaded; for the rest it under-counts (seed only), which
+  // is exactly why the badge falls back to the known stable total below.
   const formatCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const s of allSkills) {
@@ -206,6 +262,25 @@ export function SkillsGrid({
     }
     return counts;
   }, [allSkills]);
+
+  // Resolve the chip badge text for a format.
+  //  • "All" (id === null) → the stable, precomputed grand total. Never sums
+  //    `formatCounts` (which would grow as registries stream in → unstable).
+  //  • A format with no bulk registry file (dynamic-worker) → its live count
+  //    (seed only is the whole truth for it).
+  //  • A format whose registry is loaded → the LIVE count (self-corrects any
+  //    drift between the precomputed size and the real loaded length).
+  //  • A format not yet loaded → the known stable total, so we show the real
+  //    number immediately instead of a wrong "0"/"4". If we somehow have no
+  //    known total, show "…" rather than a misleading number.
+  const formatBadge = useCallback((id: ItemFormat | null): string => {
+    if (id === null) return ALL_FORMAT_TOTAL.toLocaleString();
+    const hasRegistry = !!FORMAT_REGISTRY_FILES[id];
+    const isLoaded = !hasRegistry || !!registryItems[id] || getLoadedFormatRegistry(id) != null;
+    if (isLoaded) return (formatCounts[id] ?? 0).toLocaleString();
+    const known = FORMAT_TOTALS[id];
+    return known != null ? known.toLocaleString() : '…';
+  }, [formatCounts, registryItems]);
 
   // Slice the filtered list down to what's currently visible (infinite scroll)
   const visibleSkills = useMemo(
@@ -223,40 +298,84 @@ export function SkillsGrid({
 
   // ── Infinite-scroll sentinel via IntersectionObserver ──
   //
-  // When the sentinel div near the bottom of the masonry intersects the viewport
-  // (with 400px rootMargin so we load before the user actually hits the end),
-  // we extend `visibleCount` by PAGE_SIZE. `fetchInFlightRef` is a synchronous
-  // dedup guard so two intersections in the same tick can't double-trigger.
+  // Design notes (this used to be the perpetual-spinner bug):
+  //  • ONE observer for the component's life. It reads live state from refs
+  //    (`visibleCountRef` / `totalCountRef`), so it is never torn down and
+  //    rebuilt as the count changes. The old version recreated the observer on
+  //    every `visibleCount` change; under that churn the sentinel could stop
+  //    re-firing while it was still parked just below a tall masonry column,
+  //    leaving the "loading more" spinner spinning forever even though more
+  //    items existed locally.
+  //  • `pump()` grows `visibleCount` by one page whenever the sentinel is in
+  //    view AND there are more local items. It's idempotent and re-callable.
+  //  • A companion effect re-runs `pump()` whenever the slice or the catalog
+  //    size changes, so we keep filling the viewport (and resume after a
+  //    registry lazily streams in) without waiting on a fresh intersection
+  //    event — no dead-ends.
+  const pumpScheduledRef = useRef(false);
+  const pump = useCallback(() => {
+    if (pumpScheduledRef.current) return;
+    if (!sentinelInViewRef.current) return;
+    if (visibleCountRef.current >= totalCountRef.current) return;
+    pumpScheduledRef.current = true;
+    setIsFetchingMore(true);
+    // rAF keeps the "loading" feedback visible for a frame on instant local
+    // slices, and lets the DOM settle before we re-measure the sentinel.
+    requestAnimationFrame(() => {
+      pumpScheduledRef.current = false;
+      setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, totalCountRef.current));
+      setIsFetchingMore(false);
+    });
+  }, []);
+
+  // One persistent observer, kept in a ref. The sentinel is attached via a
+  // CALLBACK REF (`setSentinel`) so the observer re-binds every time the
+  // sentinel element mounts/unmounts (it unmounts when the list is empty and
+  // remounts when results arrive). We also track the live sentinel node so the
+  // observer effect can (re)observe it regardless of which ran first — the
+  // callback ref fires at commit time, before passive effects, so on the very
+  // first mount the observer doesn't exist yet when the ref runs.
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const sentinelNodeRef = useRef<HTMLDivElement | null>(null);
+  const setSentinel = useCallback((node: HTMLDivElement | null) => {
+    sentinelNodeRef.current = node;
+    const observer = observerRef.current;
+    if (!observer) return; // observer effect will observe once it's created
+    observer.disconnect();
+    sentinelInViewRef.current = false;
+    if (node) observer.observe(node);
+  }, []);
   useEffect(() => {
-    if (!hasMore) return;
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
-
-    const loadMore = () => {
-      if (fetchInFlightRef.current) return;
-      if (visibleCount >= filteredSkills.length) return;
-      fetchInFlightRef.current = true;
-      setIsFetchingMore(true);
-      // requestAnimationFrame keeps the visual indicator on-screen briefly
-      // so users see "loading" feedback even on instant local slices.
-      requestAnimationFrame(() => {
-        setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, filteredSkills.length));
-        setIsFetchingMore(false);
-        fetchInFlightRef.current = false;
-      });
-    };
-
+    if (typeof IntersectionObserver === 'undefined') return;
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          if (entry.isIntersecting) loadMore();
+          sentinelInViewRef.current = entry.isIntersecting;
         }
+        pump();
       },
-      { rootMargin: '400px 0px', threshold: 0.01 }
+      // 400px rootMargin so we load just before the user reaches the end.
+      { rootMargin: '400px 0px', threshold: 0 }
     );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [hasMore, visibleCount, filteredSkills.length]);
+    observerRef.current = observer;
+    // Bind whatever sentinel is already mounted (covers first-mount ordering).
+    if (sentinelNodeRef.current) observer.observe(sentinelNodeRef.current);
+    return () => {
+      observer.disconnect();
+      observerRef.current = null;
+    };
+  }, [pump]);
+
+  // Keep the observer's view of progress fresh and keep filling while the
+  // sentinel is parked in view: every time the visible slice grows or the
+  // catalog size changes (e.g. a registry lazily streamed in), sync the count
+  // refs and try to pump again. This is what turns a "stalled spinner" into
+  // either "more loaded" or a clean finite end state — never a dead-end.
+  useEffect(() => {
+    visibleCountRef.current = visibleCount;
+    totalCountRef.current = filteredSkills.length;
+    pump();
+  }, [visibleCount, filteredSkills.length, pump]);
 
   return (
     <>
@@ -327,9 +446,7 @@ export function SkillsGrid({
           <div className="flex items-center gap-1.5 mb-6 flex-wrap" role="group" aria-label="Filter by format">
             {FORMAT_FILTERS.map((opt) => {
               const active = formatFilter === opt.id;
-              const count = opt.id === null
-                ? Object.values(formatCounts).reduce((a, b) => a + b, 0)
-                : (formatCounts[opt.id] ?? 0);
+              const badge = formatBadge(opt.id);
               const isLoading = opt.id != null && loadingFormats.has(opt.id);
               return (
                 <button
@@ -356,7 +473,7 @@ export function SkillsGrid({
                       'tabular-nums text-[10px]',
                       active ? 'text-primary-foreground/70' : 'text-foreground-tertiary'
                     )}>
-                      {count}
+                      {badge}
                     </span>
                   )}
                 </button>
@@ -420,21 +537,26 @@ export function SkillsGrid({
                 ))}
               </Masonry>
 
-              {/* Infinite-scroll sentinel + loading indicator */}
-              {hasMore && (
+              {/* Infinite-scroll sentinel — ALWAYS mounted (stable observer
+                  target) so the IntersectionObserver never loses its element.
+                  Its content switches between the "loading more" spinner and a
+                  finite end-of-jar marker, so the grid always resolves to a
+                  clear end state and never strands a perpetual spinner. */}
+              {filteredSkills.length > 0 && (
                 <div
-                  ref={sentinelRef}
-                  className="flex items-center justify-center py-10 text-xs font-mono text-foreground-tertiary"
+                  ref={setSentinel}
+                  className="flex items-center justify-center py-10 text-[11px] font-mono text-foreground-tertiary"
                   aria-live="polite"
-                  aria-busy={isFetchingMore}
+                  aria-busy={hasMore && isFetchingMore}
                 >
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  {t('skills.loadingMore') || 'loading more candy…'}
-                </div>
-              )}
-              {!hasMore && filteredSkills.length > PAGE_SIZE && (
-                <div className="text-center py-10 text-[11px] font-mono text-foreground-tertiary">
-                  — end of jar · {filteredSkills.length.toLocaleString()} candies —
+                  {hasMore ? (
+                    <span className="inline-flex items-center text-xs">
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      {t('skills.loadingMore') || 'loading more candy…'}
+                    </span>
+                  ) : (
+                    <span>— end of jar · {filteredSkills.length.toLocaleString()} candies —</span>
+                  )}
                 </div>
               )}
             </div>

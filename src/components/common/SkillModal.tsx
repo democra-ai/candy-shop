@@ -10,6 +10,13 @@ import { getFlavor } from '../../utils/candyShells';
 import { getCandyEmoji } from '../../utils/candy';
 import { ModalShell } from '../ui/ModalShell';
 
+// Cross-surface cart sync signal. Kept as a bare literal (not imported from
+// App) to avoid an App ⇆ SkillModal import cycle. MUST stay in sync with the
+// CART_EVENT constant exported from App.tsx — App listens for this exact name
+// and re-hydrates its reactive cart, so the header badge + Your Bag drawer
+// update the instant "Add to bag" is clicked here, with no page reload.
+const CART_EVENT = 'candyshop:cart-changed';
+
 // Generate pseudo-stable values from skill data
 function deriveRating(skill: Skill): number {
   if (skill.rating) return skill.rating;
@@ -94,6 +101,19 @@ export function SkillModal({ skill, onClose, onRun, isLiked, onLike, isInCart, o
     }
   }, [skill]);
 
+  // Mirror external cart mutations (drawer remove, another tab) while the modal
+  // is open so the "In bag" / "Add to bag" toggle never goes stale.
+  useEffect(() => {
+    if (!skill) return;
+    const sync = () => setLocalCarted(storageUtils.getCart().includes(skill.id));
+    window.addEventListener(CART_EVENT, sync);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener(CART_EVENT, sync);
+      window.removeEventListener('storage', sync);
+    };
+  }, [skill]);
+
   if (!skill) return null;
 
   const flavor = getFlavor(skill.category, isDark);
@@ -155,6 +175,10 @@ export function SkillModal({ skill, onClose, onRun, isLiked, onLike, isInCart, o
       storageUtils.saveCart(cart.filter((id) => id !== skill.id));
       toast('Removed from bag');
     }
+    // No onToggleCart wired (every current caller opens the modal without it),
+    // so we wrote localStorage directly. Broadcast so App re-hydrates its
+    // reactive cart — the header badge + Your Bag drawer update without reload.
+    window.dispatchEvent(new CustomEvent(CART_EVENT));
   };
 
   const descIsLong = skill.description.length > 200;

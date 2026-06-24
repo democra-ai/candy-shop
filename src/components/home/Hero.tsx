@@ -67,13 +67,24 @@ export function Hero({ activeTab, onTabChange, onPostCraving, onPostCandy }: Her
             technique as the haoqi reference). Find-Candy tab only; lazy WebGL
             with the flat candy wordmark as the fallback. */}
         {isCandy && (
-          <div className="w-full flex justify-center select-none -mb-2 sm:-mb-4" aria-hidden="true">
+          <div
+            className="w-full flex justify-center select-none -mb-2 sm:-mb-4 px-4"
+            aria-hidden="true"
+          >
+            {/* Responsive jelly wordmark. The canvas box is fluid (min(...))
+                so it can never exceed the viewport — at 375px it scales the
+                whole word down to fit instead of center-cropping it to "a n d".
+                Below `sm` we drop the WebGL entirely and render the flat
+                wordmark (`hideWebGLBelow`), which is crisp, cheap, and legible
+                on small screens. CandyLogo also caps DPR, runs a demand
+                frameloop, and only mounts the 3D chunk once it's in view. */}
             <CandyLogo
               text="Candy"
-              width={640}
-              height={220}
+              width="min(640px, 100%)"
+              height="clamp(120px, 34vw, 220px)"
               size={1}
               zoom={2.7}
+              hideWebGLBelow="(max-width: 639px)"
               fallbackClassName="font-candy font-bold text-6xl sm:text-7xl text-primary justify-center"
             />
           </div>
@@ -87,8 +98,10 @@ export function Hero({ activeTab, onTabChange, onPostCraving, onPostCandy }: Her
 
         {/* Headline — typewriter effect + subtle same-hue raspberry gradient. min-h reserves
             line height so typing in characters doesn't cause vertical layout shift. */}
-        <div className="max-w-3xl">
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-candy font-bold tracking-tight leading-[1.1] min-h-[1.1em]">
+        <div className="max-w-3xl w-full px-2">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-candy font-bold tracking-tight leading-[1.1] min-h-[1.1em] text-balance break-words">
+            {/* Complete, real headline text that reflows — no word lives only in
+                WebGL, so the sentence stays whole on every viewport. */}
             <span className="candy-gradient-raspberry-subtle">{displayText}</span>
             <span
               className="inline-block w-[0.55rem] h-[1em] ml-1 -mb-1 bg-primary/70 animate-pulse rounded-sm align-baseline"

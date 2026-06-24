@@ -1,0 +1,5 @@
+# SPA fallback — serve index.html for all client-side routes so deep links
+# and hard refreshes (/run, /candy/:id, /dashboard, /settings) return 200
+# instead of 404. Cloudflare Pages evaluates this last, after static assets
+# and other rules, so real files (/assets/*, /favicon.svg, ...) still win.
+/*    /index.html    200

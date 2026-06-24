@@ -1,18 +1,34 @@
-@import '@fontsource/inter/400.css';
-@import '@fontsource/inter/500.css';
-@import '@fontsource/inter/600.css';
-@import '@fontsource/inter/700.css';
-@import '@fontsource/inter/800.css';
+/* ==================== Fonts — above-the-fold subset ====================
+   Only the two families that paint above the fold are eager-loaded:
+     • Quicksand → body text (font-body / font-sans, the <body> default)
+     • Fredoka   → display / headings / branding (font-candy)
+   Inter was never a primary family (only a Quicksand fallback that the
+   system sans covers) and Fira Code is monospace used inside code/log views
+   that render below the fold — both removed from the eager critical path so
+   first paint downloads ~2 families instead of ~6.
+
+   @fontsource per-weight CSS already declares `font-display: swap`; the
+   explicit descriptor below guarantees swap (no invisible FOIT) even if these
+   imports are later swapped for a variable-font entrypoint. Weights kept match
+   the Tailwind utilities actually used: 400 (normal), 500 (medium),
+   600 (semibold), 700 (bold). */
 @import '@fontsource/quicksand/400.css';
 @import '@fontsource/quicksand/500.css';
 @import '@fontsource/quicksand/600.css';
 @import '@fontsource/quicksand/700.css';
-@import '@fontsource/fira-code/400.css';
-@import '@fontsource/fira-code/500.css';
-@import '@fontsource/fira-code/600.css';
 @import '@fontsource/fredoka/400.css';
+@import '@fontsource/fredoka/500.css';
 @import '@fontsource/fredoka/600.css';
 @import '@fontsource/fredoka/700.css';
+
+@font-face {
+  font-family: 'Quicksand';
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Fredoka';
+  font-display: swap;
+}
 
 @tailwind base;
 @tailwind components;

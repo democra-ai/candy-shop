@@ -1,5 +1,5 @@
-import { Suspense, useRef, useEffect } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Suspense, useRef, useEffect, useSyncExternalStore } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import {
   Text3D,
   Center,
@@ -7,6 +7,27 @@ import {
   MeshTransmissionMaterial,
 } from '@react-three/drei';
 import type { Group } from 'three';
+
+/**
+ * usePrefersReducedMotion — live subscription to the
+ * `(prefers-reduced-motion: reduce)` media query. When the user has asked the
+ * OS to reduce motion we render a SINGLE static frame and never start the rAF
+ * loop (see the `frameloop` choice + the static-render effect below), so the
+ * glossy word is still present but the main thread is left completely idle.
+ */
+function subscribePRM(onChange: () => void): () => void {
+  if (typeof window === 'undefined' || !window.matchMedia) return () => {};
+  const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
+  mql.addEventListener('change', onChange);
+  return () => mql.removeEventListener('change', onChange);
+}
+function getPRMSnapshot(): boolean {
+  if (typeof window === 'undefined' || !window.matchMedia) return false;
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+function usePrefersReducedMotion(): boolean {
+  return useSyncExternalStore(subscribePRM, getPRMSnapshot, () => false);
+}
 
 /**
  * CandyJelly — open-source reproduction of haoqi.design's glossy "liquid glass"
@@ -49,7 +70,15 @@ interface JellyTextProps {
 
 function JellyText({ text, size, animate = true }: JellyTextProps) {
   const group = useRef<Group>(null);
+  const invalidate = useThree((s) => s.invalidate);
 
+  // The <Canvas> runs `frameloop="demand"` (see below) — the renderer is idle
+  // until something calls `invalidate()`. For the subtle idle float we drive
+  // exactly one frame per useFrame tick and immediately request the next one,
+  // so the loop is self-sustaining ONLY while `animate` is true and the canvas
+  // is mounted. When `animate` is false (reduced motion, or a static fallback)
+  // we never invalidate, so after the first paint the rAF loop stops entirely
+  // and the main thread goes idle instead of pinning at ~1fps on scroll.
   useFrame((state) => {
     if (!animate || !group.current) return;
     const t = state.clock.getElapsedTime();
@@ -57,6 +86,7 @@ function JellyText({ text, size, animate = true }: JellyTextProps) {
     group.current.rotation.y = Math.sin(t * 0.5) * 0.05;
     group.current.rotation.x = Math.sin(t * 0.4) * 0.025;
     group.current.position.y = Math.sin(t * 0.8) * 0.03 * size;
+    invalidate(); // queue the next frame; demand loop keeps the float alive
   });
 
   return (
@@ -131,6 +161,34 @@ interface CandyJellyProps {
   animate?: boolean;
 }
 
+/**
+ * StaticFrameKick — when the idle float is disabled (reduced motion) the
+ * `frameloop="demand"` renderer would never draw, leaving a blank canvas. This
+ * invalidates exactly once after the scene + transmission buffers are ready so
+ * a single crisp frame is painted, then stays silent. Re-fires if `animate`
+ * flips (e.g. the user toggles reduce-motion at the OS level mid-session).
+ */
+function StaticFrameKick({ enabled }: { enabled: boolean }) {
+  const invalidate = useThree((s) => s.invalidate);
+  useEffect(() => {
+    if (!enabled) return;
+    let inner = 0;
+    // two rAFs: let layout/resize settle and the transmission FBO populate
+    // before we paint the one-and-only static frame.
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => invalidate());
+    });
+    // belt-and-suspenders: ensure a paint even if rAFs are throttled offscreen.
+    const t = setTimeout(() => invalidate(), 150);
+    return () => {
+      cancelAnimationFrame(outer);
+      cancelAnimationFrame(inner);
+      clearTimeout(t);
+    };
+  }, [enabled, invalidate]);
+  return null;
+}
+
 export default function CandyJelly({
   text = 'Candy',
   size = 1,
@@ -138,6 +196,10 @@ export default function CandyJelly({
   className,
   animate = true,
 }: CandyJellyProps) {
+  const prefersReducedMotion = usePrefersReducedMotion();
+  // Honor prefers-reduced-motion: render a single static frame, never loop.
+  const shouldAnimate = animate && !prefersReducedMotion;
+
   // R3F's <Canvas> measures its container with a ResizeObserver. When the lazy
   // chunk mounts AFTER the surrounding layout has already settled (our case —
   // the logo box is sized before three.js loads), that observer can latch onto
@@ -156,12 +218,21 @@ export default function CandyJelly({
   return (
     <Canvas
       className={className}
-      dpr={[1, 2]}
+      // `demand`: the renderer sleeps unless something calls invalidate().
+      // The idle float self-invalidates (JellyText) while it runs; reduced
+      // motion / static mode paints one frame (StaticFrameKick) then idles.
+      // This is what kills the always-on rAF loop that pinned the main thread.
+      frameloop="demand"
+      // Cap DPR at 1.5: the transmission FBO re-renders the whole scene per
+      // frame, so retina (dpr 2–3) quadruples GPU+main-thread cost for a logo
+      // that doesn't need it. 1–1.5 stays crisp without the jank.
+      dpr={[1, 1.5]}
       gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
       camera={{ position: [0, 0, zoom], fov: 28 }}
       resize={{ debounce: 0, scroll: false }}
       style={{ width: '100%', height: '100%', background: 'transparent', pointerEvents: 'none' }}
     >
+      <StaticFrameKick enabled={!shouldAnimate} />
       <Suspense fallback={null}>
         {/* key light — the bright specular hotspot, top-right like haoqi */}
         <directionalLight position={[4, 5, 6]} intensity={2.2} />
@@ -170,7 +241,7 @@ export default function CandyJelly({
         {/* small white spec to punch a crisp hotspot */}
         <pointLight position={[2, 3, 4]} intensity={1.8} distance={20} />
         <ambientLight intensity={0.3} />
-        <JellyText text={text} size={size} animate={animate} />
+        <JellyText text={text} size={size} animate={shouldAnimate} />
         {/* HDRI gives the transmissive material something to refract + the
             broad soft reflections that sell the "glass" read. Kept dim so the
             reflections don't blow the letters out to white on a light page. */}

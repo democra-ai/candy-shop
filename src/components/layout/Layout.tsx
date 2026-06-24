@@ -172,7 +172,7 @@ export function Layout({
   };
 
   return (
-    <div className="min-h-screen bg-background relative">
+    <div className="min-h-screen bg-background relative overflow-x-hidden">
       {/* Subtle mesh gradient background — promoted to its own compositor layer
           (translateZ) so the fixed backdrop doesn't repaint as content scrolls. */}
       <div

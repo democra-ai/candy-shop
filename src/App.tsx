@@ -43,6 +43,12 @@ import { useRealtimeNotifications } from './hooks/api/useRealtimeSkills';
 import { usePayment } from './hooks/usePayment';
 import { usePaymentRedirect } from './hooks/usePaymentRedirect';
 
+// Cross-surface cart sync signal. Any code that writes the cart to localStorage
+// directly (e.g. SkillModal's "Add to bag" fallback when no onToggleCart is
+// wired) dispatches this event so the reactive `cart` state — and therefore the
+// header badge + Your Bag drawer — update immediately, without a page reload.
+export const CART_EVENT = 'candyshop:cart-changed';
+
 // ---------------------------------------------------------------------------
 // Error Boundary — prevents blank screen on unhandled errors
 // ---------------------------------------------------------------------------
@@ -337,6 +343,25 @@ function AppContent() {
       storageUtils.saveCart([...next]);
       return next;
     });
+    // Broadcast (outside the updater so it isn't double-fired in StrictMode) so
+    // any other surface that read the cart directly — e.g. an open SkillModal's
+    // "In bag" toggle — re-syncs from localStorage. The rehydrate it triggers is
+    // idempotent against the state we just set.
+    window.dispatchEvent(new CustomEvent(CART_EVENT));
+  }, []);
+
+  // Re-hydrate the reactive cart whenever ANY surface mutates localStorage —
+  // the SkillModal "Add to bag" fallback (no onToggleCart wired), another tab,
+  // or our own updateCart broadcast. Without this, adds made through the modal
+  // only appeared after a full reload (the badge + drawer read App's `cart`).
+  useEffect(() => {
+    const rehydrate = () => setCart(new Set(storageUtils.getCart()));
+    window.addEventListener(CART_EVENT, rehydrate);
+    window.addEventListener('storage', rehydrate);
+    return () => {
+      window.removeEventListener(CART_EVENT, rehydrate);
+      window.removeEventListener('storage', rehydrate);
+    };
   }, []);
 
   // Handle Stripe redirect back: verify session, install skills, clear cart.
@@ -489,22 +514,28 @@ function AppContent() {
   };
 
   const handleRunSkill = (storeSkill: StoreSkill) => {
+    // Always launch the EXACT skill the user opened. Re-resolve the canonical
+    // catalog entry by id so a stale/partial object handed in by any caller can
+    // never run a different skill in /run (the cause of "Run React Best
+    // Practices → Find Skills loads"). User-posted candies aren't in the catalog,
+    // so we fall back to the passed object for them.
+    const source = SKILLS_DATA.find((s) => s.id === storeSkill.id) ?? storeSkill;
     const skill: Skill = {
-      id: `store-${storeSkill.id}`,
+      id: `store-${source.id}`,
       userId: user?.id || 'anonymous',
-      name: storeSkill.name,
-      description: storeSkill.description,
-      category: storeSkill.category as SkillCategory,
-      icon: storeSkill.icon,
-      color: storeSkill.color,
-      tags: storeSkill.tags || [],
-      skillMdUrl: storeSkill.skillMdUrl,
-      format: storeSkill.format,
-      artifactUrl: storeSkill.artifactUrl,
+      name: source.name,
+      description: source.description,
+      category: source.category as SkillCategory,
+      icon: source.icon,
+      color: source.color,
+      tags: source.tags || [],
+      skillMdUrl: source.skillMdUrl,
+      format: source.format,
+      artifactUrl: source.artifactUrl,
       config: {
         capabilities: [],
         systemPrompt: '',
-        parameters: storeSkill.config,
+        parameters: source.config,
         tools: [],
       },
       sourceFiles: [],
@@ -513,16 +544,16 @@ function AppContent() {
         technicalSkills: [],
         experiencePatterns: [],
         keyTopics: [],
-        suggestedName: storeSkill.name,
-        suggestedDescription: storeSkill.description,
-        suggestedCategory: storeSkill.category as SkillCategory,
+        suggestedName: source.name,
+        suggestedDescription: source.description,
+        suggestedCategory: source.category as SkillCategory,
         suggestedCapabilities: [],
         filesSummary: [],
         confidence: 0,
         systemPrompt: '',
       },
-      installCommand: storeSkill.installCommand,
-      popularity: storeSkill.popularity ?? 0,
+      installCommand: source.installCommand,
+      popularity: source.popularity ?? 0,
       createdAt: new Date(),
       updatedAt: new Date(),
       status: 'active',
