@@ -3,6 +3,41 @@ import { supabaseAuth } from '../../lib/supabaseAuth';
 import { Mail, Loader2, Check } from 'lucide-react';
 import { ModalShell } from '../ui/ModalShell';
 
+// Pragmatic email check — rejects the obvious junk (no @, no domain, spaces,
+// missing TLD) without trying to fully implement RFC 5322. Good enough to stop
+// a typo'd address from ever hitting the network.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function isValidEmail(value: string): boolean {
+  return EMAIL_RE.test(value);
+}
+
+// Turn whatever the auth layer throws into a calm, human message. The backend
+// (Supabase) can be fully down — in which case the SDK throws a bare
+// "Failed to fetch" / network error — so we special-case that instead of
+// leaking the raw string to the user.
+function toFriendlyAuthError(err: unknown): string {
+  const raw = err instanceof Error ? err.message : String(err ?? '');
+  const lower = raw.toLowerCase();
+
+  if (
+    lower.includes('failed to fetch') ||
+    lower.includes('networkerror') ||
+    lower.includes('load failed') ||
+    lower.includes('network request failed') ||
+    lower.includes('fetch')
+  ) {
+    return 'Can’t reach the sign-in service right now. It may be temporarily down — please try again in a little while.';
+  }
+  if (lower.includes('rate limit') || lower.includes('too many')) {
+    return 'Too many attempts. Please wait a moment and try again.';
+  }
+  if (lower.includes('invalid') && lower.includes('email')) {
+    return 'That doesn’t look like a valid email address. Check for typos and try again.';
+  }
+  // Fallback: a trimmed, non-empty message — never a blank or undefined.
+  return raw.trim() || 'Something went wrong signing you in. Please try again.';
+}
+
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -27,7 +62,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
       // is normally never reached. If it returns with an error, surface it.
       if (error) throw error;
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toFriendlyAuthError(err));
       setLoading(null);
     }
   };
@@ -36,6 +71,13 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     const trimmed = email.trim();
     if (!trimmed) {
       setError('Enter your email address first.');
+      return;
+    }
+    // Client-side validation BEFORE any network call, so an obviously-invalid
+    // address (e.g. "foo", "a@b") never reaches the backend and never surfaces
+    // a raw fetch error.
+    if (!isValidEmail(trimmed)) {
+      setError('That doesn’t look like a valid email address. Check for typos and try again.');
       return;
     }
     setLoading('email');
@@ -48,7 +90,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
       if (error) throw error;
       setEmailSent(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toFriendlyAuthError(err));
     } finally {
       setLoading(null);
     }
@@ -148,7 +190,12 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
           <input
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              // Clear a stale validation/network error as soon as the user
+              // starts correcting their input.
+              if (error) setError(null);
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleEmailLogin();
             }}

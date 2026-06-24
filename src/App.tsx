@@ -49,6 +49,12 @@ import { usePaymentRedirect } from './hooks/usePaymentRedirect';
 // header badge + Your Bag drawer — update immediately, without a page reload.
 export const CART_EVENT = 'candyshop:cart-changed';
 
+// The set of mutually-exclusive overlays. Exactly one (or none) is open at a
+// time — see the overlay coordinator in AppContent. Centralizing this prevents
+// the modal/drawer stacking the audit flagged (Post Candy + Login + Cart all
+// open at once).
+export type OverlayKind = 'auth' | 'cart' | 'docs' | 'post-candy' | 'post-craving' | null;
+
 // ---------------------------------------------------------------------------
 // Error Boundary — prevents blank screen on unhandled errors
 // ---------------------------------------------------------------------------
@@ -158,8 +164,14 @@ interface HomePageProps {
   onRunSkill: (skill: StoreSkill) => void;
   onNavCandy: () => void;
   onNavCraving: () => void;
-  onNavPostCraving: () => void;
-  onNavPostCandy: () => void;
+  /** Which overlay (if any) the single coordinator currently has open. */
+  overlay: OverlayKind;
+  /** Open the Post-Candy modal through the shared coordinator. */
+  onOpenPostCandy: () => void;
+  /** Open the Post-Craving modal through the shared coordinator. */
+  onOpenPostCraving: () => void;
+  /** Close whatever overlay is open. */
+  onCloseOverlay: () => void;
 }
 
 function HomePage({
@@ -172,24 +184,36 @@ function HomePage({
   onRunSkill,
   onNavCandy,
   onNavCraving,
+  overlay,
+  onOpenPostCandy,
+  onOpenPostCraving,
+  onCloseOverlay,
 }: HomePageProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get('tab');
   const activeTab: MarketplaceTab = rawTab === 'craving' ? 'craving' : 'candy';
+
+  // Post-Candy / Post-Craving open-ness is owned by the single overlay
+  // coordinator in AppContent (so they can never stack with auth / cart /
+  // docs). HomePage just reflects that shared value.
+  const isPostCravingOpen = overlay === 'post-craving';
+  const isPostCandyOpen = overlay === 'post-candy';
 
   const [candySearch, setCandySearch] = useState('');
   const [candyTagFilter, setCandyTagFilter] = useState<string | null>(null);
   const [cravingSearch, setCravingSearch] = useState('');
   const [cravingTagFilter, setCravingTagFilter] = useState<string | null>(null);
 
-  const [isPostCravingOpen, setIsPostCravingOpen] = useState(false);
-  const [isPostCandyOpen, setIsPostCandyOpen] = useState(false);
-
   const [userCravings, setUserCravings] = useState<Craving[]>(() => storageUtils.getUserCravings());
   const [userCandies, setUserCandies] = useState<StoreSkill[]>(() => storageUtils.getUserCandies());
 
   const setActiveTab = (tab: MarketplaceTab) => {
-    setSearchParams(tab === 'craving' ? { tab: 'craving' } : {});
+    setSearchParams(
+      tab === 'craving' ? { tab: 'craving' } : {},
+      // Switching tab is a within-page filter, not a new destination — replace
+      // the entry so it never adds to the browser history stack.
+      { replace: true },
+    );
     setTimeout(() => {
       const id = tab === 'craving' ? 'cravings-grid' : 'skills-grid';
       document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
@@ -214,12 +238,12 @@ function HomePage({
 
   const handleOpenPostCraving = () => {
     setActiveTab('craving');
-    setTimeout(() => setIsPostCravingOpen(true), 100);
+    setTimeout(() => onOpenPostCraving(), 100);
   };
 
   const handleOpenPostCandy = () => {
     setActiveTab('candy');
-    setTimeout(() => setIsPostCandyOpen(true), 100);
+    setTimeout(() => onOpenPostCandy(), 100);
   };
 
   const handleSubmitCraving = (craving: Craving) => {
@@ -301,12 +325,12 @@ function HomePage({
 
       <PostCravingModal
         isOpen={isPostCravingOpen}
-        onClose={() => setIsPostCravingOpen(false)}
+        onClose={onCloseOverlay}
         onSubmit={handleSubmitCraving}
       />
       <PostCandyModal
         isOpen={isPostCandyOpen}
-        onClose={() => setIsPostCandyOpen(false)}
+        onClose={onCloseOverlay}
         onSubmit={handleSubmitCandy}
       />
     </>
@@ -326,9 +350,16 @@ function AppContent() {
     window.scrollTo(0, 0);
   }, [location.pathname]);
 
-  const [isAuthOpen, setIsAuthOpen] = useState(false);
-  const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isDocsOpen, setIsDocsOpen] = useState(false);
+  // ── Single overlay coordinator ──────────────────────────────────────────
+  // Exactly ONE overlay (auth / cart / docs / post-candy / post-craving) may be
+  // open at a time. Opening any overlay implicitly closes whatever was open, so
+  // modals + drawers can never stack. Every overlay reads its open-ness from
+  // this one value and closes by setting it back to null.
+  const [overlay, setOverlay] = useState<OverlayKind>(null);
+  const isAuthOpen = overlay === 'auth';
+  const isCartOpen = overlay === 'cart';
+  const isDocsOpen = overlay === 'docs';
+  const closeOverlay = useCallback(() => setOverlay(null), []);
 
   const [user, setUser] = useState<User | null>(null);
   const [cart, setCart] = useState<Set<string>>(() => new Set(storageUtils.getCart()));
@@ -414,7 +445,7 @@ function AppContent() {
 
   const handlePurchase = async () => {
     if (!user) {
-      setIsAuthOpen(true);
+      setOverlay('auth');
       return;
     }
 
@@ -459,7 +490,7 @@ function AppContent() {
         // Server says these are actually free
         installFreeSkills();
         updateCart(() => new Set());
-        setIsCartOpen(false);
+        setOverlay(null);
         navigate('/skills/library');
       }
       // If checkout URL was returned, user is redirected to Stripe.
@@ -505,7 +536,7 @@ function AppContent() {
       });
 
       updateCart(() => new Set());
-      setIsCartOpen(false);
+      setOverlay(null);
       navigate('/skills/library');
       if (paidSkills.length > 0) {
         toast.info('Payment server not connected — skills installed in demo mode');
@@ -564,9 +595,11 @@ function AppContent() {
     navigate('/run');
   };
 
-  const openAuth = useCallback(() => setIsAuthOpen(true), []);
-  const openCart = useCallback(() => setIsCartOpen(true), []);
-  const openDocs = useCallback(() => setIsDocsOpen(true), []);
+  const openAuth = useCallback(() => setOverlay('auth'), []);
+  const openCart = useCallback(() => setOverlay('cart'), []);
+  const openDocs = useCallback(() => setOverlay('docs'), []);
+  const openPostCandy = useCallback(() => setOverlay('post-candy'), []);
+  const openPostCraving = useCallback(() => setOverlay('post-craving'), []);
 
   const navToFind = useCallback(() => {
     navigate('/');
@@ -584,19 +617,34 @@ function AppContent() {
   }, [navigate]);
 
   const navToCandy = useCallback(() => {
+    // Go home and reveal the candy grid. Scrolling makes the action visibly
+    // responsive even when we're already on "/" (where navigate('/') alone is a
+    // no-op — the cause of the "Find Candy does nothing" report).
     navigate('/');
+    setTimeout(() => {
+      document.getElementById('skills-grid')?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
   }, [navigate]);
 
   const navToCraving = useCallback(() => {
     navigate('/?tab=craving');
+    setTimeout(() => {
+      document.getElementById('cravings-grid')?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
   }, [navigate]);
 
+  // Sidebar "Post a Craving" / "Post a Candy" from a NON-home route: go home,
+  // then open the matching modal through the shared overlay coordinator. (These
+  // were previously no-op navigations — and swapped — so the buttons appeared
+  // dead off the home page.)
   const navToPostCraving = useCallback(() => {
-    navigate('/');
+    navigate('/?tab=craving');
+    setTimeout(() => setOverlay('post-craving'), 120);
   }, [navigate]);
 
   const navToPostCandy = useCallback(() => {
-    navigate('/?tab=craving');
+    navigate('/');
+    setTimeout(() => setOverlay('post-candy'), 120);
   }, [navigate]);
 
   const sharedLayoutProps = {
@@ -630,8 +678,10 @@ function AppContent() {
               onRunSkill={handleRunSkill}
               onNavCandy={navToCandy}
               onNavCraving={navToCraving}
-              onNavPostCraving={navToPostCraving}
-              onNavPostCandy={navToPostCandy}
+              overlay={overlay}
+              onOpenPostCandy={openPostCandy}
+              onOpenPostCraving={openPostCraving}
+              onCloseOverlay={closeOverlay}
             />
           }
         />
@@ -722,7 +772,7 @@ function AppContent() {
                 <SkillExecutor
                   skill={executingSkill}
                   userId={user?.id}
-                  onRequireAuth={() => setIsAuthOpen(true)}
+                  onRequireAuth={() => setOverlay('auth')}
                   onPurchase={(skillId) => payment.startCheckout([skillId])}
                   onClose={() => {
                     setExecutingSkill(null);
@@ -741,11 +791,11 @@ function AppContent() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 
-      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
+      <AuthModal isOpen={isAuthOpen} onClose={closeOverlay} />
 
       <CartDrawer
         isOpen={isCartOpen}
-        onClose={() => setIsCartOpen(false)}
+        onClose={closeOverlay}
         cartIds={cart}
         onRemove={handleRemoveFromCart}
         onClear={handleClearCart}
@@ -754,7 +804,7 @@ function AppContent() {
         stripeAvailable={payment.providers.stripe}
       />
 
-      <DocsModal isOpen={isDocsOpen} onClose={() => setIsDocsOpen(false)} />
+      <DocsModal isOpen={isDocsOpen} onClose={closeOverlay} />
     </>
   );
 }

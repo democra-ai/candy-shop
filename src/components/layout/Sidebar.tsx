@@ -177,6 +177,16 @@ export function Sidebar({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Esc closes the mobile drawer (parity with overlay close semantics).
+  useEffect(() => {
+    if (!mobileOpen) return;
+    function handleEsc(e: KeyboardEvent) {
+      if (e.key === 'Escape') setMobileOpen(false);
+    }
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, [mobileOpen]);
+
   const handleNavAction = (action: string) => {
     switch (action) {
       case 'candy': onNavCandy(); break;
@@ -546,23 +556,32 @@ export function Sidebar({
         </button>
       </div>
 
-      <aside
+      {/* Mobile backdrop — closes the drawer on tap. Only present below lg and
+          only when the drawer is open, so it never blocks the desktop rail. */}
+      <div
         className={cn(
-          'lg:hidden fixed inset-y-0 left-0 z-40 flex flex-col w-72 bg-card',
-          'after:content-[""] after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-border',
-          'transform transition-transform duration-300',
-          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+          'lg:hidden fixed inset-0 z-30 bg-foreground/40 backdrop-blur-sm transition-opacity duration-300',
+          mobileOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
         )}
-      >
-        {sidebarContent}
-      </aside>
+        onClick={() => setMobileOpen(false)}
+        aria-hidden="true"
+      />
 
+      {/* SINGLE sidebar instance. Width/slide is a pure CSS toggle off the
+          `collapsed` (desktop rail) and `mobileOpen` (mobile drawer) state —
+          there is no second mounted nav tree, so there are no ambiguous /
+          duplicate click targets (the dead-nav bug). */}
       <aside
         className={cn(
-          'hidden lg:flex flex-col fixed inset-y-0 left-0 z-40',
-          'bg-card transition-all duration-300',
+          'fixed inset-y-0 left-0 z-40 flex flex-col bg-card',
           'after:content-[""] after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-border',
-          collapsed ? 'w-16' : 'w-64'
+          'transition-all duration-300',
+          // Mobile: fixed-width drawer that slides in/out.
+          'w-72',
+          mobileOpen ? 'translate-x-0' : '-translate-x-full',
+          // Desktop (lg+): always on-screen rail; width follows `collapsed`.
+          'lg:translate-x-0',
+          collapsed ? 'lg:w-16' : 'lg:w-64'
         )}
       >
         {sidebarContent}

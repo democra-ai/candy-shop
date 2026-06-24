@@ -123,6 +123,39 @@ export function SkillsGrid({
   const { t } = useLanguage();
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const isDebouncing = searchQuery !== debouncedSearchQuery;
+  // The grid section can sit far down a long page; when the shopper types in the
+  // catalog search the result list re-filters and the page height collapses,
+  // which used to leave the viewport scrolled into empty space below the
+  // results ("where did my results go?"). Pull the search header + grid back
+  // into view on the first keystroke of a fresh query so results stay visible
+  // as they type. Guarded by a ref so we only scroll on the leading edge (when
+  // the box goes from empty → non-empty), never on every character.
+  const sectionRef = useRef<HTMLElement>(null);
+  const bringResultsIntoView = useCallback(() => {
+    const el = sectionRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    // Only scroll if the section header has drifted above the viewport (or is
+    // hidden below it) — don't yank the page when results are already on screen.
+    if (rect.top < 0 || rect.top > window.innerHeight * 0.5) {
+      // Leave room for the global sticky header (h-16 = 64px) plus a little
+      // breathing room, so the search box lands just under it, not behind it.
+      const HEADER_OFFSET = 72;
+      const target = window.scrollY + rect.top - HEADER_OFFSET;
+      window.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
+    }
+  }, []);
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      // Derive "was the box already active" from the live prop (not a local ref)
+      // so it never desyncs when a parent clears the query (e.g. on category
+      // select). Scroll only on the leading edge: empty → typing.
+      const hadQuery = searchQuery.trim().length > 0;
+      setSearchQuery(value);
+      if (!hadQuery && value.trim().length > 0) bringResultsIntoView();
+    },
+    [searchQuery, setSearchQuery, bringResultsIntoView],
+  );
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
   // Format filter (multi-format browse) — null = all formats.
   const [formatFilter, setFormatFilter] = useState<ItemFormat | null>(null);
@@ -379,10 +412,13 @@ export function SkillsGrid({
 
   return (
     <>
-      <section className="py-12 md:py-16" id="skills-grid">
+      <section className="py-12 md:py-16" id="skills-grid" ref={sectionRef}>
         <div className="container max-w-7xl mx-auto px-0">
-          {/* Compact section header: title left, search + CTAs right */}
-          <div className="flex items-center justify-between gap-4 mb-8 flex-wrap">
+          {/* Compact section header: title left, search + CTAs right.
+              Sticky so the search box (and the live result count it implies)
+              stays pinned to the top of the viewport while the shopper scrolls
+              the catalog — results never scroll out from under the input. */}
+          <div className="sticky top-16 z-20 mb-8 py-3 bg-background/80 backdrop-blur-md flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-3 min-w-0">
               <h2 className="font-candy text-2xl font-bold text-foreground tracking-tight">
                 {tagFilter ? t('skills.categoryModules', { category: tagFilter }) : 'All skills'}
@@ -405,7 +441,8 @@ export function SkillsGrid({
                   id="search-input"
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  onFocus={bringResultsIntoView}
                   placeholder={t('skills.search')}
                   className={cn(
                     'w-full h-11 pl-11 pr-16 glass border border-border/50 rounded-xl text-sm font-mono',
@@ -513,8 +550,11 @@ export function SkillsGrid({
 
           {/* ── True masonry layout — variable card heights, no gaps ──
                  Editor-pick cards get tall hero shape via CandyCard internals.
-                 Infinite scroll: sentinel below the masonry loads more on intersect. */}
-          {!isDebouncing && (
+                 Infinite scroll: sentinel below the masonry loads more on intersect.
+                 Gated on a non-empty result set so a no-match query renders the
+                 clean empty state ALONE — never an empty masonry container (which
+                 left stray column boxes / pinned cards beneath "no results"). */}
+          {!isDebouncing && filteredSkills.length > 0 && (
             <div ref={gridRef}>
               <Masonry
                 breakpointCols={MASONRY_BREAKPOINTS}
@@ -636,6 +676,13 @@ const REGISTRY_PAGE_SIZE = 50;
 
 function RegistryBrowser() {
   const [registry, setRegistry] = useState<RegistryEntry[] | null>(null);
+  // Pre-lowercased "name source" haystack, one string per registry entry,
+  // index-aligned with `registry`. Built ONCE when the registry loads so the
+  // per-keystroke filter never calls .toLowerCase() across all 88K entries
+  // (that was ~176K string allocations on every keystroke → ~2s main-thread
+  // block). With the index, filtering is a single .indexOf on already-lowercased
+  // strings, which stays responsive even on the full registry.
+  const [searchIndex, setSearchIndex] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [search, setSearch] = useState('');
@@ -653,7 +700,16 @@ function RegistryBrowser() {
       setLoading(true);
       try {
         const data = await loadFullRegistry();
+        // Build the lowercase search index once, at parse time. This is the
+        // only place we pay the per-entry .toLowerCase() cost — keystrokes
+        // afterwards reuse it.
+        const index = new Array<string>(data.length);
+        for (let i = 0; i < data.length; i++) {
+          const [name, , source] = data[i];
+          index[i] = `${name} ${source}`.toLowerCase();
+        }
         setRegistry(data);
+        setSearchIndex(index);
       } catch {
         toast.error('Failed to load registry');
       } finally {
@@ -666,10 +722,19 @@ function RegistryBrowser() {
     if (!registry) return [];
     if (!debouncedSearch) return registry;
     const q = debouncedSearch.toLowerCase();
+    // Filter against the pre-lowercased index (falls back to per-entry lowercase
+    // only if the index somehow isn't ready yet — it always is once registry is).
+    if (searchIndex && searchIndex.length === registry.length) {
+      const out: RegistryEntry[] = [];
+      for (let i = 0; i < registry.length; i++) {
+        if (searchIndex[i].indexOf(q) !== -1) out.push(registry[i]);
+      }
+      return out;
+    }
     return registry.filter(([name, , source]) =>
       name.toLowerCase().includes(q) || source.toLowerCase().includes(q)
     );
-  }, [registry, debouncedSearch]);
+  }, [registry, searchIndex, debouncedSearch]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / REGISTRY_PAGE_SIZE));
   const pageItems = filtered.slice(page * REGISTRY_PAGE_SIZE, (page + 1) * REGISTRY_PAGE_SIZE);

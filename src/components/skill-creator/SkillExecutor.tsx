@@ -102,7 +102,7 @@ import {
   type McpInspectResult,
   type McpCallResult,
 } from '../../lib/cfMcpClient';
-import { checkAccess, getX402Pricing, formatPrice } from '../../lib/payment/payment-client';
+import { checkAccess } from '../../lib/payment/payment-client';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1611,19 +1611,12 @@ export function SkillExecutor({ skill, onClose, userId, onRequireAuth, onPurchas
       .then((res) => {
         if (cancelled) return;
         setGate({ loading: false, hasAccess: res.hasAccess, reason: res.reason });
-        // Only fetch pricing when actually gated — keeps free skills zero-cost.
-        if (res.hasAccess === false) {
-          getX402Pricing(entitlementSkillId)
-            .then((p) => {
-              if (cancelled) return;
-              if (p?.fiat?.amount != null) {
-                setGatePriceLabel(
-                  p.fiat.display || formatPrice(p.fiat.amount, p.fiat.currency)
-                );
-              }
-            })
-            .catch(() => { /* fallback label handles this */ });
-        }
+        // NOTE: we intentionally do NOT call getX402Pricing here. The
+        // /api/x402/pricing/<skill> route 404s in this deployment, so probing it
+        // on every gated (paid) skill only produced a failing request. The gate
+        // panel already falls back to a static "Premium" label when no price is
+        // resolved (see `gatePriceLabel ?? 'Premium'`), so dropping the fetch is
+        // a no-op visually and removes the dead 404 traffic.
       })
       .catch(() => {
         // Fail OPEN: if the check itself errors (network/worker down), don't
@@ -3855,6 +3848,17 @@ export function SkillExecutor({ skill, onClose, userId, onRequireAuth, onPurchas
               <div className="hidden sm:flex items-center gap-1.5 px-3 h-9 text-[12px] border border-border/60 rounded-xl text-foreground-secondary font-mono">
                 <Settings className="w-3.5 h-3.5" />
                 <span>{isN8n ? 'n8n CLI' : isDynamicWorker ? 'Worker Loader' : 'Llama 3.3 70B'}</span>
+              </div>
+            ) : runtimeMode === 'pi' ? (
+              // Pi is the sole agent runtime and runs a single fixed model. There
+              // is no model choice to make, so we render a STATIC chip instead of
+              // <ModelPicker>. This is deliberate: ModelPicker probes /api/ai/models
+              // + /api/ai/health?model=… on mount/open, both of which 404 in this
+              // deployment (no Workers-AI model/health routes). A static chip keeps
+              // the UI honest and fires zero dead requests / no broken traffic-lights.
+              <div className="hidden sm:flex items-center gap-1.5 px-3 h-9 text-[12px] border border-border/60 rounded-xl text-foreground-secondary font-mono">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" title="Pi runtime" />
+                <span>Pi · Llama 3.3 70B</span>
               </div>
             ) : (
               <ModelPicker
