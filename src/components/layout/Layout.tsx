@@ -172,7 +172,10 @@ export function Layout({
   };
 
   return (
-    <div className="min-h-screen bg-background relative overflow-x-hidden">
+    /* overflow-x-CLIP (not hidden): clips horizontal overflow WITHOUT creating a
+       scroll container, so the sticky top nav keeps sticking. `overflow-x-hidden`
+       forces overflow-y:auto → a scroll container → position:sticky breaks. */
+    <div className="min-h-screen bg-background relative overflow-x-clip">
       {/* Subtle mesh gradient background — promoted to its own compositor layer
           (translateZ) so the fixed backdrop doesn't repaint as content scrolls. */}
       <div
