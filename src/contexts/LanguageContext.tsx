@@ -50,7 +50,9 @@ const translations: Record<Language, Record<string, string>> = {
     'theme.rose.desc': 'The house flavor',
     'theme.violet.desc': 'Bold & juicy',
 
-    // Hero — search-first front door
+    // Hero
+    'hero.tagline': 'AI is simple like candy',
+    // Hero — search-first front door (legacy keys; hero reverted to typewriter)
     'hero.searchTitle.candy': 'Find the candy for any AI task',
     'hero.searchTitle.craving': 'Tell us what you’re craving',
     'hero.searchSub.candy': 'Search skills & workflows built by the community — or post one yourself.',
@@ -216,7 +218,9 @@ const translations: Record<Language, Record<string, string>> = {
     'theme.rose.desc': '招牌口味',
     'theme.violet.desc': '浓郁多汁',
 
-    // Hero — 搜索优先入口
+    // Hero
+    'hero.tagline': 'AI 简单如糖果',
+    // Hero — 搜索优先入口（旧键；hero 已改回打字机版）
     'hero.searchTitle.candy': '为任意 AI 任务找到对的糖果',
     'hero.searchTitle.craving': '告诉我们你想要什么',
     'hero.searchSub.candy': '搜索社区打造的技能与工作流，或自己发布一个。',
