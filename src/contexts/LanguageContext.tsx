@@ -50,8 +50,6 @@ const translations: Record<Language, Record<string, string>> = {
     'theme.rose.desc': 'The house flavor',
     'theme.violet.desc': 'Bold & juicy',
 
-    // Hero
-    'hero.tagline': 'AI is simple like candy',
     // Hero — search-first front door
     'hero.searchTitle.candy': 'Find the candy for any AI task',
     'hero.searchTitle.craving': 'Tell us what you’re craving',
@@ -62,6 +60,7 @@ const translations: Record<Language, Record<string, string>> = {
     'hero.searchPlaceholder.candy': 'Search candies — “pdf”, “code review”…',
     'hero.searchPlaceholder.craving': 'Search cravings — “automation”, “bot”…',
     'hero.searchCta': 'Search',
+    'hero.searchAria': 'Search',
     'hero.countHint.candy': '{count} candies indexed · press Enter to dive in',
     'hero.countHint.craving': '{count} open cravings · press Enter to browse',
     'hero.tryLabel': 'Try:',
@@ -69,8 +68,6 @@ const translations: Record<Language, Record<string, string>> = {
     'hero.postCandy': 'Post Candy',
     'hero.postCraving': 'Post Craving',
     'hero.subtitle': 'Powerful AI skills at your fingertips. Simple, accessible, and ready to use. No complexity, just results.',
-    'hero.cli': '> npm install intelligence',
-    'hero.browseSkills': 'Browse Skills',
     'hero.docs': 'Documentation',
     'hero.activeSkills': 'Active Skills',
     'hero.ready': 'Ready',
@@ -219,8 +216,6 @@ const translations: Record<Language, Record<string, string>> = {
     'theme.rose.desc': '招牌口味',
     'theme.violet.desc': '浓郁多汁',
 
-    // Hero
-    'hero.tagline': 'AI 简单如糖果',
     // Hero — 搜索优先入口
     'hero.searchTitle.candy': '为任意 AI 任务找到对的糖果',
     'hero.searchTitle.craving': '告诉我们你想要什么',
@@ -231,6 +226,7 @@ const translations: Record<Language, Record<string, string>> = {
     'hero.searchPlaceholder.candy': '搜索糖果 —「pdf」「代码审查」…',
     'hero.searchPlaceholder.craving': '搜索渴望 —「自动化」「机器人」…',
     'hero.searchCta': '搜索',
+    'hero.searchAria': '搜索',
     'hero.countHint.candy': '已收录 {count} 颗糖果 · 按回车开始探索',
     'hero.countHint.craving': '{count} 个开放渴望 · 按回车浏览',
     'hero.tryLabel': '试试：',
@@ -238,8 +234,6 @@ const translations: Record<Language, Record<string, string>> = {
     'hero.postCandy': '发布糖果',
     'hero.postCraving': '发布渴望',
     'hero.subtitle': '强大的 AI 技能触手可及。简单、易用、随时可用。没有复杂，只有结果。',
-    'hero.cli': '> npm 安装 智能',
-    'hero.browseSkills': '浏览技能',
     'hero.docs': '使用文档',
     'hero.activeSkills': '活跃技能',
     'hero.ready': '就绪',

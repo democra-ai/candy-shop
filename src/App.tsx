@@ -13,8 +13,6 @@ import { Categories } from './components/home/Categories';
 import { ExternalResources } from './components/home/ExternalResources';
 import { FAQ } from './components/home/FAQ';
 import { MostPopularRail } from './components/home/MostPopularRail';
-// EditorPicks intentionally not mounted — its content now lives in the bento Hero
-// (featured raspberry cell) and Aisle 1 (MostPopularRail).
 import { AuthModal } from './components/auth/AuthModal';
 import { AuthCallback } from './components/auth/AuthCallback';
 import { CartDrawer } from './components/common/CartDrawer';

@@ -16,7 +16,7 @@
  *   └───────────────────┘  └─────────────────────────────────┘
  *
  * Clean canvas: bg-card / soft flavor tint wells; color carried by the candy
- * emoji + flavor accents. Clicking a row/hero opens the canonical detail page
+ * illustration (getCandyIcon) + flavor accents. Clicking a row/hero opens the canonical detail page
  * (/candy/:id); the hero's Run button calls onRunSkill directly.
  */
 
@@ -27,7 +27,7 @@ import { cn } from '../../utils/cn';
 import { useNavigate } from 'react-router-dom';
 import { useIsDark } from '../../hooks/useIsDark';
 import { getFlavor } from '../../utils/candyShells';
-import { getCandyEmoji } from '../../utils/candy';
+import { getCandyIcon } from '../illustrations';
 
 interface MostPopularRailProps {
   onRunSkill: (skill: Skill) => void;
@@ -64,10 +64,10 @@ export function MostPopularRail({ onRunSkill }: MostPopularRailProps) {
   const heroFlavor = getFlavor(hero.category, isDark);
   const heroAuthor = authorFor(hero);
   const heroRating = ratingFor(hero, 0);
+  const HeroCandy = getCandyIcon(hero.category, isDark);
 
   return (
-    <>
-      <section className="py-8 md:py-12 relative" data-qa="rail">
+    <section className="py-8 md:py-12 relative" data-qa="rail">
         <div className="container max-w-7xl mx-auto px-0">
           {/* Section header */}
           <div className="flex items-end justify-between gap-4 mb-5 md:mb-6">
@@ -112,12 +112,12 @@ export function MostPopularRail({ onRunSkill }: MostPopularRailProps) {
               onMouseEnter={(e) => { e.currentTarget.style.borderColor = heroFlavor.base; }}
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = ''; }}
             >
-              {/* faint oversized emoji watermark, bottom-right */}
+              {/* faint oversized candy watermark, bottom-right */}
               <span
-                className="pointer-events-none absolute -bottom-6 -right-3 text-[120px] leading-none opacity-[0.07] select-none rotate-[-8deg]"
+                className="pointer-events-none absolute -bottom-6 -right-3 leading-none opacity-[0.07] select-none rotate-[-8deg]"
                 aria-hidden="true"
               >
-                {getCandyEmoji(hero.id)}
+                <HeroCandy size={150} color={heroFlavor.base} />
               </span>
 
               <div className="relative flex h-full flex-col">
@@ -130,12 +130,12 @@ export function MostPopularRail({ onRunSkill }: MostPopularRailProps) {
                   top this week
                 </span>
 
-                {/* big candy emoji in a tinted well */}
+                {/* big candy illustration in a tinted well */}
                 <span
-                  className="mt-4 md:mt-5 flex items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-2xl text-4xl md:text-5xl leading-none bg-card shadow-candy-1 dark:shadow-candy-1-dark transition-transform duration-300 ease-candy group-hover:scale-105 group-hover:-rotate-3"
+                  className="mt-4 md:mt-5 flex items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-2xl leading-none bg-card shadow-candy-1 dark:shadow-candy-1-dark transition-transform duration-300 ease-candy group-hover:scale-105 group-hover:-rotate-3"
                   aria-hidden="true"
                 >
-                  {getCandyEmoji(hero.id)}
+                  <HeroCandy size={48} color={heroFlavor.base} />
                 </span>
 
                 {/* category chip */}
@@ -205,6 +205,7 @@ export function MostPopularRail({ onRunSkill }: MostPopularRailProps) {
                   const flavor = getFlavor(skill.category, isDark);
                   const author = authorFor(skill);
                   const rating = ratingFor(skill, rank - 1);
+                  const RowCandy = getCandyIcon(skill.category, isDark);
                   return (
                     <li key={skill.id}>
                       <button
@@ -239,13 +240,13 @@ export function MostPopularRail({ onRunSkill }: MostPopularRailProps) {
                           {String(rank).padStart(2, '0')}
                         </span>
 
-                        {/* emoji well */}
+                        {/* candy well */}
                         <span
-                          className="flex items-center justify-center w-10 h-10 md:w-11 md:h-11 rounded-xl text-xl md:text-2xl leading-none shrink-0 transition-transform duration-200 ease-candy group-hover/row:scale-105"
+                          className="flex items-center justify-center w-10 h-10 md:w-11 md:h-11 rounded-xl leading-none shrink-0 transition-transform duration-200 ease-candy group-hover/row:scale-105"
                           style={{ backgroundColor: flavor.tint }}
                           aria-hidden="true"
                         >
-                          {getCandyEmoji(skill.id)}
+                          <RowCandy size={24} color={flavor.base} />
                         </span>
 
                         {/* title + author */}
@@ -289,7 +290,6 @@ export function MostPopularRail({ onRunSkill }: MostPopularRailProps) {
             <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
           </button>
         </div>
-      </section>
-    </>
+    </section>
   );
 }

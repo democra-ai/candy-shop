@@ -9,6 +9,8 @@ import { cn } from '../../utils/cn';
 import { toast } from 'sonner';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useDebounce } from '../../hooks/useDebounce';
+import { useIsDark } from '../../hooks/useIsDark';
+import { getFlavor } from '../../utils/candyShells';
 import { CandyCard } from './CandyCard';
 
 // Breakpoint columns config for react-masonry-css.
@@ -71,6 +73,8 @@ export function SkillsGrid({
   onPostCraving,
 }: SkillsGridProps) {
   const { t } = useLanguage();
+  const isDark = useIsDark();
+  const blueberry = getFlavor('Research', isDark); // craving accent (blue family)
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const isDebouncing = searchQuery !== debouncedSearchQuery;
   // The grid section can sit far down a long page; when the shopper types in the
@@ -489,7 +493,7 @@ export function SkillsGrid({
               {onPostCandy && (
                 <button
                   onClick={onPostCandy}
-                  className="h-11 px-4 flex items-center gap-2 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl font-body font-semibold text-sm hover:shadow-[0_4px_20px_rgba(244,63,94,0.4)] transition-all duration-200 btn-press whitespace-nowrap shadow-[0_2px_12px_rgba(244,63,94,0.25)]"
+                  className="candy-btn btn-press h-11 px-4 flex items-center gap-2 rounded-2xl font-body font-semibold text-sm whitespace-nowrap"
                 >
                   <Plus className="w-4 h-4" />
                   Post Candy
@@ -498,7 +502,8 @@ export function SkillsGrid({
               {onPostCraving && (
                 <button
                   onClick={onPostCraving}
-                  className="h-11 px-4 flex items-center gap-2 bg-blue-500/10 border border-blue-500/30 text-blue-500 rounded-xl font-body font-semibold text-sm hover:bg-blue-500/20 hover:border-blue-500/50 transition-all duration-200 btn-press whitespace-nowrap"
+                  className="h-11 px-4 flex items-center gap-2 border rounded-xl font-body font-semibold text-sm transition-all duration-200 btn-press whitespace-nowrap"
+                  style={{ backgroundColor: blueberry.tint, color: blueberry.ink, borderColor: blueberry.base }}
                 >
                   <Plus className="w-4 h-4" />
                   Post Craving

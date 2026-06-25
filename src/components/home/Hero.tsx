@@ -94,7 +94,7 @@ export function Hero({
           {/* 3a. Segmented toggle — keeps the two-sided jar model; scopes search
               to whichever side is active (the parent binds the active state). */}
           <div
-            role="tablist"
+            role="group"
             aria-label={t('hero.tab.candy') + ' / ' + t('hero.tab.craving')}
             className="inline-flex self-center items-center gap-1 p-1 bg-secondary/60 rounded-full border border-border"
           >
@@ -103,16 +103,20 @@ export function Hero({
               ['craving', t('hero.tab.craving'), HeartHandshake, OPEN_CRAVINGS],
             ] as const).map(([id, label, Icon, n]) => {
               const on = activeTab === id;
+              const tabFlavor = id === 'candy' ? raspberry : blueberry;
               return (
                 <button
                   key={id}
-                  role="tab"
-                  aria-selected={on}
+                  aria-pressed={on}
                   onClick={() => onTabChange(id)}
-                  className={`flex items-center gap-2 h-9 px-4 rounded-full font-body font-semibold text-sm transition-all duration-200 ease-candy focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
+                  className={`flex items-center gap-2 h-9 px-4 rounded-full font-body font-semibold text-sm transition-all duration-200 ease-candy focus:outline-none focus-visible:ring-2 ${
                     on ? 'text-white shadow-candy-1' : 'text-foreground-secondary hover:text-foreground'
                   }`}
-                  style={on ? { backgroundColor: (id === 'candy' ? raspberry : blueberry).base } : undefined}
+                  style={
+                    on
+                      ? { backgroundColor: tabFlavor.ink, ['--tw-ring-color' as string]: tabFlavor.base }
+                      : { ['--tw-ring-color' as string]: tabFlavor.base }
+                  }
                 >
                   <Icon className="w-4 h-4" aria-hidden="true" />
                   <span>{label}</span>
@@ -134,7 +138,8 @@ export function Hero({
               e.preventDefault();
               submit();
             }}
-            className="relative flex items-center h-14 bg-background border border-border rounded-2xl transition-all focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary/40"
+            className="relative flex items-center h-14 bg-background border border-border rounded-2xl transition-all focus-within:ring-2"
+            style={{ ['--tw-ring-color' as string]: accent.base }}
           >
             <Search
               className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-foreground-tertiary pointer-events-none"
@@ -145,8 +150,8 @@ export function Hero({
               value={searchValue}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder={t(isCandy ? 'hero.searchPlaceholder.candy' : 'hero.searchPlaceholder.craving')}
-              aria-label={t(isCandy ? 'hero.searchPlaceholder.candy' : 'hero.searchPlaceholder.craving')}
-              className="flex-1 h-full bg-transparent pl-14 pr-2 font-mono text-base text-foreground placeholder:text-foreground-tertiary placeholder:text-sm focus:outline-none"
+              aria-label={t('hero.searchAria')}
+              className="flex-1 h-full bg-transparent pl-14 pr-2 font-mono text-base text-foreground placeholder:text-foreground-secondary placeholder:text-sm focus:outline-none"
             />
             <button
               type="submit"
@@ -168,7 +173,7 @@ export function Hero({
 
           {/* 3c. Example query chips — teach discoverability; one tap = results. */}
           <div className="flex flex-wrap items-center justify-center gap-2">
-            <span className="text-xs font-mono text-foreground-tertiary mr-1">{t('hero.tryLabel')}</span>
+            <span className="text-xs font-mono text-foreground-secondary mr-1">{t('hero.tryLabel')}</span>
             {chips.map((q) => (
               <button
                 key={q}
@@ -177,7 +182,9 @@ export function Hero({
                   onSearchChange(q);
                   submit(q);
                 }}
-                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full font-mono text-xs bg-secondary/60 border border-transparent text-foreground-secondary hover:text-foreground hover:border-primary/50 transition-all duration-200 ease-candy"
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = accent.base; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = ''; }}
+                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full font-mono text-xs bg-secondary/60 border border-transparent text-foreground-secondary hover:text-foreground transition-all duration-200 ease-candy"
               >
                 <Sparkles className="w-3 h-3" style={{ color: accent.base }} aria-hidden="true" />
                 {q}
@@ -187,7 +194,7 @@ export function Hero({
         </div>
 
         {/* 4. The ONE surviving stat line — catalog total, not a live filtered count. */}
-        <p className="text-xs font-mono text-foreground-tertiary">
+        <p className="text-xs font-mono text-foreground-secondary">
           {t(isCandy ? 'hero.countHint.candy' : 'hero.countHint.craving', { count })}
         </p>
 
@@ -199,7 +206,7 @@ export function Hero({
             {t('hero.postCandy')}
           </button>
           <span className="text-border mx-1.5">·</span>
-          <button onClick={onPostCraving} className="font-semibold hover:underline" style={{ color: blueberry.base }}>
+          <button onClick={onPostCraving} className="font-semibold hover:underline" style={{ color: blueberry.ink }}>
             {t('hero.postCraving')}
           </button>
         </p>

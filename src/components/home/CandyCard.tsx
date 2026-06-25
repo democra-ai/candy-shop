@@ -128,34 +128,42 @@ export function CandyCard({
     >
       {/* Quick actions — like + bag, top-right. Revealed on hover/focus, but
           kept visible whenever active so the state is never hidden. Each
-          stops propagation so it never triggers the card's navigation. */}
-      <div
-        className={cn(
-          'absolute top-2.5 right-2.5 z-10 flex items-center gap-1.5 transition-opacity duration-200',
-          isLiked || isInCart
-            ? 'opacity-100'
-            : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'
-        )}
-      >
-        <button
-          onClick={(e) => { e.stopPropagation(); onLike?.(); }}
-          aria-label={isLiked ? `Unlike ${skill.name}` : `Like ${skill.name}`}
-          aria-pressed={isLiked}
-          className="inline-flex items-center justify-center w-7 h-7 rounded-full backdrop-blur-sm shadow-sm transition-transform duration-150 ease-candy active:scale-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-          style={{ backgroundColor: shell.chipBg, color: isLiked ? shell.accent : shell.text }}
+          stops propagation so it never triggers the card's navigation. Each
+          button only renders when its handler is wired — a surface that doesn't
+          pass onLike (e.g. Related Skills) must not show a dead control. */}
+      {(onLike || onToggleCart) && (
+        <div
+          className={cn(
+            'absolute top-2.5 right-2.5 z-10 flex items-center gap-1.5 transition-opacity duration-200',
+            isLiked || isInCart
+              ? 'opacity-100'
+              : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'
+          )}
         >
-          <Heart className={cn('w-3.5 h-3.5', isLiked && 'fill-current')} />
-        </button>
-        <button
-          onClick={(e) => { e.stopPropagation(); onToggleCart?.(); }}
-          aria-label={isInCart ? `Remove ${skill.name} from bag` : `Add ${skill.name} to bag`}
-          aria-pressed={isInCart}
-          className="inline-flex items-center justify-center w-7 h-7 rounded-full backdrop-blur-sm shadow-sm transition-transform duration-150 ease-candy active:scale-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-          style={{ backgroundColor: isInCart ? shell.accent : shell.chipBg, color: isInCart ? '#ffffff' : shell.text }}
-        >
-          {isInCart ? <Check className="w-3.5 h-3.5" /> : <ShoppingBag className="w-3.5 h-3.5" />}
-        </button>
-      </div>
+          {onLike && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onLike(); }}
+              aria-label={isLiked ? `Unlike ${skill.name}` : `Like ${skill.name}`}
+              aria-pressed={isLiked}
+              className={cn('inline-flex items-center justify-center w-7 h-7 rounded-full shadow-candy-1 dark:shadow-candy-1-dark transition-transform duration-150 ease-candy active:scale-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1', shell.ring)}
+              style={{ backgroundColor: shell.chipBg, color: isLiked ? shell.accent : shell.text }}
+            >
+              <Heart className={cn('w-3.5 h-3.5', isLiked && 'fill-current')} />
+            </button>
+          )}
+          {onToggleCart && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onToggleCart(); }}
+              aria-label={isInCart ? `Remove ${skill.name} from bag` : `Add ${skill.name} to bag`}
+              aria-pressed={isInCart}
+              className={cn('inline-flex items-center justify-center w-7 h-7 rounded-full shadow-candy-1 dark:shadow-candy-1-dark transition-transform duration-150 ease-candy active:scale-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1', shell.ring)}
+              style={{ backgroundColor: isInCart ? shell.accent : shell.chipBg, color: isInCart ? '#ffffff' : shell.text }}
+            >
+              {isInCart ? <Check className="w-3.5 h-3.5" /> : <ShoppingBag className="w-3.5 h-3.5" />}
+            </button>
+          )}
+        </div>
+      )}
 
       <div
         className={cn(

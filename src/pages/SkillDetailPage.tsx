@@ -1,13 +1,13 @@
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Star, Download, Play, Copy, Check, ExternalLink, Tag, MessageSquare, Zap, Shield, GitFork, Cloud, Link2, BadgeCheck, Workflow, BookOpen, Loader2, AlertCircle } from 'lucide-react';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { StarRating } from '../components/ui/StarRating';
 import { LineageBadge, PricingBadge, ExecutionModelBadge, ManifestVisibilityBadge } from '../components/common/LineageBadge';
 import { CandyCard } from '../components/home/CandyCard';
-import { SKILLS_DATA, getFormat, getLoadedFormatRegistry, FORMAT_REGISTRY_FILES } from '../data/skillsData';
+import { SKILLS_DATA, getFormat, getLoadedFormatRegistry, loadFormatRegistry, FORMAT_REGISTRY_FILES } from '../data/skillsData';
 import type { Skill as StoreSkill, ItemFormat } from '../data/skillsData';
 import { getRuntime } from '../lib/runtimes/registry';
 import { useStars } from '../hooks/api/useStars';
@@ -246,7 +246,8 @@ export function SkillDetailPage({ cart, onToggleCart, onRunSkill, userId }: Skil
   // Skill handed over by the grid/rail on click-through — covers the 7,400
   // bulk-registry items whose ids aren't in the seed SKILLS_DATA.
   const stateSkill = (location.state as { skill?: StoreSkill } | null)?.skill;
-  const skill = useMemo(() => {
+  // Synchronous fast path: router state → seed catalog → already-loaded registry.
+  const syncSkill = useMemo(() => {
     if (!id) return undefined;
     // 1) Passed via router state (the dominant click-through path) — instant.
     if (stateSkill && stateSkill.id === id) return stateSkill;
@@ -261,12 +262,69 @@ export function SkillDetailPage({ cart, onToggleCart, onRunSkill, userId }: Skil
     return undefined;
   }, [id, stateSkill]);
 
+  // Cold deep-link fallback: the id belongs to a bulk registry that hasn't been
+  // loaded this session. Lazily load each format registry and re-search by id,
+  // showing a spinner until resolved; only then fall to "not found".
+  const [lazySkill, setLazySkill] = useState<StoreSkill | undefined>(undefined);
+  const [resolving, setResolving] = useState(false);
+  useEffect(() => {
+    // Reset lazy state whenever the synchronous answer changes.
+    setLazySkill(undefined);
+    if (!id || syncSkill) {
+      setResolving(false);
+      return;
+    }
+    let cancelled = false;
+    setResolving(true);
+    (async () => {
+      const formats = Object.keys(FORMAT_REGISTRY_FILES) as ItemFormat[];
+      for (const fmt of formats) {
+        if (cancelled) return;
+        try {
+          const registry = await loadFormatRegistry(fmt);
+          const hit = registry.find((s) => s.id === id);
+          if (hit) {
+            if (!cancelled) {
+              setLazySkill(hit);
+              setResolving(false);
+            }
+            return;
+          }
+        } catch {
+          // Skip a registry that fails to load; keep trying the rest.
+        }
+      }
+      if (!cancelled) setResolving(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, syncSkill]);
+
+  const skill = syncSkill ?? lazySkill;
+
+  // a11y: card→detail navigation drops focus. Move focus to the page heading on
+  // mount / when the resolved skill changes so keyboard + screen-reader users
+  // land at the top of the new route instead of a stale focus position.
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (skill) headingRef.current?.focus();
+  }, [skill?.id]);
+
   // Social hooks
   const { isStarred, starCount, toggleStar } = useStars(id || '', userId);
   const { ratings, avgRating, rate } = useRatings(id || '');
   const { trackDownload } = useDownloads();
 
   if (!skill) {
+    if (resolving) {
+      return (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 flex flex-col items-center justify-center text-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-foreground-tertiary" aria-hidden="true" />
+          <p className="text-sm font-mono text-foreground-secondary">Loading candy…</p>
+        </div>
+      );
+    }
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
         <h1 className="text-2xl font-candy font-bold mb-4">Skill not found</h1>
@@ -356,7 +414,9 @@ export function SkillDetailPage({ cart, onToggleCart, onRunSkill, userId }: Skil
                   )}
                 </div>
                 <h1
-                  className="text-2xl sm:text-3xl md:text-4xl font-candy font-bold tracking-tight leading-[1.1] mt-2"
+                  ref={headingRef}
+                  tabIndex={-1}
+                  className="text-2xl sm:text-3xl md:text-4xl font-candy font-bold tracking-tight leading-[1.1] mt-2 focus:outline-none"
                   style={{ color: flavor.ink }}
                 >
                   {skill.name}
