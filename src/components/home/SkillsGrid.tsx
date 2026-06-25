@@ -2,7 +2,7 @@ import { Search, X, ChevronLeft, ChevronRight, Plus, Database, ExternalLink, Dow
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import Masonry from 'react-masonry-css';
 import { SKILLS_DATA, REGISTRY_STATS, loadFullRegistry, loadFormatRegistry, getLoadedFormatRegistry, FORMAT_REGISTRY_FILES, getFormat, type Skill, type RegistryEntry, type ItemFormat } from '../../data/skillsData';
-import { SkillModal } from '../common/SkillModal';
+import { useNavigate } from 'react-router-dom';
 import { storageUtils } from '../../utils/storage';
 import { cn } from '../../utils/cn';
 import { toast } from 'sonner';
@@ -156,7 +156,7 @@ export function SkillsGrid({
     },
     [searchQuery, setSearchQuery, bringResultsIntoView],
   );
-  const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
+  const navigate = useNavigate();
   // Format filter (multi-format browse) — null = all formats.
   const [formatFilter, setFormatFilter] = useState<ItemFormat | null>(null);
 
@@ -569,7 +569,7 @@ export function SkillsGrid({
                     isFeatured={!!skill.editorPick}
                     isLiked={likedSkills.has(skill.id)}
                     isInCart={cart.has(skill.id)}
-                    onSelect={() => setSelectedSkill(skill)}
+                    onSelect={() => navigate(`/candy/${skill.id}`, { state: { skill } })}
                     onRun={() => onRunSkill(skill)}
                     onLike={() => handleLike(skill.id)}
                     onToggleCart={() => onToggleCart(skill.id)}
@@ -665,8 +665,6 @@ export function SkillsGrid({
 
       {/* ── Full Registry Browser ── */}
       <RegistryBrowser />
-
-      <SkillModal skill={selectedSkill} onClose={() => setSelectedSkill(null)} onRun={onRunSkill} />
     </>
   );
 }
@@ -706,7 +704,7 @@ function RegistryBrowser() {
         const index = new Array<string>(data.length);
         for (let i = 0; i < data.length; i++) {
           const [name, , source] = data[i];
-          index[i] = `${name} ${source}`.toLowerCase();
+          index[i] = `${name} ${source}`.toLowerCase();
         }
         setRegistry(data);
         setSearchIndex(index);

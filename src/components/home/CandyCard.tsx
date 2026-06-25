@@ -17,12 +17,12 @@
  * Elevation: resting shadow-candy-1, hover shadow-candy-2 + -translate-y-1 with
  * ease-candy. Light + dark both read premium via getShell.
  *
- * Like / cart actions live inside the SkillModal (open on click), not the card.
- * Props are STABLE — callers (SkillsGrid, ShopWindow, MostPopularRail, detail
- * pages, modal) pass the same shape.
+ * Like / cart are inline quick actions (top-right cluster); the card body click
+ * opens the canonical detail page (/candy/:id). Props are STABLE — callers
+ * (SkillsGrid, ShopWindow, MostPopularRail, detail pages) pass the same shape.
  */
 
-import { Star, Play, Sparkles, Zap, Users } from 'lucide-react';
+import { Star, Play, Sparkles, Zap, Users, Heart, ShoppingBag, Check } from 'lucide-react';
 import type { Skill } from '../../data/skillsData';
 import { getFormat } from '../../data/skillsData';
 import { cn } from '../../utils/cn';
@@ -35,8 +35,7 @@ interface CandyCardProps {
   skill: Skill;
   index: number;
   isFeatured?: boolean;
-  /** Retained for prop compatibility with parents that still pass it;
-   *  card no longer renders like/cart UI — those live in SkillModal. */
+  /** Drives the inline like/cart quick-action cluster (top-right). */
   isLiked?: boolean;
   isInCart?: boolean;
   onSelect: () => void;
@@ -68,8 +67,12 @@ function fallbackDescription(skill: Skill): string {
 export function CandyCard({
   skill,
   isFeatured = false,
+  isLiked = false,
+  isInCart = false,
   onSelect,
   onRun,
+  onLike,
+  onToggleCart,
 }: CandyCardProps) {
   const isDark = useIsDark();
   const shell = getShell(skill.category, isDark);
@@ -123,6 +126,37 @@ export function CandyCard({
       )}
       style={{ backgroundColor: shell.bg, color: shell.text }}
     >
+      {/* Quick actions — like + bag, top-right. Revealed on hover/focus, but
+          kept visible whenever active so the state is never hidden. Each
+          stops propagation so it never triggers the card's navigation. */}
+      <div
+        className={cn(
+          'absolute top-2.5 right-2.5 z-10 flex items-center gap-1.5 transition-opacity duration-200',
+          isLiked || isInCart
+            ? 'opacity-100'
+            : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'
+        )}
+      >
+        <button
+          onClick={(e) => { e.stopPropagation(); onLike?.(); }}
+          aria-label={isLiked ? `Unlike ${skill.name}` : `Like ${skill.name}`}
+          aria-pressed={isLiked}
+          className="inline-flex items-center justify-center w-7 h-7 rounded-full backdrop-blur-sm shadow-sm transition-transform duration-150 ease-candy active:scale-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+          style={{ backgroundColor: shell.chipBg, color: isLiked ? shell.accent : shell.text }}
+        >
+          <Heart className={cn('w-3.5 h-3.5', isLiked && 'fill-current')} />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggleCart?.(); }}
+          aria-label={isInCart ? `Remove ${skill.name} from bag` : `Add ${skill.name} to bag`}
+          aria-pressed={isInCart}
+          className="inline-flex items-center justify-center w-7 h-7 rounded-full backdrop-blur-sm shadow-sm transition-transform duration-150 ease-candy active:scale-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+          style={{ backgroundColor: isInCart ? shell.accent : shell.chipBg, color: isInCart ? '#ffffff' : shell.text }}
+        >
+          {isInCart ? <Check className="w-3.5 h-3.5" /> : <ShoppingBag className="w-3.5 h-3.5" />}
+        </button>
+      </div>
+
       <div
         className={cn(
           'flex flex-col gap-2.5',
@@ -235,7 +269,7 @@ export function CandyCard({
             </span>
           </div>
 
-          {/* Action — single RUN pill in the accent ink. Like / cart live in SkillModal. */}
+          {/* Action — single RUN pill in the accent ink. Like / cart are the top-right cluster. */}
           <button
             onClick={(e) => { e.stopPropagation(); onRun(); }}
             className="inline-flex items-center justify-center gap-1 h-7 px-3 rounded-full text-[10px] font-body font-bold uppercase tracking-wider transition-transform duration-150 ease-candy active:scale-95 shrink-0 text-white"

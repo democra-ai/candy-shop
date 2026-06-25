@@ -16,15 +16,15 @@
  *   └───────────────────┘  └─────────────────────────────────┘
  *
  * Clean canvas: bg-card / soft flavor tint wells; color carried by the candy
- * emoji + flavor accents. Clicking a row/hero opens the SkillModal; the hero's
- * Run button calls onRunSkill directly.
+ * emoji + flavor accents. Clicking a row/hero opens the canonical detail page
+ * (/candy/:id); the hero's Run button calls onRunSkill directly.
  */
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Star, Users, ArrowRight, Play, Crown } from 'lucide-react';
 import { SKILLS_DATA, type Skill } from '../../data/skillsData';
 import { cn } from '../../utils/cn';
-import { SkillModal } from '../common/SkillModal';
+import { useNavigate } from 'react-router-dom';
 import { useIsDark } from '../../hooks/useIsDark';
 import { getFlavor } from '../../utils/candyShells';
 import { getCandyEmoji } from '../../utils/candy';
@@ -50,7 +50,7 @@ function authorFor(skill: Skill): string | undefined {
 
 export function MostPopularRail({ onRunSkill }: MostPopularRailProps) {
   const isDark = useIsDark();
-  const [modalSkill, setModalSkill] = useState<Skill | null>(null);
+  const navigate = useNavigate();
 
   const popular = useMemo(
     () => [...SKILLS_DATA].sort((a, b) => b.popularity - a.popularity).slice(0, 6),
@@ -97,8 +97,8 @@ export function MostPopularRail({ onRunSkill }: MostPopularRailProps) {
               role="button"
               tabIndex={0}
               aria-label={`Open ${hero.name}`}
-              onClick={() => setModalSkill(hero)}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setModalSkill(hero); } }}
+              onClick={() => navigate(`/candy/${hero.id}`, { state: { skill: hero } })}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/candy/${hero.id}`, { state: { skill: hero } }); } }}
               className={cn(
                 'group relative overflow-hidden text-left',
                 'rounded-3xl p-5 md:p-6 border border-border',
@@ -208,7 +208,7 @@ export function MostPopularRail({ onRunSkill }: MostPopularRailProps) {
                   return (
                     <li key={skill.id}>
                       <button
-                        onClick={() => setModalSkill(skill)}
+                        onClick={() => navigate(`/candy/${skill.id}`, { state: { skill } })}
                         className={cn(
                           'group/row relative w-full text-left flex items-center gap-3 md:gap-4',
                           'px-4 md:px-5 py-3 md:py-3.5',
@@ -290,8 +290,6 @@ export function MostPopularRail({ onRunSkill }: MostPopularRailProps) {
           </button>
         </div>
       </section>
-
-      <SkillModal skill={modalSkill} onClose={() => setModalSkill(null)} onRun={onRunSkill} />
     </>
   );
 }
