@@ -1,7 +1,8 @@
-import { Search, X, ChevronLeft, ChevronRight, Plus, Database, ExternalLink, Download, Loader2 } from 'lucide-react';
+import { Search, X, ChevronLeft, ChevronRight, Plus, Database, ExternalLink, Download, Loader2, SlidersHorizontal } from 'lucide-react';
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import Masonry from 'react-masonry-css';
-import { SKILLS_DATA, REGISTRY_STATS, loadFullRegistry, loadFormatRegistry, getLoadedFormatRegistry, FORMAT_REGISTRY_FILES, getFormat, type Skill, type RegistryEntry, type ItemFormat } from '../../data/skillsData';
+import { SKILLS_DATA, REGISTRY_STATS, loadFullRegistry, loadFormatRegistry, getLoadedFormatRegistry, FORMAT_REGISTRY_FILES, getFormat, FORMAT_FILTERS, FORMAT_TOTALS, ALL_FORMAT_TOTAL, type Skill, type RegistryEntry, type ItemFormat } from '../../data/skillsData';
+import { FacetRail, FacetDrawer } from './FacetRail';
 import { useNavigate } from 'react-router-dom';
 import { storageUtils } from '../../utils/storage';
 import { cn } from '../../utils/cn';
@@ -21,11 +22,19 @@ const MASONRY_BREAKPOINTS = {
   0: 2,
 };
 
+type PriceFilter = 'all' | 'free' | 'paid';
+
 interface SkillsGridProps {
   searchQuery: string;
   setSearchQuery: (q: string) => void;
   tagFilter: string | null;
   setTagFilter: (t: string | null) => void;
+  // Format + price filters are LIFTED to HomePage so the desktop rail, the
+  // mobile quick-row, and the mobile drawer all read/write ONE source of truth.
+  formatFilter: ItemFormat | null;
+  setFormatFilter: (f: ItemFormat | null) => void;
+  priceFilter: PriceFilter;
+  setPriceFilter: (v: PriceFilter) => void;
   cart: Set<string>;
   onToggleCart: (id: string) => void;
   onRunSkill: (skill: Skill) => void;
@@ -34,20 +43,6 @@ interface SkillsGridProps {
   onPostCandy?: () => void;
   onPostCraving?: () => void;
 }
-
-// Format filter options for the compact segmented control above the grid.
-// `null` = "All". The rest map 1:1 to ItemFormat. Labels stay tight.
-const FORMAT_FILTERS: { id: ItemFormat | null; label: string }[] = [
-  { id: null, label: 'All' },
-  { id: 'claude-skill', label: 'Skills' },
-  { id: 'n8n', label: 'n8n' },
-  { id: 'dify', label: 'Dify' },
-  { id: 'langgraph', label: 'LangGraph' },
-  { id: 'dynamic-worker', label: 'Dynamic' },
-  { id: 'mcp', label: 'MCP' },
-  { id: 'loop', label: 'Loops' },
-  { id: 'workflow', label: 'Workflows' },
-];
 
 const POPULAR_TAGS = (() => {
   const tagCounts: Record<string, number> = {};
@@ -58,60 +53,15 @@ const POPULAR_TAGS = (() => {
     .map(([tag]) => tag);
 })();
 
-// ── Format badge counts ──────────────────────────────────────────────
-// The chip count badge must equal the REAL number of items a format yields
-// once its lazy bulk registry is loaded — not the inline-seed subset (which
-// is what the live `formatCounts` memo sees before the per-format JSON has
-// been fetched). e.g. "n8n" seeds 4 inline items but its registry adds ~2000.
-//
-// `SEED_FORMAT_COUNTS` is how many inline-seed (SKILLS_DATA) items each format
-// contributes — known synchronously, always.
-const SEED_FORMAT_COUNTS: Record<string, number> = (() => {
-  const c: Record<string, number> = {};
-  for (const s of SKILLS_DATA) {
-    const f = getFormat(s);
-    c[f] = (c[f] || 0) + 1;
-  }
-  return c;
-})();
-
-// `FORMAT_REGISTRY_SIZES` is the count of items each per-format bulk registry
-// adds on top of the seed (i.e. the length `loadFormatRegistry(fmt)` resolves
-// to, already deduped against the inline seed). These mirror the static JSON
-// assets under public/registry/. They let the badge show a correct, STABLE
-// total the instant the grid renders — before the chip is ever clicked — so we
-// never flash a wrong "0" or "4". If a registry's real loaded length differs
-// from this map (data drift), the live count takes precedence once loaded, so
-// the badge self-corrects (see `formatBadgeCount`).
-const FORMAT_REGISTRY_SIZES: Partial<Record<ItemFormat, number>> = {
-  'claude-skill': 1979,
-  n8n: 2000,
-  dify: 574,
-  langgraph: 400,
-  mcp: 1500,
-  loop: 13,
-  workflow: 600,
-};
-
-// The full, stable total a format's chip filters to: inline seed + its bulk
-// registry. `dynamic-worker` has no registry file, so it's just its seed count.
-const FORMAT_TOTALS: Record<string, number> = (() => {
-  const totals: Record<string, number> = { ...SEED_FORMAT_COUNTS };
-  for (const [fmt, size] of Object.entries(FORMAT_REGISTRY_SIZES)) {
-    totals[fmt] = (SEED_FORMAT_COUNTS[fmt] || 0) + (size || 0);
-  }
-  return totals;
-})();
-
-// Sum of every format's full total — the stable "All" badge value. Computed
-// once so it never drifts as individual registries lazily stream in.
-const ALL_FORMAT_TOTAL = Object.values(FORMAT_TOTALS).reduce((a, b) => a + b, 0);
-
 export function SkillsGrid({
   searchQuery,
   setSearchQuery,
   tagFilter,
   setTagFilter,
+  formatFilter,
+  setFormatFilter,
+  priceFilter,
+  setPriceFilter,
   cart,
   onToggleCart,
   onRunSkill,
@@ -157,8 +107,8 @@ export function SkillsGrid({
     [searchQuery, setSearchQuery, bringResultsIntoView],
   );
   const navigate = useNavigate();
-  // Format filter (multi-format browse) — null = all formats.
-  const [formatFilter, setFormatFilter] = useState<ItemFormat | null>(null);
+  // Format filter (multi-format browse) is now a CONTROLLED prop lifted to
+  // HomePage (single source of truth shared by rail + mobile quick-row + drawer).
 
   // ── Lazy per-format bulk registries ──────────────────────────────
   // Each format's FULL set lives as a static JSON under public/registry/ and is
@@ -219,7 +169,7 @@ export function SkillsGrid({
   // Reset visible count when filters change
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [debouncedSearchQuery, tagFilter, formatFilter]);
+  }, [debouncedSearchQuery, tagFilter, formatFilter, priceFilter]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -272,7 +222,13 @@ export function SkillsGrid({
 
       const matchesFormat = formatFilter ? getFormat(skill) === formatFilter : true;
 
-      return matchesSearch && matchesTag && matchesFormat;
+      // Pricing predicate: missing price ⇒ free (the app default).
+      const matchesPrice =
+        priceFilter === 'free' ? (skill.price ?? 0) === 0
+        : priceFilter === 'paid' ? (skill.price ?? 0) > 0
+        : true;
+
+      return matchesSearch && matchesTag && matchesFormat && matchesPrice;
     });
     // User-posted candies always float to top, then sort by popularity
     return filtered.sort((a, b) => {
@@ -281,7 +237,7 @@ export function SkillsGrid({
       if (aUser !== bUser) return bUser - aUser;
       return (b.popularity || 0) - (a.popularity || 0);
     });
-  }, [debouncedSearchQuery, tagFilter, formatFilter, allSkills]);
+  }, [debouncedSearchQuery, tagFilter, formatFilter, priceFilter, allSkills]);
 
   // Per-format counts over whatever is CURRENTLY loaded (inline seed + any
   // already-fetched registries). This is correct only for formats whose bulk
@@ -314,6 +270,35 @@ export function SkillsGrid({
     const known = FORMAT_TOTALS[id];
     return known != null ? known.toLocaleString() : '…';
   }, [formatCounts, registryItems]);
+
+  // ── Facet coordination ──────────────────────────────────────────
+  // How many facets are active (search is NOT a facet, so "Clear filters"
+  // never nukes the typed query). Drives the rail/drawer "Clear" affordance,
+  // the mobile Filters badge, and the live grid-header result count.
+  const activeFacetCount =
+    (formatFilter ? 1 : 0) + (tagFilter ? 1 : 0) + (priceFilter !== 'all' ? 1 : 0);
+  const anyActive = activeFacetCount > 0;
+  const clearAllFacets = useCallback(() => {
+    setFormatFilter(null);
+    setTagFilter(null);
+    setPriceFilter('all');
+  }, [setFormatFilter, setTagFilter, setPriceFilter]);
+
+  // Desktop rail accordion open/closed state (FILTER values are the shared
+  // lifted props; only this accordion UI is local). Format + Pricing open,
+  // Category collapsed (long list).
+  const [facetOpen, setFacetOpen] = useState<Record<string, boolean>>({
+    format: true,
+    price: true,
+    category: false,
+  });
+  const toggleFacet = useCallback(
+    (id: string) => setFacetOpen((o) => ({ ...o, [id]: !o[id] })),
+    [],
+  );
+
+  // Mobile bottom-sheet drawer open state.
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Slice the filtered list down to what's currently visible (infinite scroll)
   const visibleSkills = useMemo(
@@ -410,10 +395,35 @@ export function SkillsGrid({
     pump();
   }, [visibleCount, filteredSkills.length, pump]);
 
+  // Shared facet props for the desktop rail + mobile drawer. formatBadge is
+  // passed DOWN (the only format-count logic, closing over live registry state)
+  // — never recomputed in FacetRail.
+  const facetProps = {
+    formatFilter,
+    setFormatFilter,
+    priceFilter,
+    setPriceFilter,
+    tagFilter,
+    setTagFilter,
+    formatBadge,
+    loadingFormats,
+    ensureFormatLoaded,
+    open: facetOpen,
+    toggle: toggleFacet,
+  };
+
   return (
     <>
       <section className="py-12 md:py-16" id="skills-grid" ref={sectionRef}>
         <div className="container max-w-7xl mx-auto px-0">
+          {/* In-content 2-col: sticky facet rail (lg+) | masonry grid. The rail
+              is `hidden lg:block` and owns its own overflow-y-auto, so this flex
+              wrapper adds NO overflow/transform/contain around the grid cell —
+              the sticky search header + IntersectionObserver root stay intact.
+              The grid cell is a plain in-flow `flex-1 min-w-0` column. */}
+          <div className="flex gap-6 lg:gap-8">
+            <FacetRail {...facetProps} anyActive={anyActive} onClearAll={clearAllFacets} />
+            <div className="flex-1 min-w-0">
           {/* Compact section header: title left, search + CTAs right.
               Sticky so the search box (and the live result count it implies)
               stays pinned to the top of the viewport while the shopper scrolls
@@ -423,6 +433,13 @@ export function SkillsGrid({
               <h2 className="font-candy text-2xl font-bold text-foreground tracking-tight">
                 {tagFilter ? t('skills.categoryModules', { category: tagFilter }) : 'All skills'}
               </h2>
+              {/* Live composed result count — honest dynamic number, shown only
+                  when a facet narrows the catalog (mirrors the end-of-jar marker). */}
+              {activeFacetCount > 0 && (
+                <span className="tabular-nums text-xs font-mono text-foreground-tertiary whitespace-nowrap">
+                  {filteredSkills.length.toLocaleString()} {t('facets.results')}
+                </span>
+              )}
               {tagFilter && (
                 <button
                   onClick={() => setTagFilter(null)}
@@ -455,6 +472,20 @@ export function SkillsGrid({
                   <span className="text-xs">⌘</span>K
                 </kbd>
               </div>
+              {/* Mobile Filters trigger — opens the bottom-sheet drawer. The
+                  rail is the canonical desktop surface, so this is lg:hidden. */}
+              <button
+                onClick={() => setDrawerOpen(true)}
+                className="h-11 px-4 inline-flex items-center gap-2 bg-card border border-border rounded-xl font-mono text-sm text-foreground-secondary hover:text-foreground hover:border-border-hover transition-colors btn-press lg:hidden"
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+                {t('facets.filters')}
+                {activeFacetCount > 0 && (
+                  <span className="bg-primary text-primary-foreground rounded-full text-[10px] w-4 h-4 grid place-items-center">
+                    {activeFacetCount}
+                  </span>
+                )}
+              </button>
               {onPostCandy && (
                 <button
                   onClick={onPostCandy}
@@ -476,11 +507,11 @@ export function SkillsGrid({
             </div>
           </div>
 
-          {/* ── Format filter — compact segmented chip row. Lets shoppers
-                narrow the jar to Claude skills, n8n, Dify, LangGraph, or
-                generic workflows. Wired into the same filter memo as
-                search + tag. ── */}
-          <div className="flex items-center gap-1.5 mb-6 flex-wrap" role="group" aria-label="Filter by format">
+          {/* ── Format filter — compact segmented chip row. MOBILE-ONLY quick-row
+                (lg:hidden): on desktop the rail's Format group is canonical, but
+                on <lg this high-traffic facet stays inline. Same lifted
+                formatFilter state → mirror-synced with the rail/drawer. ── */}
+          <div className="flex items-center gap-1.5 mb-6 flex-wrap lg:hidden" role="group" aria-label="Filter by format">
             {FORMAT_FILTERS.map((opt) => {
               const active = formatFilter === opt.id;
               const badge = formatBadge(opt.id);
@@ -640,6 +671,22 @@ export function SkillsGrid({
                     All formats
                   </button>
                 )}
+                {priceFilter !== 'all' && (
+                  <button
+                    onClick={() => setPriceFilter('all')}
+                    className="px-4 py-2 text-sm font-body font-medium glass text-foreground rounded-xl hover:shadow-warm-lg transition-all btn-press"
+                  >
+                    {t('facets.all')} {t('facets.pricing')}
+                  </button>
+                )}
+                {activeFacetCount > 1 && (
+                  <button
+                    onClick={clearAllFacets}
+                    className="px-4 py-2 text-sm font-body font-medium bg-gradient-to-r from-primary to-primary-hover text-primary-foreground rounded-xl shadow-candy hover:shadow-candy-lg transition-all btn-press"
+                  >
+                    {t('facets.resetAll')}
+                  </button>
+                )}
               </div>
 
               {searchQuery && (
@@ -660,7 +707,18 @@ export function SkillsGrid({
               )}
             </div>
           )}
+            </div>{/* /flex-1 grid cell */}
+          </div>{/* /flex 2-col */}
         </div>
+
+        {/* Mobile facet drawer — bottom sheet, shares the lifted facet state. */}
+        <FacetDrawer
+          {...facetProps}
+          isOpen={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          resultCount={filteredSkills.length}
+          onClearAll={clearAllFacets}
+        />
       </section>
 
       {/* ── Full Registry Browser ── */}

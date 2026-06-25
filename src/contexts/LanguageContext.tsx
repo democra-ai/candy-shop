@@ -118,6 +118,22 @@ const translations: Record<Language, Record<string, string>> = {
     'skills.updatedToday': 'Updated today',
     'skills.trySearching': 'Try searching for:',
 
+    // Facet rail / filters
+    'facets.title': 'Filters',
+    'facets.filters': 'Filters',
+    'facets.clear': 'Clear filters',
+    'facets.clearAll': 'Clear all',
+    'facets.format': 'Format',
+    'facets.pricing': 'Pricing',
+    'facets.category': 'Category',
+    'facets.all': 'All',
+    'facets.free': 'Free',
+    'facets.paid': 'Paid',
+    'facets.results': 'results',
+    'facets.showResults': 'Show {count} results',
+    'facets.countsNote': 'Counts are catalog totals per filter.',
+    'facets.resetAll': 'Reset all filters',
+
     // Sidebar User Mode labels
     'nav.find.user': 'Browse',
     'nav.cd.user': 'Categories',
@@ -270,6 +286,22 @@ const translations: Record<Language, Record<string, string>> = {
     'skills.unlikeSkill': '取消喜欢',
     'skills.updatedToday': '今日更新',
     'skills.trySearching': '试试搜索：',
+
+    // Facet rail / filters
+    'facets.title': '筛选',
+    'facets.filters': '筛选',
+    'facets.clear': '清除筛选',
+    'facets.clearAll': '全部清除',
+    'facets.format': '格式',
+    'facets.pricing': '价格',
+    'facets.category': '分类',
+    'facets.all': '全部',
+    'facets.free': '免费',
+    'facets.paid': '付费',
+    'facets.results': '个结果',
+    'facets.showResults': '查看 {count} 个结果',
+    'facets.countsNote': '计数为各筛选项的目录总数。',
+    'facets.resetAll': '重置全部筛选',
 
     // Sidebar User Mode labels
     'nav.find.user': '浏览',

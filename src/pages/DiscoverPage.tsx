@@ -6,7 +6,7 @@ import { Categories } from '../components/home/Categories';
 import { PostCravingModal } from '../components/home/PostCravingModal';
 import { PostCandyModal } from '../components/home/PostCandyModal';
 import { storageUtils } from '../utils/storage';
-import { type Skill as StoreSkill } from '../data/skillsData';
+import { type Skill as StoreSkill, type ItemFormat } from '../data/skillsData';
 import type { Craving } from '../data/cravingsData';
 import type { User } from '../lib/supabaseAuth';
 import { toast } from 'sonner';
@@ -32,6 +32,9 @@ export function DiscoverPage({ cart, onToggleCart, onRunSkill }: DiscoverPagePro
 
   const [candySearch, setCandySearch] = useState('');
   const [candyTagFilter, setCandyTagFilter] = useState<string | null>(null);
+  // Lifted facet state (shared by the rail / mobile quick-row / drawer).
+  const [candyFormatFilter, setCandyFormatFilter] = useState<ItemFormat | null>(null);
+  const [candyPriceFilter, setCandyPriceFilter] = useState<'all' | 'free' | 'paid'>('all');
   const [cravingSearch, setCravingSearch] = useState('');
   const [cravingTagFilter, setCravingTagFilter] = useState<string | null>(null);
   const [isPostCravingOpen, setIsPostCravingOpen] = useState(false);
@@ -117,6 +120,8 @@ export function DiscoverPage({ cart, onToggleCart, onRunSkill }: DiscoverPagePro
             onSelectCategory={(tag: string | null) => {
               setCandyTagFilter(tag);
               setCandySearch('');
+              setCandyFormatFilter(null);
+              setCandyPriceFilter('all');
             }}
           />
           <OfficialCollections compact />
@@ -125,6 +130,10 @@ export function DiscoverPage({ cart, onToggleCart, onRunSkill }: DiscoverPagePro
             setSearchQuery={setCandySearch}
             tagFilter={candyTagFilter}
             setTagFilter={setCandyTagFilter}
+            formatFilter={candyFormatFilter}
+            setFormatFilter={setCandyFormatFilter}
+            priceFilter={candyPriceFilter}
+            setPriceFilter={setCandyPriceFilter}
             cart={cart}
             onToggleCart={onToggleCart}
             onRunSkill={onRunSkill}

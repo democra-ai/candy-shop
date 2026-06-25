@@ -36,7 +36,7 @@ import { SettingsPage } from './pages/SettingsPage';
 import type { Skill, SkillCategory } from './types/skill-creator';
 import { storageUtils } from './utils/storage';
 import { SKILLS_DATA } from './data/skillsData';
-import { type Skill as StoreSkill } from './data/skillsData';
+import { type Skill as StoreSkill, type ItemFormat } from './data/skillsData';
 import type { Craving } from './data/cravingsData';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { useRealtimeNotifications } from './hooks/api/useRealtimeSkills';
@@ -201,6 +201,10 @@ function HomePage({
 
   const [candySearch, setCandySearch] = useState('');
   const [candyTagFilter, setCandyTagFilter] = useState<string | null>(null);
+  // Format + price facets are lifted here so the desktop rail, the mobile
+  // format quick-row, and the mobile drawer all share ONE source of truth.
+  const [candyFormatFilter, setCandyFormatFilter] = useState<ItemFormat | null>(null);
+  const [candyPriceFilter, setCandyPriceFilter] = useState<'all' | 'free' | 'paid'>('all');
   const [cravingSearch, setCravingSearch] = useState('');
   const [cravingTagFilter, setCravingTagFilter] = useState<string | null>(null);
 
@@ -230,6 +234,10 @@ function HomePage({
     if (activeTab === 'candy') {
       setCandySearch(value);
       setCandyTagFilter(null);
+      // Clear the lifted facets too so a stale Format/Pricing selection can't
+      // mask fresh hero-search results (mirrors the tag-filter reset above).
+      setCandyFormatFilter(null);
+      setCandyPriceFilter('all');
     } else {
       setCravingSearch(value);
       setCravingTagFilter(null);
@@ -309,6 +317,10 @@ function HomePage({
               onSelectCategory={(tag: string | null) => {
                 setCandyTagFilter(tag);
                 setCandySearch('');
+                // Clear format/price so the chosen category isn't masked by a
+                // stale facet from a prior browse.
+                setCandyFormatFilter(null);
+                setCandyPriceFilter('all');
                 document.getElementById('skills-grid')?.scrollIntoView({ behavior: 'smooth' });
               }}
             />
@@ -317,6 +329,10 @@ function HomePage({
               setSearchQuery={setCandySearch}
               tagFilter={candyTagFilter}
               setTagFilter={setCandyTagFilter}
+              formatFilter={candyFormatFilter}
+              setFormatFilter={setCandyFormatFilter}
+              priceFilter={candyPriceFilter}
+              setPriceFilter={setCandyPriceFilter}
               cart={cart}
               onToggleCart={onToggleCart}
               onRunSkill={onRunSkill}

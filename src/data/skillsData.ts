@@ -5750,3 +5750,70 @@ export const SKILLS_DATA: Skill[] = [
     editorNote: 'Lists its tools without setup; calling them requires credentials in the launch command.',
   },
 ];
+
+// ── Format filter options + badge counts ────────────────────────────
+// Shared by the SkillsGrid format chip row (mobile quick-row) AND the
+// FacetRail Format group, so both render identical labels/counts from ONE
+// source of truth.
+//
+// Format filter options for the compact segmented control / facet group.
+// `null` = "All". The rest map 1:1 to ItemFormat. Labels stay tight.
+export const FORMAT_FILTERS: { id: ItemFormat | null; label: string }[] = [
+  { id: null, label: 'All' },
+  { id: 'claude-skill', label: 'Skills' },
+  { id: 'n8n', label: 'n8n' },
+  { id: 'dify', label: 'Dify' },
+  { id: 'langgraph', label: 'LangGraph' },
+  { id: 'dynamic-worker', label: 'Dynamic' },
+  { id: 'mcp', label: 'MCP' },
+  { id: 'loop', label: 'Loops' },
+  { id: 'workflow', label: 'Workflows' },
+];
+
+// The chip/facet count badge must equal the REAL number of items a format yields
+// once its lazy bulk registry is loaded — not the inline-seed subset (which
+// is what the live `formatCounts` memo sees before the per-format JSON has
+// been fetched). e.g. "n8n" seeds 4 inline items but its registry adds ~2000.
+//
+// `SEED_FORMAT_COUNTS` is how many inline-seed (SKILLS_DATA) items each format
+// contributes — known synchronously, always.
+export const SEED_FORMAT_COUNTS: Record<string, number> = (() => {
+  const c: Record<string, number> = {};
+  for (const s of SKILLS_DATA) {
+    const f = getFormat(s);
+    c[f] = (c[f] || 0) + 1;
+  }
+  return c;
+})();
+
+// `FORMAT_REGISTRY_SIZES` is the count of items each per-format bulk registry
+// adds on top of the seed (i.e. the length `loadFormatRegistry(fmt)` resolves
+// to, already deduped against the inline seed). These mirror the static JSON
+// assets under public/registry/. They let the badge show a correct, STABLE
+// total the instant the grid renders — before the chip is ever clicked — so we
+// never flash a wrong "0" or "4". If a registry's real loaded length differs
+// from this map (data drift), the live count takes precedence once loaded, so
+// the badge self-corrects (see `formatBadge` in SkillsGrid).
+export const FORMAT_REGISTRY_SIZES: Partial<Record<ItemFormat, number>> = {
+  'claude-skill': 1979,
+  n8n: 2000,
+  dify: 574,
+  langgraph: 400,
+  mcp: 1500,
+  loop: 13,
+  workflow: 600,
+};
+
+// The full, stable total a format's chip filters to: inline seed + its bulk
+// registry. `dynamic-worker` has no registry file, so it's just its seed count.
+export const FORMAT_TOTALS: Record<string, number> = (() => {
+  const totals: Record<string, number> = { ...SEED_FORMAT_COUNTS };
+  for (const [fmt, size] of Object.entries(FORMAT_REGISTRY_SIZES)) {
+    totals[fmt] = (SEED_FORMAT_COUNTS[fmt] || 0) + (size || 0);
+  }
+  return totals;
+})();
+
+// Sum of every format's full total — the stable "All" badge value. Computed
+// once so it never drifts as individual registries lazily stream in.
+export const ALL_FORMAT_TOTAL = Object.values(FORMAT_TOTALS).reduce((a, b) => a + b, 0);
