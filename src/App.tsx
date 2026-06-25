@@ -220,6 +220,24 @@ function HomePage({
     }, 50);
   };
 
+  // Hero search "front door". Writes into the ACTIVE side's search state (the
+  // same setter the grid's sticky input uses, so both stay mirror-synced),
+  // clears that side's tag filter so a stale category can't mask the query,
+  // then scrolls to the live grid. activeTab does NOT change here, so the target
+  // grid is already mounted — scroll directly (no setActiveTab 50ms timeout).
+  const handleHeroSearchSubmit = (q?: string) => {
+    const value = q ?? (activeTab === 'candy' ? candySearch : cravingSearch);
+    if (activeTab === 'candy') {
+      setCandySearch(value);
+      setCandyTagFilter(null);
+    } else {
+      setCravingSearch(value);
+      setCravingTagFilter(null);
+    }
+    const id = activeTab === 'candy' ? 'skills-grid' : 'cravings-grid';
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   const handleMatchCandy = (tags: string[]) => {
     setCandyTagFilter(tags[0] ?? null);
     setCandySearch('');
@@ -278,6 +296,9 @@ function HomePage({
           onTabChange={setActiveTab}
           onPostCraving={handleOpenPostCraving}
           onPostCandy={handleOpenPostCandy}
+          searchValue={activeTab === 'candy' ? candySearch : cravingSearch}
+          onSearchChange={activeTab === 'candy' ? setCandySearch : setCravingSearch}
+          onSearchSubmit={handleHeroSearchSubmit}
         />
 
         {activeTab === 'candy' && (
