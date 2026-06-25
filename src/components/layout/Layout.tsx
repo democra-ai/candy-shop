@@ -210,14 +210,14 @@ export function Layout({
           INTRODUCES a void on tall pages. The outer wrapper carries the
           full-page `min-h-screen` background. */}
       <main className="lg:pl-64 pt-14 min-h-[60vh] relative">
-        <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8 md:pt-6 md:pb-12">{children}</div>
+        <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8 md:pt-6 md:pb-12">{children}</div>
       </main>
 
       <footer className="lg:pl-64 w-full relative">
         {/* Clean hairline divider — single-hue, no rainbow candy-tape (DESIGN.md §5) */}
         <div className="h-px w-full bg-border" aria-hidden />
         <div className="py-10 glass-strong">
-          <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-3 text-sm text-foreground-secondary font-body">
                 <span className="text-xl leading-none" aria-hidden="true">🍭</span>

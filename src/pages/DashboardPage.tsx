@@ -34,7 +34,7 @@ export function DashboardPage({ user, onOpenAuth }: DashboardPageProps) {
   // ── Sign-in gate — charming, on-brand empty state ──
   if (!user) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-20 md:py-28">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-20 md:py-28">
         <div className="max-w-md mx-auto text-center">
           <div className="mx-auto mb-6 flex items-center justify-center text-7xl leading-none" aria-hidden="true">
             🔒
@@ -69,7 +69,7 @@ export function DashboardPage({ user, onOpenAuth }: DashboardPageProps) {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 md:py-12">
+    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-8 md:py-12">
       {/* Profile Card */}
       <div className="mb-8 bg-card rounded-3xl border border-border shadow-candy-1 p-5 md:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">

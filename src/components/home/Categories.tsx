@@ -108,7 +108,7 @@ export function Categories({ onSelectCategory, activeCategory }: { onSelectCateg
 
   return (
     <section className="py-14 relative" id="categories-section">
-      <div className="container max-w-7xl mx-auto px-4">
+      <div className="w-full max-w-[1600px] mx-auto px-4">
         {/* Section eyebrow */}
         <div className="flex items-end justify-between gap-4 mb-8">
           <div className="flex items-center gap-3">

@@ -319,14 +319,14 @@ export function SkillDetailPage({ cart, onToggleCart, onRunSkill, userId }: Skil
   if (!skill) {
     if (resolving) {
       return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 flex flex-col items-center justify-center text-center gap-4">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-20 flex flex-col items-center justify-center text-center gap-4">
           <Loader2 className="w-8 h-8 animate-spin text-foreground-tertiary" aria-hidden="true" />
           <p className="text-sm font-mono text-foreground-secondary">Loading candy…</p>
         </div>
       );
     }
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
         <h1 className="text-2xl font-candy font-bold mb-4">Skill not found</h1>
         <Button onClick={() => navigate('/')} className="rounded-2xl px-5">Back to the jar</Button>
       </div>
@@ -370,7 +370,7 @@ export function SkillDetailPage({ cart, onToggleCart, onRunSkill, userId }: Skil
     .slice(0, 4);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Back */}
       <button
         onClick={() => navigate(-1)}

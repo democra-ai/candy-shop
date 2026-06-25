@@ -80,7 +80,7 @@ export function LandingPage() {
         <div className="absolute top-20 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl" />
         <div className="absolute bottom-10 right-10 w-96 h-96 bg-accent/10 rounded-full blur-3xl" />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 relative">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 relative">
           <div className="text-center max-w-4xl mx-auto">
             <Badge variant="candy" size="lg" className="mb-6">
               {REGISTRY_STATS.totalSkills.toLocaleString()}+ Skills Available
@@ -138,7 +138,7 @@ export function LandingPage() {
 
       {/* Features */}
       <section className="py-20 relative">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
             <h2 className="text-3xl sm:text-4xl font-bold font-candy mb-4">
               Everything You Need
@@ -171,7 +171,7 @@ export function LandingPage() {
 
       {/* Popular Skills */}
       <section className="py-20 bg-backgroundSecondary/50 relative">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-10">
             <div>
               <h2 className="text-3xl font-bold font-candy mb-2">Popular Candies</h2>

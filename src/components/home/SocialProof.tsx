@@ -14,7 +14,7 @@ export function SocialProof() {
       <div className="absolute inset-0 glass" aria-hidden="true" />
       <div className="absolute inset-0 sprinkle-pattern" aria-hidden="true" />
 
-      <div className="relative container max-w-7xl mx-auto px-4">
+      <div className="relative w-full max-w-[1600px] mx-auto px-4">
         <div className="flex flex-col md:flex-row items-start md:items-center gap-8">
           <div className="md:w-1/4">
             <h3 className="text-sm font-body font-bold uppercase tracking-wider text-foreground-secondary mb-2">Trusted By Agents</h3>

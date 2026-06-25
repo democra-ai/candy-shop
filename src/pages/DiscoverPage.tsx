@@ -81,7 +81,7 @@ export function DiscoverPage({ cart, onToggleCart, onRunSkill }: DiscoverPagePro
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Tab Switcher */}
       <div className="flex items-center justify-center mb-8">
         <div className="inline-flex items-center bg-secondary rounded-lg p-1 gap-1">

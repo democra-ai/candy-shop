@@ -16,8 +16,8 @@ import { CandyCard } from './CandyCard';
 // Breakpoint columns config for react-masonry-css.
 // Keys are min-widths; values are number of columns.
 const MASONRY_BREAKPOINTS = {
-  default: 5,
-  1280: 5,
+  default: 6, // wide screens (> 1536px) get a 6th column so the grid fills the width
+  1536: 5,
   1024: 4,
   768: 3,
   640: 2,
@@ -419,7 +419,7 @@ export function SkillsGrid({
   return (
     <>
       <section className="py-12 md:py-16" id="skills-grid" ref={sectionRef}>
-        <div className="container max-w-7xl mx-auto px-0">
+        <div className="w-full max-w-[1600px] mx-auto px-0">
           {/* In-content 2-col: sticky facet rail (lg+) | masonry grid. The rail
               is `hidden lg:block` and owns its own overflow-y-auto, so this flex
               wrapper adds NO overflow/transform/contain around the grid cell —
@@ -815,7 +815,7 @@ function RegistryBrowser() {
 
   return (
     <section className="py-16" id="registry-browser" ref={listRef}>
-      <div className="container max-w-7xl mx-auto px-4">
+      <div className="w-full max-w-[1600px] mx-auto px-4">
         {/* Expand/Collapse Header */}
         <button
           onClick={handleExpand}

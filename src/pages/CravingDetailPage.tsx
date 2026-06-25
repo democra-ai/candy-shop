@@ -26,7 +26,7 @@ export function CravingDetailPage() {
 
   if (!craving) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
         <h1 className="text-2xl font-candy font-bold mb-4">Craving not found</h1>
         <Button onClick={() => navigate('/discover?tab=craving')} className="rounded-2xl px-5">Back to Cravings</Button>
       </div>
@@ -64,7 +64,7 @@ export function CravingDetailPage() {
   } as const;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <button
         onClick={() => navigate(-1)}
         className="flex items-center gap-2 text-sm text-foreground-secondary hover:text-foreground mb-6 transition-colors"

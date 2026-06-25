@@ -68,7 +68,7 @@ export function MostPopularRail({ onRunSkill }: MostPopularRailProps) {
 
   return (
     <section className="py-8 md:py-12 relative" data-qa="rail">
-        <div className="container max-w-7xl mx-auto px-0">
+        <div className="w-full max-w-[1600px] mx-auto px-0">
           {/* Section header */}
           <div className="flex items-end justify-between gap-4 mb-5 md:mb-6">
             <div className="flex flex-col gap-1.5">

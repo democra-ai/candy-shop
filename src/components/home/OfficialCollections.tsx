@@ -101,7 +101,7 @@ export function OfficialCollections({ compact = false }: OfficialCollectionsProp
 
   return (
     <section className="py-12 bg-background">
-      <div className="container max-w-7xl mx-auto px-4">
+      <div className="w-full max-w-[1600px] mx-auto px-4">
         {/* Section Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">

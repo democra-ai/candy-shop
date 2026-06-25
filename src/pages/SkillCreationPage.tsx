@@ -60,7 +60,7 @@ export function SkillCreationPage({ onComplete, onCancel }: SkillCreationPagePro
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 md:py-12 space-y-6">
+    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-8 md:py-12 space-y-6">
       {/* Feedback Messages */}
       {feedback && (
         <div
