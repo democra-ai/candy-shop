@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ArrowUp } from 'lucide-react';
 import type { User } from '../../lib/supabaseAuth';
-import { Sidebar } from './Sidebar';
+import { Header } from './Header';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 // Candy-flavor primaries. `id` keys are stable (Raspberry=rose, Grape=violet,
@@ -187,7 +187,7 @@ export function Layout({
         style={{ transform: 'translateZ(0)', willChange: 'transform' }}
       />
 
-      <Sidebar
+      <Header
         onOpenAuth={onOpenAuth}
         onOpenCart={onOpenCart}
         user={user}
@@ -209,11 +209,11 @@ export function Layout({
           above the footer — but it stops short of a full viewport so it never
           INTRODUCES a void on tall pages. The outer wrapper carries the
           full-page `min-h-screen` background. */}
-      <main className="lg:pl-64 pt-14 min-h-[60vh] relative">
+      <main className="min-h-[60vh] relative">
         <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8 md:pt-6 md:pb-12">{children}</div>
       </main>
 
-      <footer className="lg:pl-64 w-full relative">
+      <footer className="w-full relative">
         {/* Clean hairline divider — single-hue, no rainbow candy-tape (DESIGN.md §5) */}
         <div className="h-px w-full bg-border" aria-hidden />
         <div className="py-10 glass-strong">

@@ -1,5 +1,23 @@
 import { useState, useEffect, useRef } from 'react';
-import { ShoppingBag, User as UserIcon, LogOut, Plus, Library, Menu, X, Moon, Sun, Check, Settings, Globe } from 'lucide-react';
+import {
+  ShoppingBag,
+  User as UserIcon,
+  LogOut,
+  Sparkles,
+  Library,
+  Menu,
+  X,
+  Moon,
+  Sun,
+  Check,
+  Settings,
+  Globe,
+  Candy,
+  Heart,
+  Plus,
+  BookOpen,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import type { User } from '../../lib/supabaseAuth';
 import { supabaseAuth } from '../../lib/supabaseAuth';
@@ -16,6 +34,27 @@ const themes = [
   { id: 'indigo', name: 'Cotton Candy', color: '#B06AB3', light: '#D49BD6' },
 ];
 
+interface NavItem {
+  id: string;
+  userLabelKey: string;
+  icon: LucideIcon;
+  action: string;
+}
+
+// Mirrors the Sidebar's two-sided nav model (the sole source of truth for routing).
+const navItems: NavItem[] = [
+  { id: 'candy', userLabelKey: 'nav.candy.user', icon: Candy, action: 'candy' },
+  { id: 'craving', userLabelKey: 'nav.craving.user', icon: Heart, action: 'craving' },
+  { id: 'post-candy', userLabelKey: 'nav.postCandy.user', icon: Candy, action: 'post-candy' },
+  { id: 'post-craving', userLabelKey: 'nav.postCraving.user', icon: Plus, action: 'post-craving' },
+  { id: 'man', userLabelKey: 'nav.man.user', icon: BookOpen, action: 'man' },
+];
+
+const userNavItems: NavItem[] = [
+  { id: 'create', userLabelKey: 'nav.create.user', icon: Sparkles, action: 'create' },
+  { id: 'library', userLabelKey: 'nav.library.user', icon: Library, action: 'library' },
+];
+
 interface HeaderProps {
   onOpenAuth: () => void;
   onOpenCart: () => void;
@@ -24,6 +63,10 @@ interface HeaderProps {
   onNavFind: () => void;
   onNavCd: () => void;
   onNavMan: () => void;
+  onNavCandy: () => void;
+  onNavCraving: () => void;
+  onNavPostCraving: () => void;
+  onNavPostCandy: () => void;
   isDarkMode: boolean;
   onToggleTheme: () => void;
   currentTheme: string;
@@ -38,6 +81,10 @@ export function Header({
   onNavFind,
   onNavCd,
   onNavMan,
+  onNavCandy,
+  onNavCraving,
+  onNavPostCraving,
+  onNavPostCandy,
   isDarkMode,
   onToggleTheme,
   currentTheme,
@@ -60,18 +107,61 @@ export function Header({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const navLinks = [
-    { label: t('nav.find.user'), action: onNavFind },
-    { label: t('nav.cd.user'), action: onNavCd },
-    { label: t('nav.man.user'), action: onNavMan },
-  ];
+  // Esc closes the mobile drawer (parity with the old Sidebar drawer semantics).
+  useEffect(() => {
+    if (!mobileOpen) return;
+    function handleEsc(e: KeyboardEvent) {
+      if (e.key === 'Escape') setMobileOpen(false);
+    }
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, [mobileOpen]);
+
+  // Active-link detection — copied from the Sidebar's getActiveAction so the
+  // top bar highlights the current page the same way the rail used to.
+  const getActiveAction = (): string | null => {
+    if (location.pathname === '/skills/create') return 'create';
+    if (location.pathname === '/skills/library') return 'library';
+    if (location.pathname === '/') {
+      const params = new URLSearchParams(location.search);
+      const tab = params.get('tab');
+      const modal = params.get('modal');
+      if (modal === 'post-candy') return 'post-candy';
+      if (modal === 'post-craving') return 'post-craving';
+      if (tab === 'craving') return 'craving';
+      return 'candy';
+    }
+    return null;
+  };
+  const activeAction = getActiveAction();
+
+  // Single routing switch — same action→callback wiring the Sidebar used.
+  const handleNavAction = (action: string) => {
+    switch (action) {
+      case 'candy': onNavCandy(); break;
+      case 'craving': onNavCraving(); break;
+      case 'post-craving': onNavPostCraving(); break;
+      case 'post-candy': onNavPostCandy(); break;
+      case 'find': onNavFind(); break;
+      case 'cd': onNavCd(); break;
+      case 'man': onNavMan(); break;
+      case 'create': navigate('/skills/create'); break;
+      case 'library': navigate('/skills/library'); break;
+    }
+    setMobileOpen(false);
+  };
+
+  const handleSignOut = () => {
+    supabaseAuth.auth.signOut();
+    setMobileOpen(false);
+  };
 
   return (
     <>
       <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur-sm">
         <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8 max-w-[1600px] mx-auto">
-          {/* Logo */}
-          <div className="flex items-center gap-8">
+          {/* Logo + desktop nav */}
+          <div className="flex items-center gap-6">
             <button
               onClick={() => navigate('/')}
               className="flex items-center hover:opacity-80 transition-opacity"
@@ -88,54 +178,59 @@ export function Header({
 
             {/* Desktop Nav */}
             <nav className="hidden md:flex items-center gap-1">
-              {navLinks.map((link) => (
-                <button
-                  key={link.label}
-                  onClick={link.action}
-                  className="px-3 py-2 text-sm text-foreground-secondary hover:text-foreground rounded-lg hover:bg-secondary transition-colors"
-                >
-                  {link.label}
-                </button>
-              ))}
-              {user && (
-                <>
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeAction === item.action;
+                return (
                   <button
-                    onClick={() => navigate('/skills/create')}
+                    key={item.id}
+                    onClick={() => handleNavAction(item.action)}
+                    aria-current={isActive ? 'page' : undefined}
                     className={cn(
                       'px-3 py-2 text-sm rounded-lg transition-colors flex items-center gap-1.5',
-                      location.pathname === '/skills/create'
-                        ? 'text-primary bg-primary/10'
+                      isActive
+                        ? 'text-primary bg-primary/10 font-semibold'
                         : 'text-foreground-secondary hover:text-foreground hover:bg-secondary'
                     )}
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                    {t('nav.create.user')}
+                    <Icon className="w-3.5 h-3.5" />
+                    {t(item.userLabelKey)}
                   </button>
-                  <button
-                    onClick={() => navigate('/skills/library')}
-                    className={cn(
-                      'px-3 py-2 text-sm rounded-lg transition-colors flex items-center gap-1.5',
-                      location.pathname === '/skills/library'
-                        ? 'text-primary bg-primary/10'
-                        : 'text-foreground-secondary hover:text-foreground hover:bg-secondary'
-                    )}
-                  >
-                    <Library className="w-3.5 h-3.5" />
-                    {t('nav.library.user')}
-                  </button>
-                </>
-              )}
+                );
+              })}
+              {user &&
+                userNavItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeAction === item.action;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => handleNavAction(item.action)}
+                      aria-current={isActive ? 'page' : undefined}
+                      className={cn(
+                        'px-3 py-2 text-sm rounded-lg transition-colors flex items-center gap-1.5',
+                        isActive
+                          ? 'text-primary bg-primary/10 font-semibold'
+                          : 'text-foreground-secondary hover:text-foreground hover:bg-secondary'
+                      )}
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      {t(item.userLabelKey)}
+                    </button>
+                  );
+                })}
             </nav>
           </div>
 
           {/* Right side */}
           <div className="flex items-center gap-2">
-            {/* Settings Dropdown */}
+            {/* Settings Dropdown (theme color + dark mode + language) */}
             <div ref={settingsRef} className="relative hidden md:block">
               <button
                 onClick={() => setSettingsOpen(!settingsOpen)}
                 className="p-2 text-foreground-secondary hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
                 aria-label="Settings"
+                aria-expanded={settingsOpen}
               >
                 <Settings className="w-4.5 h-4.5" />
               </button>
@@ -184,7 +279,6 @@ export function Header({
                     <Globe className="w-4 h-4" />
                     <span>{language === 'en' ? '中文' : 'English'}</span>
                   </button>
-
                 </div>
               )}
             </div>
@@ -221,9 +315,10 @@ export function Header({
                   </span>
                 </div>
                 <button
-                  onClick={() => supabaseAuth.auth.signOut()}
+                  onClick={handleSignOut}
                   className="p-2 text-foreground-secondary hover:text-error rounded-lg transition-colors"
                   title={t('logout')}
+                  aria-label={t('logout')}
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
@@ -242,6 +337,7 @@ export function Header({
               onClick={() => setMobileOpen(!mobileOpen)}
               className="md:hidden p-2 text-foreground-secondary hover:text-foreground rounded-lg transition-colors"
               aria-label="Menu"
+              aria-expanded={mobileOpen}
             >
               {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -250,35 +346,72 @@ export function Header({
 
         {/* Mobile Menu */}
         {mobileOpen && (
-          <div className="md:hidden border-t border-border bg-background animate-fade-in">
+          <div className="md:hidden border-t border-border bg-background animate-fade-in max-h-[calc(100vh-4rem)] overflow-y-auto">
             <div className="px-4 py-4 space-y-1">
-              {navLinks.map((link) => (
-                <button
-                  key={link.label}
-                  onClick={() => { link.action(); setMobileOpen(false); }}
-                  className="w-full text-left px-3 py-2.5 text-sm text-foreground-secondary hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
-                >
-                  {link.label}
-                </button>
-              ))}
-              {user && (
-                <>
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeAction === item.action;
+                return (
                   <button
-                    onClick={() => { navigate('/skills/create'); setMobileOpen(false); }}
-                    className="w-full text-left px-3 py-2.5 text-sm text-foreground-secondary hover:text-foreground hover:bg-secondary rounded-lg transition-colors flex items-center gap-2"
+                    key={item.id}
+                    onClick={() => handleNavAction(item.action)}
+                    aria-current={isActive ? 'page' : undefined}
+                    className={cn(
+                      'w-full text-left px-3 py-2.5 text-sm rounded-lg transition-colors flex items-center gap-2',
+                      isActive
+                        ? 'text-primary bg-primary/10 font-semibold'
+                        : 'text-foreground-secondary hover:text-foreground hover:bg-secondary'
+                    )}
                   >
-                    <Plus className="w-4 h-4" /> {t('nav.create.user')}
+                    <Icon className="w-4 h-4" /> {t(item.userLabelKey)}
                   </button>
-                  <button
-                    onClick={() => { navigate('/skills/library'); setMobileOpen(false); }}
-                    className="w-full text-left px-3 py-2.5 text-sm text-foreground-secondary hover:text-foreground hover:bg-secondary rounded-lg transition-colors flex items-center gap-2"
-                  >
-                    <Library className="w-4 h-4" /> {t('nav.library.user')}
-                  </button>
-                </>
-              )}
+                );
+              })}
+              {user &&
+                userNavItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeAction === item.action;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => handleNavAction(item.action)}
+                      aria-current={isActive ? 'page' : undefined}
+                      className={cn(
+                        'w-full text-left px-3 py-2.5 text-sm rounded-lg transition-colors flex items-center gap-2',
+                        isActive
+                          ? 'text-primary bg-primary/10 font-semibold'
+                          : 'text-foreground-secondary hover:text-foreground hover:bg-secondary'
+                      )}
+                    >
+                      <Icon className="w-4 h-4" /> {t(item.userLabelKey)}
+                    </button>
+                  );
+                })}
 
               <div className="h-px bg-border my-2" />
+
+              {/* Theme color swatches */}
+              <div className="px-3 py-1.5 text-xs font-medium text-foreground-tertiary uppercase tracking-wider">
+                {t('chooseTheme')}
+              </div>
+              <div className="px-3 py-2 flex gap-2">
+                {themes.map((theme) => (
+                  <button
+                    key={theme.id}
+                    onClick={() => onChangeTheme(theme.id)}
+                    className={cn(
+                      'w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all',
+                      currentTheme === theme.id
+                        ? 'border-foreground scale-110'
+                        : 'border-transparent hover:scale-110'
+                    )}
+                    style={{ backgroundColor: isDarkMode ? theme.light : theme.color }}
+                    title={t(`theme.${theme.id}`)}
+                  >
+                    {currentTheme === theme.id && <Check className="w-3 h-3 text-white" />}
+                  </button>
+                ))}
+              </div>
 
               <button
                 onClick={onToggleTheme}
@@ -296,16 +429,22 @@ export function Header({
                 {language === 'en' ? '中文' : 'English'}
               </button>
 
-              {!user && (
-                <>
-                  <div className="h-px bg-border my-2" />
-                  <button
-                    onClick={() => { onOpenAuth(); setMobileOpen(false); }}
-                    className="candy-btn btn-press w-full h-10 rounded-xl text-sm font-semibold"
-                  >
-                    {t('login')}
-                  </button>
-                </>
+              <div className="h-px bg-border my-2" />
+
+              {user ? (
+                <button
+                  onClick={handleSignOut}
+                  className="w-full text-left px-3 py-2.5 text-sm text-foreground-secondary hover:text-error hover:bg-secondary rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <LogOut className="w-4 h-4" /> {t('logout')}
+                </button>
+              ) : (
+                <button
+                  onClick={() => { onOpenAuth(); setMobileOpen(false); }}
+                  className="candy-btn btn-press w-full h-10 rounded-xl text-sm font-semibold"
+                >
+                  {t('login')}
+                </button>
               )}
             </div>
           </div>
