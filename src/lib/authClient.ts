@@ -19,8 +19,13 @@ const HUB =
   (import.meta.env.VITE_AUTH_HUB_URL as string | undefined)?.replace(/\/+$/, '') ||
   'https://auth.democra.ai';
 
+// Candy is its own tenant at the hub: /candy/api/auth, cookie `ba-candy.*`, sender
+// candy@democra.ai. The tenant cookie is zone-scoped (.democra.ai) so it reaches candy-api.
+const HUB_PATH =
+  (import.meta.env.VITE_AUTH_HUB_PATH as string | undefined)?.replace(/\/+$/, '') || '/candy/api/auth';
+
 export const authClient = createAuthClient({
-  baseURL: `${HUB}/api/auth`,
+  baseURL: `${HUB}${HUB_PATH}`,
   plugins: [emailOTPClient(), passkeyClient()],
 });
 

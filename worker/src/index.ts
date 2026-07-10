@@ -16,6 +16,8 @@ type Bindings = {
   SESSIONS: KVNamespace;
   /** The organization's identity hub. Every product signs users in here. */
   AUTH_HUB_URL?: string;
+  /** This product's auth base path at the hub. Candy is a tenant → "/candy/api/auth". */
+  AUTH_HUB_PATH?: string;
   AI_BUDGET: KVNamespace;
   AI: Ai;
   STRIPE_SECRET_KEY: string;
@@ -70,6 +72,8 @@ type Session = {
 };
 
 const AUTH_HUB = (env: Bindings) => (env.AUTH_HUB_URL || 'https://auth.democra.ai').replace(/\/+$/, '');
+/** Candy's own tenant path at the hub — its session lives under /candy/api/auth, cookie `ba-candy.*`. */
+const AUTH_HUB_PATH = (env: Bindings) => (env.AUTH_HUB_PATH || '/candy/api/auth').replace(/\/+$/, '');
 
 /**
  * The organization's identity hub owns every real user (auth.democra.ai).
@@ -89,8 +93,10 @@ async function readHubSession(c: any): Promise<Session | null> {
   const bearer = c.req.header('authorization') ?? '';
   const cred = bearer || cookie;
   if (!cred) return null;
-  // Nothing that looks like a hub session? Don't pay for a round trip.
-  if (!bearer && !/better-auth\.session_token/.test(cookie)) return null;
+  // Nothing that looks like a hub session? Don't pay for a round trip. Matches any
+  // "<prefix>session_token" cookie (ba-candy.session_token for the tenant, and the old
+  // better-auth.session_token during the cutover).
+  if (!bearer && !/(?:^|;\s*)[\w.-]*session_token=/.test(cookie)) return null;
 
   const key = `hub:${await sha256(cred)}`;
   const cached = await c.env.SESSIONS.get(key);
@@ -98,7 +104,7 @@ async function readHubSession(c: any): Promise<Session | null> {
 
   let sess: Session | null = null;
   try {
-    const r = await fetch(`${AUTH_HUB(c.env)}/api/auth/get-session`, {
+    const r = await fetch(`${AUTH_HUB(c.env)}${AUTH_HUB_PATH(c.env)}/get-session`, {
       headers: {
         ...(cookie ? { cookie } : {}),
         ...(bearer ? { authorization: bearer } : {}),

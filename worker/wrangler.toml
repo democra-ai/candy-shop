@@ -52,6 +52,8 @@ binding = "AI"
 # The organization's identity hub. Candy Shop stores no credentials of its own —
 # it asks auth.democra.ai who the caller is.
 AUTH_HUB_URL = "https://auth.democra.ai"
+# Candy is its own tenant at the hub (isolated user pool, sender candy@democra.ai).
+AUTH_HUB_PATH = "/candy/api/auth"
 # Leave empty by default; checkout route falls back to request origin.
 PUBLIC_APP_ORIGIN = ""
 # Public URL of the agent worker (deploys as `cc-sandbox`). Unset → the
