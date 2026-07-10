@@ -1,42 +1,17 @@
-import { useEffect } from 'react';
-import { supabase } from '../../lib/supabaseClient';
-import { isSupabaseConnected } from '../../lib/dataProvider';
-import { toast } from 'sonner';
-
 /**
- * Subscribe to real-time skill/craving inserts.
- * Shows a toast notification when new items are added.
+ * Real-time skill/craving notifications.
+ *
+ * DISABLED. candy-shop's data layer is `src/lib/supabaseClient.ts` — a Cloudflare
+ * Worker-backed shim whose `.channel()` is an explicit no-op ("realtime disabled
+ * on CF for now"). The old implementation subscribed to `postgres_changes` behind
+ * an `isSupabaseConnected()` gate, which read VITE_SUPABASE_* — the last thing in
+ * the app that touched the retired Supabase project. Identity now lives on the org
+ * hub (auth.democra.ai) and data on candy-api.democra.ai, so the gate and the
+ * subscription are both gone; this never fired either way.
+ *
+ * Kept as a stable mount point (App.tsx calls it) so re-enabling realtime later
+ * means filling this in rather than re-threading a hook through the tree.
  */
 export function useRealtimeNotifications() {
-  useEffect(() => {
-    if (!isSupabaseConnected()) return;
-
-    const channel = supabase
-      .channel('public-changes')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'skills' },
-        (payload: { new?: Record<string, unknown> }) => {
-          const name = (payload.new as { name?: string })?.name || 'New skill';
-          toast.info(`New candy just dropped: ${name}`, {
-            duration: 4000,
-          });
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'cravings' },
-        (payload: { new?: Record<string, unknown> }) => {
-          const title = (payload.new as { title?: string })?.title || 'New craving';
-          toast.info(`New craving posted: ${title}`, {
-            duration: 4000,
-          });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+  // no-op — see above.
 }
