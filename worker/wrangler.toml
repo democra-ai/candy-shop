@@ -3,14 +3,22 @@ main = "src/index.ts"
 compatibility_date = "2025-04-01"
 compatibility_flags = ["nodejs_compat"]
 
-# Workers.dev default domain
+# Workers.dev default domain (kept for direct testing)
 workers_dev = true
+
+# Serve the API from the zone so the organization's `.democra.ai` session cookie
+# reaches it. On *.workers.dev — a different registrable domain — the browser
+# never sends that cookie, so the hub identity could not be read at all.
+# candy-api is a FIRST-level subdomain, covered by the free Universal SSL cert.
+routes = [
+  { pattern = "candy-api.democra.ai", custom_domain = true }
+]
 
 # Pin to an empty assets dir; without this Wrangler 4.82 auto-detects
 # the SPA's `../dist/` parent and tries to upload all of node_modules
 # as static assets, blowing up on 25 MiB-per-file limits.
 [assets]
-directory = "/Users/tao.shen/democra-ai/candy-shop/worker/.empty-assets"
+directory = "./.empty-assets"
 
 # D1 binding — the database id is filled in after
 # `wrangler d1 create candy-shop-db`.
@@ -41,6 +49,9 @@ binding = "AI"
 #   wrangler secret put STRIPE_WEBHOOK_SECRET
 #   wrangler secret put CC_AGENT_TICKET_SECRET   # shared with cc-sandbox
 [vars]
+# The organization's identity hub. Candy Shop stores no credentials of its own —
+# it asks auth.democra.ai who the caller is.
+AUTH_HUB_URL = "https://auth.democra.ai"
 # Leave empty by default; checkout route falls back to request origin.
 PUBLIC_APP_ORIGIN = ""
 # Public URL of the agent worker (deploys as `cc-sandbox`). Unset → the

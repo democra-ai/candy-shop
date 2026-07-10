@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Heart, Star, Package, Plus, ArrowRight } from 'lucide-react';
-import type { User } from '../lib/supabaseAuth';
+import type { User } from '../lib/authClient';
 import { storageUtils } from '../utils/storage';
 import { SKILLS_DATA } from '../data/skillsData';
 import { cn } from '../utils/cn';
@@ -59,7 +59,7 @@ export function DashboardPage({ user, onOpenAuth }: DashboardPageProps) {
     );
   }
 
-  const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture;
+  const avatarUrl = user.user_metadata?.avatar_url;
   const displayName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Agent';
 
   const tabs = [

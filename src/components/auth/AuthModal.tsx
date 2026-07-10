@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { supabaseAuth } from '../../lib/supabaseAuth';
-import { Mail, Loader2, Check } from 'lucide-react';
+import { hubAuth } from '../../lib/authClient';
+import { Mail, Loader2, KeyRound } from 'lucide-react';
 import { ModalShell } from '../ui/ModalShell';
 
 // Pragmatic email check — rejects the obvious junk (no @, no domain, spaces,
@@ -11,9 +11,9 @@ function isValidEmail(value: string): boolean {
   return EMAIL_RE.test(value);
 }
 
-// Turn whatever the auth layer throws into a calm, human message. The backend
-// (Supabase) can be fully down — in which case the SDK throws a bare
-// "Failed to fetch" / network error — so we special-case that instead of
+// Turn whatever the auth layer throws into a calm, human message. The identity
+// hub (auth.democra.ai) can be fully down — in which case the client throws a
+// bare "Failed to fetch" / network error — so we special-case that instead of
 // leaking the raw string to the user.
 function toFriendlyAuthError(err: unknown): string {
   const raw = err instanceof Error ? err.message : String(err ?? '');
@@ -44,23 +44,34 @@ interface AuthModalProps {
 }
 
 export function AuthModal({ isOpen, onClose }: AuthModalProps) {
-  const [loading, setLoading] = useState<'google' | 'github' | 'email' | null>(null);
+  const [loading, setLoading] = useState<'google' | 'github' | 'email' | 'passkey' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [emailSent, setEmailSent] = useState(false);
+  const [code, setCode] = useState('');
 
   const handleSocialLogin = async (provider: 'google' | 'github') => {
     setLoading(provider);
     setError(null);
     try {
-      const redirectTo = `${window.location.origin}/auth/callback`;
-      const { error } = await supabaseAuth.auth.signInWithOAuth({
-        provider,
-        options: { redirectTo },
-      });
-      // On success the browser is redirected to the provider, so this line
-      // is normally never reached. If it returns with an error, surface it.
-      if (error) throw error;
+      // The hub owns the single OAuth callback registered with the provider.
+      // On success the browser leaves for the provider, so we rarely return here.
+      const { error } = await hubAuth.signInWithProvider(provider);
+      if (error) throw new Error(error.message ?? 'sign-in failed');
+    } catch (err) {
+      setError(toFriendlyAuthError(err));
+      setLoading(null);
+    }
+  };
+
+  const handlePasskeyLogin = async () => {
+    setLoading('passkey');
+    setError(null);
+    try {
+      const res = await hubAuth.signInWithPasskey();
+      if (res?.error) throw new Error(res.error.message ?? 'passkey sign-in failed');
+      onClose();
+      window.location.reload();
     } catch (err) {
       setError(toFriendlyAuthError(err));
       setLoading(null);
@@ -83,12 +94,29 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setLoading('email');
     setError(null);
     try {
-      const { error } = await supabaseAuth.auth.signInWithOtp({
-        email: trimmed,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-      });
-      if (error) throw error;
+      const { error } = await hubAuth.sendEmailCode(trimmed);
+      if (error) throw new Error(error.message ?? 'could not send the code');
       setEmailSent(true);
+    } catch (err) {
+      setError(toFriendlyAuthError(err));
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    const otp = code.trim();
+    if (otp.length < 6) {
+      setError('Enter the 6-digit code from your email.');
+      return;
+    }
+    setLoading('email');
+    setError(null);
+    try {
+      const { error } = await hubAuth.verifyEmailCode(email.trim(), otp);
+      if (error) throw new Error(error.message ?? 'that code did not work');
+      onClose();
+      window.location.reload();
     } catch (err) {
       setError(toFriendlyAuthError(err));
     } finally {
@@ -180,10 +208,53 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
         </div>
       </div>
 
+      <button
+        onClick={handlePasskeyLogin}
+        disabled={loading !== null}
+        className="w-full h-10 mb-4 flex items-center justify-center gap-2 text-foreground-secondary hover:bg-secondary hover:text-foreground rounded-xl transition-colors duration-200 text-sm font-medium cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
+        aria-label="Sign in with a passkey"
+      >
+        {loading === 'passkey' ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
+        Sign in with a passkey
+      </button>
+
       {emailSent ? (
-        <div className="flex items-center justify-center gap-2 p-3 bg-success/10 border border-success/20 text-success text-sm rounded-xl font-medium" role="status">
-          <Check className="w-4 h-4" />
-          Magic link sent — check your inbox.
+        <div className="space-y-3">
+          <p className="text-center text-sm text-foreground-secondary" role="status">
+            We emailed a 6-digit code to <span className="text-foreground font-medium">{email}</span>.
+          </p>
+          <input
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            value={code}
+            onChange={(e) => {
+              setCode(e.target.value.replace(/\D/g, ''));
+              if (error) setError(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleVerifyCode();
+            }}
+            placeholder="123456"
+            disabled={loading !== null}
+            className="w-full h-11 px-4 bg-card border border-border rounded-xl text-foreground text-center text-lg tracking-[0.4em] font-mono placeholder:text-foreground-tertiary placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-ring focus:border-border-hover transition-colors duration-200 disabled:opacity-50"
+            aria-label="Six-digit sign-in code"
+          />
+          <button
+            onClick={handleVerifyCode}
+            disabled={loading !== null}
+            className="w-full h-10 flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:opacity-90 rounded-xl transition-opacity duration-200 text-sm font-medium cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading === 'email' ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            Verify code
+          </button>
+          <button
+            onClick={() => { setEmailSent(false); setCode(''); setError(null); }}
+            className="w-full text-center text-xs text-foreground-tertiary hover:text-foreground-secondary cursor-pointer"
+          >
+            Use a different email
+          </button>
         </div>
       ) : (
         <div className="space-y-3">
@@ -209,14 +280,14 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
             onClick={handleEmailLogin}
             disabled={loading !== null}
             className="w-full h-10 flex items-center justify-center gap-2 text-foreground-secondary hover:bg-secondary hover:text-foreground rounded-xl transition-colors duration-200 text-sm font-medium cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label="Send magic link"
+            aria-label="Email me a sign-in code"
           >
             {loading === 'email' ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
               <Mail className="w-4 h-4" />
             )}
-            Send magic link
+            Email me a code
           </button>
         </div>
       )}

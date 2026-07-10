@@ -19,8 +19,8 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import type { User } from '../../lib/supabaseAuth';
-import { supabaseAuth } from '../../lib/supabaseAuth';
+import type { User } from '../../lib/authClient';
+import { hubAuth } from '../../lib/authClient';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { cn } from '../../utils/cn';
 
@@ -151,9 +151,10 @@ export function Header({
     setMobileOpen(false);
   };
 
-  const handleSignOut = () => {
-    supabaseAuth.auth.signOut();
+  const handleSignOut = async () => {
+    await hubAuth.signOut();
     setMobileOpen(false);
+    window.location.reload();
   };
 
   return (

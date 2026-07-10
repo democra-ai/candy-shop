@@ -1,77 +1,41 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabaseAuth } from '../../lib/supabaseAuth';
+import { authClient } from '../../lib/authClient';
 
+/**
+ * Legacy landing route.
+ *
+ * The organization's identity hub (auth.democra.ai) owns the OAuth callback and
+ * sends the user straight back to `/` with the `.democra.ai` session cookie
+ * already set — nothing is exchanged here any more. This page survives only so
+ * an old bookmark still lands somewhere sane: confirm the session, then move on.
+ */
 export function AuthCallback() {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const handleAuthCallback = async () => {
-      try {
-        // The real Supabase client (detectSessionInUrl + PKCE) auto-exchanges
-        // the `?code=...` in the redirect URL for a session on load. Give it a
-        // beat to finish, then read the session.
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        const { data: { session }, error: sessionError } = await supabaseAuth.auth.getSession();
-        
-        if (sessionError) {
-          console.error('Error getting session:', sessionError);
-          setError(sessionError.message);
-          setTimeout(() => {
-            navigate('/', { replace: true });
-          }, 2000);
-          return;
-        }
-
-        // Clear the hash from URL
-        if (window.location.hash) {
-          window.history.replaceState(null, '', window.location.pathname);
-        }
-
-        if (session) {
-          // Successfully authenticated, redirect to home
+    let cancelled = false;
+    authClient
+      .getSession()
+      .then((r) => {
+        if (cancelled) return;
+        if (r.data?.user) {
           navigate('/', { replace: true });
         } else {
-          // No session found, wait for auth state change
-          const { data: { subscription } } = supabaseAuth.auth.onAuthStateChange((event, session) => {
-            if (event === 'SIGNED_IN' && session) {
-              window.history.replaceState(null, '', window.location.pathname);
-              navigate('/', { replace: true });
-              subscription.unsubscribe();
-            } else if (event === 'SIGNED_OUT') {
-              // Auth failed
-              setError('Authentication failed. Please try again.');
-              setTimeout(() => {
-                navigate('/', { replace: true });
-                subscription.unsubscribe();
-              }, 2000);
-            }
-          });
-
-          // Timeout after 5 seconds
-          setTimeout(() => {
-            subscription.unsubscribe();
-            if (!error) {
-              setError('Authentication timeout. Please try again.');
-              setTimeout(() => {
-                navigate('/', { replace: true });
-              }, 2000);
-            }
-          }, 5000);
+          setError('We could not confirm your sign-in.');
+          setTimeout(() => navigate('/', { replace: true }), 2000);
         }
-      } catch (error) {
-        console.error('Auth callback error:', error);
-        setError('Authentication failed. Please try again.');
-        setTimeout(() => {
-          navigate('/', { replace: true });
-        }, 2000);
-      }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setError('Could not reach the sign-in service.');
+        setTimeout(() => navigate('/', { replace: true }), 2000);
+      });
+    return () => {
+      cancelled = true;
     };
-
-    handleAuthCallback();
-  }, [navigate, error]);
+  }, [navigate]);
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-white">

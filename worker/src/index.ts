@@ -14,6 +14,8 @@ import Stripe from 'stripe';
 type Bindings = {
   DB: D1Database;
   SESSIONS: KVNamespace;
+  /** The organization's identity hub. Every product signs users in here. */
+  AUTH_HUB_URL?: string;
   AI_BUDGET: KVNamespace;
   AI: Ai;
   STRIPE_SECRET_KEY: string;
@@ -60,14 +62,80 @@ const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days
 
 type Session = {
   sub: string;               // user id (random for guest, provider-id for OAuth)
-  provider: 'guest' | 'github' | 'google';
+  provider: 'guest' | 'github' | 'google' | 'hub';
   email?: string;
   display_name?: string;
   avatar_url?: string;
   created_at: number;
 };
 
+const AUTH_HUB = (env: Bindings) => (env.AUTH_HUB_URL || 'https://auth.democra.ai').replace(/\/+$/, '');
+
+/**
+ * The organization's identity hub owns every real user (auth.democra.ai).
+ * We never mint or store their credentials — we ask the hub who the caller is.
+ *
+ * Two ways the hub identifies a request, tried in order:
+ *   1. the `.democra.ai` SSO cookie, forwarded verbatim (works once this Worker
+ *      is served from a *.democra.ai route);
+ *   2. an `Authorization: Bearer <token>` the frontend forwards (the hub's
+ *      bearer plugin validates it) — the path that works from *.workers.dev.
+ *
+ * The hub's answer is cached in KV for a minute, keyed by the credential, so a
+ * page of API calls costs one round trip rather than one each.
+ */
+async function readHubSession(c: any): Promise<Session | null> {
+  const cookie = c.req.header('cookie') ?? '';
+  const bearer = c.req.header('authorization') ?? '';
+  const cred = bearer || cookie;
+  if (!cred) return null;
+  // Nothing that looks like a hub session? Don't pay for a round trip.
+  if (!bearer && !/better-auth\.session_token/.test(cookie)) return null;
+
+  const key = `hub:${await sha256(cred)}`;
+  const cached = await c.env.SESSIONS.get(key);
+  if (cached) return cached === 'null' ? null : (JSON.parse(cached) as Session);
+
+  let sess: Session | null = null;
+  try {
+    const r = await fetch(`${AUTH_HUB(c.env)}/api/auth/get-session`, {
+      headers: {
+        ...(cookie ? { cookie } : {}),
+        ...(bearer ? { authorization: bearer } : {}),
+        accept: 'application/json',
+      },
+    });
+    if (r.ok) {
+      const j = (await r.json()) as { user?: { id: string; email?: string; name?: string; image?: string } } | null;
+      if (j?.user?.id) {
+        sess = {
+          sub: j.user.id,
+          provider: 'hub',
+          email: j.user.email,
+          display_name: j.user.name,
+          avatar_url: j.user.image ?? undefined,
+          created_at: Date.now(),
+        };
+      }
+    }
+  } catch {
+    return null; // hub unreachable → fall back to the local session, never 500
+  }
+  // Cache both hits and misses briefly; a miss is the common unauthenticated case.
+  await c.env.SESSIONS.put(key, JSON.stringify(sess), { expirationTtl: 60 });
+  return sess;
+}
+
+async function sha256(v: string): Promise<string> {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(v));
+  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
+}
+
 async function readSession(c: any): Promise<Session | null> {
+  // A signed-in organization user always wins over a local guest session.
+  const hub = await readHubSession(c);
+  if (hub) return hub;
+
   const token = getCookie(c, SESSION_COOKIE);
   if (!token) return null;
   const raw = await c.env.SESSIONS.get(`s:${token}`);
@@ -444,12 +512,20 @@ app.post('/api/payment/checkout', async (c) => {
   const stripe = stripeFor(c.env);
   if (!stripe) return c.json({ error: 'Stripe is not configured on this server' }, 503);
 
+  // The buyer is whoever the session says they are — never a client-supplied id.
+  // Trusting userId let a caller bill a purchase to (and grant entitlements
+  // to) any account they named, and recorded purchases under an id that the
+  // run-time entitlement check never looks up.
+  const sess = await readSession(c);
+  if (!sess) return c.json({ error: 'sign in to purchase' }, 401);
+  const userId = sess.sub;
+
   const body = await c.req.json().catch(() => null) as {
-    skillIds?: string[]; userId?: string;
+    skillIds?: string[];
     successUrl?: string; cancelUrl?: string;
   } | null;
-  if (!body?.skillIds?.length || !body.userId) {
-    return c.json({ error: 'skillIds and userId are required' }, 400);
+  if (!body?.skillIds?.length) {
+    return c.json({ error: 'skillIds are required' }, 400);
   }
 
   const placeholders = body.skillIds.map(() => '?').join(',');
@@ -496,7 +572,7 @@ app.post('/api/payment/checkout', async (c) => {
     success_url: `${baseSuccess}${sep}session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: body.cancelUrl || `${origin}/?payment=cancelled`,
     metadata: {
-      userId: body.userId,
+      userId: userId,
       skillIds: items.map(i => i.skillId).join(','),
     },
     expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
@@ -508,7 +584,7 @@ app.post('/api/payment/checkout', async (c) => {
     `INSERT INTO checkout_sessions (id, user_id, provider, status, skill_ids, total_amount, currency, stripe_session_id)
      VALUES (?, ?, 'stripe', 'open', ?, ?, ?, ?)`
   ).bind(
-    sessionRowId, body.userId,
+    sessionRowId, userId,
     JSON.stringify(items.map(i => i.skillId)),
     total, items[0]?.currency || 'usd', session.id,
   ).run().catch(err => console.error('D1 insert checkout_sessions failed:', err));
@@ -527,24 +603,32 @@ app.get('/api/payment/verify/:sessionId', async (c) => {
   });
 });
 
+// A caller may only read their OWN entitlements/purchases. The :userId in the path is
+// kept for URL compatibility but is authorized against the session, never trusted.
 app.get('/api/payment/entitlements/:userId', async (c) => {
+  const sess = await readSession(c);
+  if (!sess) return c.json({ entitlements: [] });
   const { results } = await c.env.DB.prepare(
     `SELECT * FROM entitlements WHERE user_id = ?`
-  ).bind(c.req.param('userId')).all();
+  ).bind(sess.sub).all();
   return c.json({ entitlements: results || [] });
 });
 
 app.get('/api/payment/purchases/:userId', async (c) => {
+  const sess = await readSession(c);
+  if (!sess) return c.json({ purchases: [] });
   const { results } = await c.env.DB.prepare(
     `SELECT p.*, s.name AS skill_name, s.icon AS skill_icon, s.category AS skill_category
      FROM purchases p LEFT JOIN skills s ON s.id = p.skill_id
      WHERE p.user_id = ? ORDER BY p.created_at DESC`
-  ).bind(c.req.param('userId')).all();
+  ).bind(sess.sub).all();
   return c.json({ purchases: results || [] });
 });
 
 app.get('/api/payment/check/:userId/:skillId', async (c) => {
-  const { userId, skillId } = c.req.param();
+  const { skillId } = c.req.param();
+  const sess = await readSession(c);
+  const userId = sess?.sub ?? '';
   const skill = await c.env.DB.prepare(
     `SELECT pricing_model, price_amount FROM skills WHERE id = ? LIMIT 1`
   ).bind(skillId).first<{ pricing_model: string; price_amount: number }>();
@@ -644,6 +728,17 @@ const AI_DAILY_REQUEST_CAP_LOCAL = 40;
 const AI_DAILY_REQUEST_CAP_PAID = 200;
 const AI_MODEL = '@cf/meta/llama-3.1-8b-instruct-fast';
 
+// Selectable Workers AI models for the picker (cf-ai runtime). The /api/ai/
+// health route probes each so the picker can red/green them; /api/ai/chat
+// accepts any id in this allowlist (default = AI_MODEL).
+const AI_MODELS = [
+  { id: '@cf/meta/llama-3.1-8b-instruct-fast',      label: 'Llama 3.1 8B (fast)', note: 'fastest', default: true },
+  { id: '@cf/meta/llama-3.1-8b-instruct',           label: 'Llama 3.1 8B' },
+  { id: '@cf/meta/llama-3.3-70b-instruct-fp8-fast', label: 'Llama 3.3 70B' },
+  { id: '@cf/meta/llama-4-scout-17b-16e-instruct',  label: 'Llama 4 Scout 17B' },
+];
+const AI_MODEL_IDS = new Set(AI_MODELS.map((m) => m.id));
+
 function todayKey(prefix: string) {
   const d = new Date();
   const k = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
@@ -696,6 +791,7 @@ app.post('/api/ai/chat', async (c) => {
 
   const body = await c.req.json().catch(() => null) as {
     messages?: { role: 'system' | 'user' | 'assistant'; content: string }[];
+    model?: string;
   } | null;
 
   if (!body?.messages?.length) return c.json({ error: 'messages required' }, 400);
@@ -705,6 +801,9 @@ app.post('/api/ai/chat', async (c) => {
     role: m.role,
     content: (m.content ?? '').slice(0, 1024),
   }));
+
+  // Selectable model (cf-ai picker) — validated against the allowlist.
+  const model = body.model && AI_MODEL_IDS.has(body.model) ? body.model : AI_MODEL;
 
   await c.env.AI_BUDGET.put(budgetKey, String(used + 1), {
     expirationTtl: secondsUntilUtcMidnight(),
@@ -720,7 +819,7 @@ app.post('/api/ai/chat', async (c) => {
         'Content-Type': 'application/json',
         'x-shared-secret': c.env.AI_PROXY_SECRET!,
       },
-      body: JSON.stringify({ model: AI_MODEL, messages, max_tokens: 512 }),
+      body: JSON.stringify({ model, messages, max_tokens: 512 }),
     });
     if (!upstream.ok) {
       const err = await upstream.text().catch(() => '');
@@ -730,21 +829,69 @@ app.post('/api/ai/chat', async (c) => {
     return c.json({
       role: 'assistant',
       content: j.response ?? '',
-      model: AI_MODEL,
+      model,
       backend,
       budget: { used: used + 1, limit },
     });
   }
 
   // Local fallback: use this Worker's own env.AI (main account, free plan).
-  const result = await c.env.AI.run(AI_MODEL, { messages, max_tokens: 512 }) as { response?: string };
+  const result = await c.env.AI.run(model as Parameters<typeof c.env.AI.run>[0], { messages, max_tokens: 512 }) as { response?: string };
   return c.json({
     role: 'assistant',
     content: result.response ?? '',
-    model: AI_MODEL,
+    model,
     backend,
     budget: { used: used + 1, limit },
   });
+});
+
+// Selectable model catalog + per-model health for the picker (cf-ai runtime).
+app.get('/api/ai/models', (c) =>
+  c.json({ runtime: 'ai', default: AI_MODEL, models: AI_MODELS }),
+);
+
+app.get('/api/ai/health', async (c) => {
+  const model = c.req.query('model') || AI_MODEL;
+  if (!AI_MODEL_IDS.has(model)) return c.json({ model, ok: false, error: 'unknown model' });
+  // Probe the SAME backend /api/ai/chat would use, so the picker's red/green
+  // reflects where chat actually runs. On a workers-paid deployment the local
+  // free binding can be Neuron-capped while the proxy is healthy (and vice
+  // versa) — probing the wrong plane would make the lights lie.
+  const backend = aiBackend(c.env);
+  const started = Date.now();
+  try {
+    if (backend === 'workers-paid') {
+      const r = await fetch(`${c.env.AI_PROXY_URL!.replace(/\/+$/, '')}/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-shared-secret': c.env.AI_PROXY_SECRET!,
+        },
+        body: JSON.stringify({ model, messages: [{ role: 'user', content: 'ping' }], max_tokens: 1 }),
+      });
+      return c.json({
+        model,
+        ok: r.ok,
+        latencyMs: Date.now() - started,
+        backend,
+        ...(r.ok ? {} : { error: `proxy HTTP ${r.status}` }),
+      });
+    }
+    const out = await c.env.AI.run(model as Parameters<typeof c.env.AI.run>[0], {
+      messages: [{ role: 'user', content: 'ping' }],
+      max_tokens: 1,
+    }) as { response?: string };
+    return c.json({ model, ok: out != null, latencyMs: Date.now() - started, backend });
+  } catch (e) {
+    return c.json({
+      model,
+      ok: false,
+      latencyMs: Date.now() - started,
+      backend,
+      error: e instanceof Error ? e.message : 'probe failed',
+    });
+  }
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -1497,6 +1644,26 @@ app.get('/api/cc/budget', async (c) => {
     resets_in_seconds: secondsUntilUtcMidnight(),
   });
 });
+
+// Model catalog + per-model health, proxied to cc-sandbox (which holds the
+// z.ai key). The ModelPicker reads /api/cc/models and /api/cc/health; the
+// OpenCode runtime reuses these too (same GLM backend, provider stripped).
+async function proxyCcGet(c: any, path: string): Promise<Response> {
+  const search = new URL(c.req.url).search;
+  const target = ccSandboxUrl(c).replace(/\/+$/, '') + path + search;
+  try {
+    const r = await fetch(target, { method: 'GET' });
+    const text = await r.text();
+    return new Response(text, {
+      status: r.status,
+      headers: { 'content-type': r.headers.get('content-type') || 'application/json' },
+    });
+  } catch (e) {
+    return c.json({ error: e instanceof Error ? e.message : 'proxy failed' }, 502);
+  }
+}
+app.get('/api/cc/models', (c) => proxyCcGet(c, '/models'));
+app.get('/api/cc/health', (c) => proxyCcGet(c, '/health'));
 
 // ═══════════════════════════════════════════════════════════════
 // Fallback

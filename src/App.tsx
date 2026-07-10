@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useSyncExternalStore, Component, Suspense, lazy, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, Navigate, useLocation, useSearchParams } from 'react-router-dom';
 import { Toaster, toast } from 'sonner';
-import type { User } from './lib/supabaseAuth';
-import { supabaseAuth } from './lib/supabaseAuth';
+import type { User } from './lib/authClient';
+import { authClient, toAppUser } from './lib/authClient';
 import { Layout } from './components/layout/Layout';
 import { Hero, type MarketplaceTab } from './components/home/Hero';
 import { SkillsGrid } from './components/home/SkillsGrid';
@@ -412,19 +412,29 @@ function AppContent() {
   });
 
   useEffect(() => {
-    // Identity comes from the REAL Supabase client now. Data still flows
-    // through the worker shim (`supabase`) elsewhere in the app.
-    supabaseAuth.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-    });
+    // Identity comes from the organization's hub (auth.democra.ai). A user who
+    // signed in on any sibling product is already signed in here — the session
+    // cookie is set on `.democra.ai`. Data still flows through the worker shim.
+    let alive = true;
+    const sync = () =>
+      authClient
+        .getSession()
+        .then((r) => {
+          if (alive) setUser(toAppUser(r.data?.user));
+        })
+        .catch(() => {
+          if (alive) setUser(null);
+        });
 
-    const {
-      data: { subscription },
-    } = supabaseAuth.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
+    sync();
+    // Re-check when the tab regains focus: the user may have signed in or out
+    // on another Democra AI product in a different tab.
+    const onFocus = () => sync();
+    window.addEventListener('focus', onFocus);
+    return () => {
+      alive = false;
+      window.removeEventListener('focus', onFocus);
+    };
   }, []);
 
   const handleAddToCart = (id: string) => {
