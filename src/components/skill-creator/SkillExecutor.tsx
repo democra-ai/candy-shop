@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-import {
+import { HardDrive,
   X,
   Loader2,
   Sparkles,
@@ -89,6 +89,7 @@ import {
 import { streamLangGraphRun, warmLangGraph } from '../../lib/cfLangGraphClient';
 import { streamN8nRun, warmN8n } from '../../lib/cfN8nClient';
 import { streamPiRun, warmPi, type PiStdoutEvent } from '../../lib/cfPiClient';
+import { runComputerSkill, listComputerFiles } from '../../lib/cfComputerClient';
 import {
   streamDynamicWorkerRun,
   warmDynamicWorker,
@@ -1674,17 +1675,23 @@ export function SkillExecutor({ skill, onClose, userId, onRequireAuth, onPurchas
   //   opencode → legacy local OpenCode SDK path (kept as a fallback)
   //   pi       → Pi coding agent (pi-sandbox), headless `pi -p --mode json`,
   //             KEYLESS over a Workers-AI OpenAI shim; streams real Pi output.
-  type RuntimeMode = 'opencode' | 'cf-ai' | 'cf-cc' | 'pi';
+  type RuntimeMode = 'opencode' | 'cf-ai' | 'cf-cc' | 'pi' | 'computer';
   // Pi is the one and only agent runtime exposed to users — every skill runs on
   // pi-sandbox. The other backends (Claude Code / Workers AI / OpenCode) stay in
   // the code for internal use but are hidden from the picker.
-  const [runtimeMode] = useState<RuntimeMode>('pi');
+  // Pi stays the default runtime. 'computer' (@cloudflare/computer) is the
+  // opt-in PERSISTENT alternative: its workspace is a Durable Object, so a
+  // skill's files survive between runs instead of dying with the container.
+  const [runtimeMode, setRuntimeMode] = useState<RuntimeMode>('pi');
 
   // Per-runtime model selection. cc/oc run GLM models on z.ai; cf-ai and pi run
   // Workers AI (pi via its keyless OpenAI-compat shim). The <ModelPicker> writes
   // the chosen ModelConfig for whichever runtime is active; every run path below
   // reads `selectedModel`.
   const [modelByRuntime, setModelByRuntime] = useState<Record<RuntimeMode, ModelConfig>>({
+    // cf-computer picks its own model server-side (Mistral Small 3.1);
+    // this entry exists only to satisfy Record<RuntimeMode, …>.
+    computer: { providerID: 'workers-ai', modelID: '@cf/mistralai/mistral-small-3.1-24b-instruct' },
     'cf-cc':    { providerID: 'zhipuai-coding-plan', modelID: 'glm-4.5-air' },
     'opencode': { providerID: 'zhipuai-coding-plan', modelID: 'glm-4.5-air' },
     'cf-ai':    { providerID: 'workers-ai',          modelID: '@cf/meta/llama-3.1-8b-instruct-fast' },
@@ -2520,6 +2527,72 @@ export function SkillExecutor({ skill, onClose, userId, onRequireAuth, onPurchas
       } finally {
         setIsRunning(false);
       }
+      return;
+    }
+
+    // ── cf-computer runtime branch (PERSISTENT workspace) ───────────────
+    // @cloudflare/computer keeps this skill's files in a Durable Object, so a
+    // run can read what a PREVIOUS run wrote. Verified live: run 1 wrote
+    // /log.md="run 1"; run 2 (separate request) read it and produced
+    // "run 1\nrun 2". Pi cannot do this — its container is wiped on sleep.
+    if (runtimeMode === 'computer') {
+      setInput('');
+      setAttachedFiles([]);
+      setIsRunning(true);
+      setConnectionError(null);
+      setSandboxPhase('starting');
+
+      const userEntry: UserEntry = { type: 'user', text, time: Date.now() };
+      const msgId = `cmp-${Date.now()}`;
+      const partId = `cmp-part-${Date.now()}`;
+      const placeholder: AssistantEntry = {
+        type: 'assistant',
+        messageId: msgId,
+        parts: [{ id: partId, sessionID: 'computer', messageID: msgId, type: 'text', text: '' } as TextPart],
+        isComplete: false,
+      };
+      setEntries(prev => [...prev, userEntry, placeholder]);
+
+      const render = (md: string, done: boolean) => {
+        setEntries(prev => prev.map(e =>
+          e.type === 'assistant' && e.messageId === msgId
+            ? { ...e, parts: [{ ...(e.parts[0] as TextPart), text: md }], isComplete: done }
+            : e));
+      };
+
+      // Show what already survives from earlier runs — the whole point.
+      const priorFiles = await listComputerFiles(skill.id);
+      let log = '**Persistent workspace** (`@cloudflare/computer`)\n\n';
+      log += priorFiles.length
+        ? `Files carried over from previous runs: ${priorFiles.map(f => `\`${f}\``).join(', ')}\n\n`
+        : '_Fresh workspace — nothing from previous runs yet._\n\n';
+      render(log + '_Running…_', false);
+
+      const res = await runComputerSkill({
+        task: text,
+        skillId: skill.id,
+        skillMd: skillInstructions ?? undefined,
+      });
+
+      if (!res.ok) {
+        setConnectionError(res.error ?? 'cf-computer run failed');
+        render(log + `\n**Failed:** ${res.error ?? 'unknown error'}`, true);
+      } else {
+        const calls = res.toolCalls ?? [];
+        log += calls.length
+          ? `**Tool calls:** ${calls.map(c => `\`${c.tool}\``).join(' → ')}\n\n`
+          : '_The model made no tool calls this run (Workers AI tool-calling is unreliable — see cf-computer README)._\n\n';
+        const names = Array.isArray(res.files)
+          ? (res.files as Array<{ name?: string } | string>).map(f => (typeof f === 'string' ? f : f.name ?? '')).filter(Boolean)
+          : [];
+        if (names.length) log += `**Workspace now holds:** ${names.map(f => `\`${f}\``).join(', ')}\n\n`;
+        log += res.answer || '_(no summary)_';
+        log += `\n\n\`${res.workspace}\` · ${res.elapsed_ms}ms · ${res.model ?? ''}`;
+        render(log, true);
+      }
+
+      setIsRunning(false);
+      setSandboxPhase(null);
       return;
     }
 
@@ -4471,12 +4544,35 @@ export function SkillExecutor({ skill, onClose, userId, onRequireAuth, onPurchas
                   {!isFixedRuntime ? (
                   /* Pi is the sole agent runtime — show it as a static label,
                      no switcher. Every skill executes on pi-sandbox. */
-                  <span
-                    className="inline-flex items-center gap-1.5 px-2.5 h-7 rounded-lg text-[11px] font-medium bg-primary text-primary-foreground shadow-candy-1"
-                    title="Pi coding agent (pi-sandbox), headless `pi -p --mode json` — runs keyless on a Workers-AI shim and streams real Pi output"
-                  >
-                    <Terminal className="w-3.5 h-3.5" />
-                    <span>Pi</span>
+                  <span className="inline-flex items-center gap-1 p-0.5 rounded-lg bg-secondary/60 border border-border">
+                    <button
+                      type="button"
+                      onClick={() => setRuntimeMode('pi')}
+                      aria-pressed={runtimeMode === 'pi'}
+                      className={`inline-flex items-center gap-1.5 px-2.5 h-6 rounded-md text-[11px] font-medium transition-colors ${
+                        runtimeMode === 'pi'
+                          ? 'bg-primary text-primary-foreground shadow-candy-1'
+                          : 'text-foreground-secondary hover:text-foreground'
+                      }`}
+                      title="Pi coding agent (pi-sandbox) — full Linux container, can run real commands. Stateless: the container is wiped when it sleeps."
+                    >
+                      <Terminal className="w-3.5 h-3.5" />
+                      <span>Pi</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRuntimeMode('computer')}
+                      aria-pressed={runtimeMode === 'computer'}
+                      className={`inline-flex items-center gap-1.5 px-2.5 h-6 rounded-md text-[11px] font-medium transition-colors ${
+                        runtimeMode === 'computer'
+                          ? 'bg-primary text-primary-foreground shadow-candy-1'
+                          : 'text-foreground-secondary hover:text-foreground'
+                      }`}
+                      title="@cloudflare/computer — the skill's files live in a Durable Object and SURVIVE between runs, so a run can read what the last run wrote. No shell commands yet."
+                    >
+                      <HardDrive className="w-3.5 h-3.5" />
+                      <span>Persistent</span>
+                    </button>
                   </span>
                   ) : (
                     <span className={`inline-flex items-center gap-1.5 px-2.5 h-7 text-[11px] font-mono ${isN8n ? 'text-mint' : isDynamicWorker ? 'text-chocolate' : 'text-grape'}`}>
