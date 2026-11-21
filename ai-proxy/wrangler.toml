@@ -10,8 +10,8 @@ compatibility_date = "2025-04-01"
 
 workers_dev = true
 
-[ai]
-binding = "AI"
+# Workers AI binding removed 2026-11-21: the owner stopped using Workers AI
+# (no AI charges). Do not re-add [ai]. This proxy has no other purpose.
 
 # Pin to an empty assets dir so wrangler 4.85's auto-detection doesn't
 # walk up and try to upload the SPA's node_modules.
